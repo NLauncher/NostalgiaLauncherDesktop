@@ -47,10 +47,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private boolean useDefaultLauncher;
     private String postLaunchAction;
     private boolean enableDebugging;
+    private String lastPlayedVersionName;
 
     private static final int COMPONENT_WIDTH = 300;
-    private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/LegacyMinecraftPE/NostalgiaLauncherDesktop/main/winlauncher_versions.json";
-    private static final String DEFAULT_LAUNCHER_URL = "https://github.com/LegacyMinecraftPE/NostalgiaLauncherDesktop/raw/refs/heads/main/ninecraft.zip";
+    private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/NostalgiaLauncherDesktop/main/winlauncher_versions.json";
+    private static final String DEFAULT_LAUNCHER_URL = "https://github.com/NLauncher/NostalgiaLauncherDesktop/raw/refs/main/ninecraft.zip";
 
     public NostalgiaLauncherDesktop() {
         versionManager = new VersionManager();
@@ -141,6 +142,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             useDefaultLauncher = Boolean.parseBoolean(settings.getProperty("useDefaultLauncher", "true"));
             postLaunchAction = settings.getProperty("postLaunchAction", "Do Nothing");
             enableDebugging = Boolean.parseBoolean(settings.getProperty("enableDebugging", "false"));
+            lastPlayedVersionName = settings.getProperty("lastPlayedVersionName");
         } catch (IOException e) {
             useDefaultBackground = true;
             useDefaultVersionsSource = true;
@@ -166,6 +168,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
             settings.setProperty("useDefaultLauncher", String.valueOf(useDefaultLauncher));
             settings.setProperty("postLaunchAction", postLaunchAction);
             settings.setProperty("enableDebugging", String.valueOf(enableDebugging));
+            if (lastPlayedVersionName != null) {
+                settings.setProperty("lastPlayedVersionName", lastPlayedVersionName);
+            }
             settings.store(fos, null);
         } catch (IOException e) {
             System.err.println("Failed to save settings: " + e.getMessage());
@@ -219,7 +224,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
 
         JButton discordButton = createIconButton("icons/discord.svg", "Discord", "https://discord.gg/4fv4RrTav4");
-        JButton websiteButton = createIconButton("icons/globe.svg", "Website", "https://legacyminecraftpe.github.io/");
+        JButton websiteButton = createIconButton("icons/globe.svg", "Website", "https://nlauncher.github.io/");
         JButton settingsButton = createIconButton("icons/gear.svg", "Settings", null);
         settingsButton.addActionListener(e -> showSettingsDialog());
 
@@ -299,7 +304,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         infoPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
         infoPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        JLabel versionLabel = new JLabel("NostalgiaLauncher Desktop v1.1.0 by eqozqq");
+        JLabel versionLabel = new JLabel("NostalgiaLauncher Desktop v1.1.1 by eqozqq");
         versionLabel.setForeground(UIManager.getColor("Label.foreground"));
         versionLabel.setFont(getRegularFont(Font.PLAIN, 12));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -553,6 +558,16 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     }
                     versionManager.updateInstalledVersions();
                     statusLabel.setText(versions.size() + " versions available");
+                    
+                    if (lastPlayedVersionName != null) {
+                        for (int i = 0; i < versionComboBox.getItemCount(); i++) {
+                            if (versionComboBox.getItemAt(i).getName().equals(lastPlayedVersionName)) {
+                                versionComboBox.setSelectedIndex(i);
+                                break;
+                            }
+                        }
+                    }
+
                 } catch (Exception e) {
                     JOptionPane.showMessageDialog(NostalgiaLauncherDesktop.this,
                             "Failed to load versions: " + e.getMessage(),
@@ -576,6 +591,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
                         "No version selected", JOptionPane.WARNING_MESSAGE);
                 return;
             }
+            lastPlayedVersionName = selectedVersion.getName();
+            saveSettings();
             launchVersion(selectedVersion);
         }
     }

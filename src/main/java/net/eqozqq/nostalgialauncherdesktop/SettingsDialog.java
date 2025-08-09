@@ -35,8 +35,7 @@ public class SettingsDialog extends JDialog {
 
     public SettingsDialog(JFrame parent, String currentBackgroundPath, boolean useDefaultBg, String currentVersionsSource, boolean useDefaultVs, String currentCustomLauncherPath, boolean useDefaultLauncher, String currentPostLaunchAction, boolean currentEnableDebugging) {
         super(parent, "Settings", true);
-        setSize(500, 550);
-        setLocationRelativeTo(parent);
+        setPreferredSize(new Dimension(600, 550));
         setLayout(new BorderLayout(10, 10));
 
         this.customBackgroundPath = currentBackgroundPath;
@@ -174,7 +173,7 @@ public class SettingsDialog extends JDialog {
         formPanel.add(useDefaultSourceCheckbox, gbc);
 
         gridY++;
-        JLabel versionsInfoLabel = createInfoLabel("Add your own versions list source. ", "Learn more", "https://legacyminecraftpe.github.io/NostalgiaLauncher/docs/CustomVersionsListSource");
+        JLabel versionsInfoLabel = createInfoLabel("Add your own versions list source. ", "Learn more", "https://nlauncher.github.io/docs/custom-versions-list-source.html");
         gbc.gridx = 1;
         gbc.gridy = gridY;
         gbc.gridwidth = 2;
@@ -226,7 +225,7 @@ public class SettingsDialog extends JDialog {
         formPanel.add(useDefaultLauncherCheckbox, gbc);
 
         gridY++;
-        JLabel launcherInfoLabel = createInfoLabel("Add your executable for launching versions. ", "Learn more", "https://legacyminecraftpe.github.io/NostalgiaLauncher/docs/CustomLauncher");
+        JLabel launcherInfoLabel = createInfoLabel("Add your executable for launching versions. ", "Learn more", "https://nlauncher.github.io/docs/custom-executable-for-versions.html");
         gbc.gridx = 1;
         gbc.gridy = gridY;
         gbc.gridwidth = 2;
@@ -322,6 +321,8 @@ public class SettingsDialog extends JDialog {
         
         add(formPanel, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
+        pack();
+        setLocationRelativeTo(parent);
     }
     
     private JLabel createInfoLabel(String text, String linkText, String url) {
