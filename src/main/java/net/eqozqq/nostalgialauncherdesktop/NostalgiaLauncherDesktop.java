@@ -48,10 +48,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private String postLaunchAction;
     private boolean enableDebugging;
     private String lastPlayedVersionName;
+    private double scaleFactor;
 
     private static final int COMPONENT_WIDTH = 300;
-    private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/NostalgiaLauncherDesktop/main/winlauncher_versions.json";
-    private static final String DEFAULT_LAUNCHER_URL = "https://github.com/NLauncher/NostalgiaLauncherDesktop/raw/refs/main/ninecraft.zip";
+    private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
+    private static final String DEFAULT_LAUNCHER_URL = "https://github.com/NLauncher/components/raw/refs/main/ninecraft.zip";
 
     public NostalgiaLauncherDesktop() {
         versionManager = new VersionManager();
@@ -143,12 +144,14 @@ public class NostalgiaLauncherDesktop extends JFrame {
             postLaunchAction = settings.getProperty("postLaunchAction", "Do Nothing");
             enableDebugging = Boolean.parseBoolean(settings.getProperty("enableDebugging", "false"));
             lastPlayedVersionName = settings.getProperty("lastPlayedVersionName");
+            scaleFactor = Double.parseDouble(settings.getProperty("scaleFactor", "1.0"));
         } catch (IOException e) {
             useDefaultBackground = true;
             useDefaultVersionsSource = true;
             useDefaultLauncher = true;
             postLaunchAction = "Do Nothing";
             enableDebugging = false;
+            scaleFactor = 1.0;
         }
     }
 
@@ -171,6 +174,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             if (lastPlayedVersionName != null) {
                 settings.setProperty("lastPlayedVersionName", lastPlayedVersionName);
             }
+            settings.setProperty("scaleFactor", String.valueOf(scaleFactor));
             settings.store(fos, null);
         } catch (IOException e) {
             System.err.println("Failed to save settings: " + e.getMessage());
@@ -178,11 +182,13 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     private void initializeUI() {
+        getContentPane().removeAll();
+        
         setTitle("NostalgiaLauncher Desktop");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setExtendedState(JFrame.MAXIMIZED_BOTH);
         setResizable(true);
-        setMinimumSize(new Dimension(800, 600));
+        setMinimumSize(new Dimension((int)(800 * scaleFactor), (int)(600 * scaleFactor)));
         setLocationRelativeTo(null);
 
         BackgroundPanel backgroundPanel = new BackgroundPanel();
@@ -195,7 +201,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         gbcTop.weightx = 1.0;
         gbcTop.weighty = 1.0;
         gbcTop.anchor = GridBagConstraints.NORTH;
-        gbcTop.insets = new Insets(10, 0, 0, 0);
+        gbcTop.insets = new Insets((int)(10 * scaleFactor), 0, 0, 0);
         backgroundPanel.add(topPanel, gbcTop);
 
         JPanel contentPanel = createContentPanel();
@@ -212,10 +218,12 @@ public class NostalgiaLauncherDesktop extends JFrame {
         gbcInfo.gridy = 1;
         gbcInfo.weighty = 0.0;
         gbcInfo.anchor = GridBagConstraints.PAGE_END;
-        gbcInfo.insets = new Insets(0, 0, 10, 0);
+        gbcInfo.insets = new Insets(0, 0, (int)(10 * scaleFactor), 0);
         backgroundPanel.add(infoPanel, gbcInfo);
 
         add(backgroundPanel);
+        revalidate();
+        repaint();
     }
 
     private JPanel createTopButtonsPanel() {
@@ -230,11 +238,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
         panel.add(Box.createHorizontalGlue());
         panel.add(discordButton);
-        panel.add(Box.createHorizontalStrut(5));
+        panel.add(Box.createHorizontalStrut((int)(5 * scaleFactor)));
         panel.add(websiteButton);
-        panel.add(Box.createHorizontalStrut(5));
+        panel.add(Box.createHorizontalStrut((int)(5 * scaleFactor)));
         panel.add(settingsButton);
-        panel.add(Box.createHorizontalStrut(10));
+        panel.add(Box.createHorizontalStrut((int)(10 * scaleFactor)));
         
         return panel;
     }
@@ -242,7 +250,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private JButton createIconButton(String iconPath, String tooltip, String url) {
         JButton button = new JButton();
         try {
-            FlatSVGIcon icon = new FlatSVGIcon(iconPath, 20, 20);
+            FlatSVGIcon icon = new FlatSVGIcon(iconPath, (int)(20 * scaleFactor), (int)(20 * scaleFactor));
             button.setIcon(icon);
         } catch (Exception e) {
             System.err.println("Failed to load icon: " + iconPath);
@@ -257,8 +265,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 }
             });
         }
-        button.setPreferredSize(new Dimension(35, 35));
-        button.setMaximumSize(new Dimension(35, 35));
+        button.setPreferredSize(new Dimension((int)(35 * scaleFactor), (int)(35 * scaleFactor)));
+        button.setMaximumSize(new Dimension((int)(35 * scaleFactor), (int)(35 * scaleFactor)));
         button.setFocusPainted(false);
         button.setBorderPainted(true);
         button.setContentAreaFilled(true);
@@ -268,7 +276,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private void showSettingsDialog() {
         SettingsDialog dialog = new SettingsDialog(this,
             customBackgroundPath, useDefaultBackground, customVersionsSource, useDefaultVersionsSource,
-            customLauncherPath, useDefaultLauncher, postLaunchAction, enableDebugging);
+            customLauncherPath, useDefaultLauncher, postLaunchAction, enableDebugging, scaleFactor);
         dialog.setVisible(true);
         if (dialog.isSaved()) {
             customBackgroundPath = dialog.getCustomBackgroundPath();
@@ -279,10 +287,12 @@ public class NostalgiaLauncherDesktop extends JFrame {
             useDefaultLauncher = dialog.isUseDefaultLauncher();
             postLaunchAction = dialog.getPostLaunchAction();
             enableDebugging = dialog.isEnableDebugging();
+            scaleFactor = dialog.getScaleFactor();
             saveSettings();
             loadBackgroundImage();
+            initializeUI();
             loadVersions();
-            repaint();
+            loadNickname();
         }
     }
 
@@ -302,16 +312,16 @@ public class NostalgiaLauncherDesktop extends JFrame {
         infoPanel.setOpaque(false);
         infoPanel.setLayout(new BoxLayout(infoPanel, BoxLayout.Y_AXIS));
         infoPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        infoPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        infoPanel.setBorder(BorderFactory.createEmptyBorder((int)(10 * scaleFactor), (int)(10 * scaleFactor), (int)(10 * scaleFactor), (int)(10 * scaleFactor)));
 
-        JLabel versionLabel = new JLabel("NostalgiaLauncher Desktop v1.1.1 by eqozqq");
+        JLabel versionLabel = new JLabel("NostalgiaLauncher Desktop v1.1.2 by eqozqq");
         versionLabel.setForeground(UIManager.getColor("Label.foreground"));
-        versionLabel.setFont(getRegularFont(Font.PLAIN, 12));
+        versionLabel.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel disclaimerLabel = new JLabel("This program is not affiliated with Mojang, Microsoft, or any other entity");
         disclaimerLabel.setForeground(UIManager.getColor("Label.foreground"));
-        disclaimerLabel.setFont(getRegularFont(Font.PLAIN, 10));
+        disclaimerLabel.setFont(getRegularFont(Font.PLAIN, (float)(10 * scaleFactor)));
         disclaimerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         infoPanel.add(versionLabel);
@@ -324,17 +334,19 @@ public class NostalgiaLauncherDesktop extends JFrame {
         JPanel contentPanel = new JPanel();
         contentPanel.setLayout(new BoxLayout(contentPanel, BoxLayout.Y_AXIS));
         contentPanel.setOpaque(false);
-        contentPanel.setBorder(new EmptyBorder(40, 60, 40, 60));
+        contentPanel.setBorder(new EmptyBorder(
+            (int)(40 * scaleFactor), (int)(60 * scaleFactor), 
+            (int)(40 * scaleFactor), (int)(60 * scaleFactor)));
 
         contentPanel.add(createLogoPanel());
-        contentPanel.add(Box.createVerticalStrut(30));
+        contentPanel.add(Box.createVerticalStrut((int)(30 * scaleFactor)));
 
         JPanel transparentPanel = createTranslucentGamePanel();
         contentPanel.add(transparentPanel);
 
-        contentPanel.add(Box.createVerticalStrut(10));
+        contentPanel.add(Box.createVerticalStrut((int)(10 * scaleFactor)));
         contentPanel.add(createProgressPanel());
-        contentPanel.add(Box.createVerticalStrut(10));
+        contentPanel.add(Box.createVerticalStrut((int)(10 * scaleFactor)));
         contentPanel.add(createStatusPanel());
 
         return contentPanel;
@@ -343,18 +355,22 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private JPanel createTranslucentGamePanel() {
         JPanel gamePanel = new TranslucentGamePanel();
         gamePanel.setLayout(new BoxLayout(gamePanel, BoxLayout.Y_AXIS));
-        gamePanel.setBorder(new EmptyBorder(20, 20, 10, 20));
+        gamePanel.setBorder(new EmptyBorder(
+            (int)(20 * scaleFactor), (int)(20 * scaleFactor), 
+            (int)(10 * scaleFactor), (int)(20 * scaleFactor)));
 
         nicknameField = new JTextField();
-        nicknameField.setPreferredSize(new Dimension(COMPONENT_WIDTH, 35));
-        nicknameField.setMaximumSize(new Dimension(COMPONENT_WIDTH, 35));
-        nicknameField.setFont(getRegularFont(Font.PLAIN, 14));
+        nicknameField.setPreferredSize(new Dimension(
+            (int)(COMPONENT_WIDTH * scaleFactor), (int)(35 * scaleFactor)));
+        nicknameField.setMaximumSize(new Dimension(
+            (int)(COMPONENT_WIDTH * scaleFactor), (int)(35 * scaleFactor)));
+        nicknameField.setFont(getRegularFont(Font.PLAIN, (float)(14 * scaleFactor)));
         nicknameField.setAlignmentX(Component.CENTER_ALIGNMENT);
         nicknameField.putClientProperty("JTextField.placeholderText", "Nickname");
         nicknameField.setText("Steve");
 
         gamePanel.add(nicknameField);
-        gamePanel.add(Box.createVerticalStrut(2));
+        gamePanel.add(Box.createVerticalStrut((int)(2 * scaleFactor)));
 
         JPanel versionPanel = new JPanel();
         versionPanel.setLayout(new BoxLayout(versionPanel, BoxLayout.X_AXIS));
@@ -362,34 +378,38 @@ public class NostalgiaLauncherDesktop extends JFrame {
         versionPanel.setOpaque(false);
 
         versionComboBox = new JComboBox<Version>();
-        versionComboBox.setPreferredSize(new Dimension(COMPONENT_WIDTH - 40, 35));
-        versionComboBox.setMaximumSize(new Dimension(COMPONENT_WIDTH - 40, 35));
-        versionComboBox.setFont(getRegularFont(Font.PLAIN, 14));
+        versionComboBox.setPreferredSize(new Dimension(
+            (int)((COMPONENT_WIDTH - 40) * scaleFactor), (int)(35 * scaleFactor)));
+        versionComboBox.setMaximumSize(new Dimension(
+            (int)((COMPONENT_WIDTH - 40) * scaleFactor), (int)(35 * scaleFactor)));
+        versionComboBox.setFont(getRegularFont(Font.PLAIN, (float)(14 * scaleFactor)));
         versionComboBox.setRenderer(new VersionListCellRenderer(versionManager));
 
         refreshButton = new JButton();
         try {
-            FlatSVGIcon icon = new FlatSVGIcon("icons/refresh.svg", 16, 16);
+            FlatSVGIcon icon = new FlatSVGIcon("icons/refresh.svg", (int)(16 * scaleFactor), (int)(16 * scaleFactor));
             refreshButton.setIcon(icon);
         } catch (Exception e) {
             System.err.println("Failed to load refresh icon: " + e.getMessage());
         }
-        refreshButton.setPreferredSize(new Dimension(35, 35));
-        refreshButton.setMaximumSize(new Dimension(35, 35));
+        refreshButton.setPreferredSize(new Dimension((int)(35 * scaleFactor), (int)(35 * scaleFactor)));
+        refreshButton.setMaximumSize(new Dimension((int)(35 * scaleFactor), (int)(35 * scaleFactor)));
         refreshButton.setToolTipText("Refresh versions");
         refreshButton.addActionListener(e -> loadVersions());
 
         versionPanel.add(versionComboBox);
-        versionPanel.add(Box.createHorizontalStrut(5));
+        versionPanel.add(Box.createHorizontalStrut((int)(5 * scaleFactor)));
         versionPanel.add(refreshButton);
 
         gamePanel.add(versionPanel);
-        gamePanel.add(Box.createVerticalStrut(5));
+        gamePanel.add(Box.createVerticalStrut((int)(5 * scaleFactor)));
 
         launchButton = new JButton("Launch");
-        launchButton.setPreferredSize(new Dimension(COMPONENT_WIDTH, 45));
-        launchButton.setMaximumSize(new Dimension(COMPONENT_WIDTH, 45));
-        launchButton.setFont(getRegularFont(Font.BOLD, 16));
+        launchButton.setPreferredSize(new Dimension(
+            (int)(COMPONENT_WIDTH * scaleFactor), (int)(45 * scaleFactor)));
+        launchButton.setMaximumSize(new Dimension(
+            (int)(COMPONENT_WIDTH * scaleFactor), (int)(45 * scaleFactor)));
+        launchButton.setFont(getRegularFont(Font.BOLD, (float)(16 * scaleFactor)));
         launchButton.setAlignmentX(Component.CENTER_ALIGNMENT);
         launchButton.addActionListener(new LaunchButtonListener());
 
@@ -404,19 +424,19 @@ public class NostalgiaLauncherDesktop extends JFrame {
         logoPanel.setOpaque(false);
 
         JLabel logoLabel = new JLabel("NLauncher Desktop");
-        logoLabel.setFont(getMinecraftFont(Font.PLAIN, 31));
+        logoLabel.setFont(getMinecraftFont(Font.PLAIN, (float)(31 * scaleFactor)));
         logoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         logoLabel.setForeground(UIManager.getColor("Label.foreground"));
         logoLabel.setOpaque(false);
         logoPanel.add(logoLabel);
 
         JLabel subtitleLabel = new JLabel("Minecraft Pocket Edition Alpha Launcher");
-        subtitleLabel.setFont(getRegularFont(Font.PLAIN, 18));
+        subtitleLabel.setFont(getRegularFont(Font.PLAIN, (float)(18 * scaleFactor)));
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         subtitleLabel.setForeground(UIManager.getColor("Label.foreground"));
         subtitleLabel.setOpaque(false);
 
-        logoPanel.add(Box.createVerticalStrut(10));
+        logoPanel.add(Box.createVerticalStrut((int)(10 * scaleFactor)));
         logoPanel.add(subtitleLabel);
 
         return logoPanel;
@@ -430,9 +450,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
         progressBar = new JProgressBar();
         progressBar.setStringPainted(true);
         progressBar.setVisible(false);
-        progressBar.setPreferredSize(new Dimension(COMPONENT_WIDTH, 20));
-        progressBar.setMaximumSize(new Dimension(COMPONENT_WIDTH, 20));
-        progressBar.setFont(getRegularFont(Font.PLAIN, 12));
+        progressBar.setPreferredSize(new Dimension(
+            (int)(COMPONENT_WIDTH * scaleFactor), (int)(20 * scaleFactor)));
+        progressBar.setMaximumSize(new Dimension(
+            (int)(COMPONENT_WIDTH * scaleFactor), (int)(20 * scaleFactor)));
+        progressBar.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
         progressBar.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         progressPanel.add(progressBar);
@@ -446,7 +468,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         statusPanel.setOpaque(false);
 
         statusLabel = new JLabel("Ready");
-        statusLabel.setFont(getRegularFont(Font.PLAIN, 12));
+        statusLabel.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
         statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         statusLabel.setForeground(UIManager.getColor("Label.foreground"));
         statusLabel.setOpaque(false);
