@@ -1,12 +1,22 @@
 package net.eqozqq.nostalgialauncherdesktop;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import com.formdev.flatlaf.FlatDarculaLaf;
+import com.formdev.flatlaf.FlatIntelliJLaf;
+import com.formdev.flatlaf.themes.FlatMacDarkLaf;
+import com.formdev.flatlaf.themes.FlatMacLightLaf;
+import com.formdev.flatlaf.util.SystemInfo;
 import javax.swing.*;
 import java.awt.*;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.net.HttpURLConnection;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 
 public class SettingsDialog extends JDialog {
     private JTextField backgroundPathField;
@@ -25,6 +35,7 @@ public class SettingsDialog extends JDialog {
     private JButton browseLauncherButton;
     private JRadioButton urlRadioButton;
     private JRadioButton fileRadioButton;
+    private JComboBox<String> themeComboBox;
 
     private String customBackgroundPath;
     private boolean useDefaultBackground;
@@ -35,9 +46,13 @@ public class SettingsDialog extends JDialog {
     private String postLaunchAction;
     private boolean enableDebugging;
     private double scaleFactor;
+    private String themeName;
+    private String currentVersion;
     private boolean saved = false;
 
-    public SettingsDialog(JFrame parent, String currentBackgroundPath, boolean useDefaultBg, String currentVersionsSource, boolean useDefaultVs, String currentCustomLauncherPath, boolean useDefaultLauncher, String currentPostLaunchAction, boolean currentEnableDebugging, double currentScaleFactor) {
+    private static final String LAST_VERSION = "https://raw.githubusercontent.com/NLauncher/components/refs/heads/main/lastversion.txt";
+
+    public SettingsDialog(JFrame parent, String currentBackgroundPath, boolean useDefaultBg, String currentVersionsSource, boolean useDefaultVs, String currentCustomLauncherPath, boolean useDefaultLauncher, String currentPostLaunchAction, boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion) {
         super(parent, "Settings", true);
         setPreferredSize(new Dimension(600, 550));
         setLayout(new BorderLayout(10, 10));
@@ -51,11 +66,14 @@ public class SettingsDialog extends JDialog {
         this.postLaunchAction = currentPostLaunchAction;
         this.enableDebugging = currentEnableDebugging;
         this.scaleFactor = currentScaleFactor;
+        this.themeName = currentTheme;
+        this.currentVersion = currentVersion;
 
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.putClientProperty(FlatClientProperties.TABBED_PANE_TAB_ICON_PLACEMENT, SwingConstants.LEFT);
         tabbedPane.addTab("Game", createGamePanel());
         tabbedPane.addTab("Launcher", createLauncherPanel());
+        tabbedPane.addTab("About", createAboutPanel());
 
         JPanel buttonPanel = new JPanel();
         saveButton = new JButton("Save");
@@ -83,6 +101,7 @@ public class SettingsDialog extends JDialog {
             }
             this.postLaunchAction = (String) postLaunchActionComboBox.getSelectedItem();
             this.scaleFactor = (double) scaleSlider.getValue() / 100.0;
+            this.themeName = (String) themeComboBox.getSelectedItem();
 
             if (!useDefaultVersionsSource) {
                 if (urlRadioButton.isSelected()) {
@@ -104,8 +123,8 @@ public class SettingsDialog extends JDialog {
             if (!useDefaultLauncher) {
                 File file = new File(customLauncherField.getText());
                 if (!file.exists() || !file.isFile()) {
-                    JOptionPane.showMessageDialog(this, "Invalid file path for custom launcher.", "Error", JOptionPane.ERROR_MESSAGE);
-                    return;
+                        JOptionPane.showMessageDialog(this, "Invalid file path for custom launcher.", "Error", JOptionPane.ERROR_MESSAGE);
+                        return;
                 }
             }
             
@@ -118,6 +137,20 @@ public class SettingsDialog extends JDialog {
         add(buttonPanel, BorderLayout.SOUTH);
         pack();
         setLocationRelativeTo(parent);
+
+        tabbedPane.addChangeListener(e -> {
+            if (tabbedPane.getTitleAt(tabbedPane.getSelectedIndex()).equals("About")) {
+                buttonPanel.remove(saveButton);
+                buttonPanel.revalidate();
+                buttonPanel.repaint();
+            } else {
+                if (!java.util.Arrays.asList(buttonPanel.getComponents()).contains(saveButton)) {
+                    buttonPanel.add(saveButton);
+                    buttonPanel.revalidate();
+                    buttonPanel.repaint();
+                }
+            }
+        });
     }
     
     private JPanel createGamePanel() {
@@ -286,7 +319,7 @@ public class SettingsDialog extends JDialog {
         gbc.insets = new Insets(5, 5, 5, 5);
         
         gridY++;
-        enableDebuggingCheckbox = new JCheckBox("Enable Debugging");
+        enableDebuggingCheckbox = new JCheckBox("Enable debugging");
         enableDebuggingCheckbox.setSelected(this.enableDebugging);
         gbc.gridx = 0;
         gbc.gridy = gridY;
@@ -318,16 +351,88 @@ public class SettingsDialog extends JDialog {
         gbc.anchor = GridBagConstraints.NORTHWEST;
         int gridY = 0;
 
-        JLabel backgroundLabel = new JLabel("Background image path:");
+        JLabel postLaunchActionLabel = new JLabel("Action after launch:");
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 1;
+        gbc.weighty = 0.0;
+        contentPanel.add(postLaunchActionLabel, gbc);
+
+        postLaunchActionComboBox = new JComboBox<>(new String[]{"Do Nothing", "Minimize Launcher", "Close Launcher"});
+        postLaunchActionComboBox.setSelectedItem(this.postLaunchAction);
+        gbc.gridx = 1;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 2;
+        gbc.weighty = 0.0;
+        contentPanel.add(postLaunchActionComboBox, gbc);
+        
+        gridY++;
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 3;
+        gbc.insets = new Insets(15, 5, 5, 5);
+        contentPanel.add(new JSeparator(), gbc);
+        gbc.insets = new Insets(5, 5, 5, 5);
+
+        gridY++;
+        JLabel themeLabel = new JLabel("Theme:");
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 1;
+        gbc.weighty = 0.0;
+        contentPanel.add(themeLabel, gbc);
+
+        String[] themes;
+        if (SystemInfo.isMacOS) {
+            themes = new String[]{"Light", "Dark"};
+        } else {
+            themes = new String[]{"Light", "Dark"};
+        }
+        themeComboBox = new JComboBox<>(themes);
+        themeComboBox.setSelectedItem(this.themeName);
+        gbc.gridx = 1;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 2;
+        gbc.weighty = 0.0;
+        contentPanel.add(themeComboBox, gbc);
+
+        gridY++;
+        scaleLabel = new JLabel("Interface scale: " + (int)(scaleFactor * 100) + "%");
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 1;
+        gbc.weighty = 0.0;
+        contentPanel.add(scaleLabel, gbc);
+
+        scaleSlider = new JSlider(JSlider.HORIZONTAL, 50, 200, (int)(scaleFactor * 100));
+        scaleSlider.setMajorTickSpacing(50);
+        scaleSlider.setMinorTickSpacing(10);
+        scaleSlider.setPaintTicks(true);
+        scaleSlider.setPaintLabels(true);
+        scaleSlider.setSnapToTicks(true);
+        scaleSlider.addChangeListener(e -> {
+            int value = scaleSlider.getValue();
+            scaleLabel.setText("Interface scale: " + value + "%");
+        });
+        gbc.gridx = 1;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 2;
+        gbc.weighty = 0.0;
+        contentPanel.add(scaleSlider, gbc);
+
+        gridY++;
+        JLabel backgroundLabel = new JLabel("Background image:");
         gbc.gridx = 0;
         gbc.gridy = gridY;
         gbc.weighty = 0.0;
         contentPanel.add(backgroundLabel, gbc);
 
-        backgroundPathField = new JTextField(20);
+        backgroundPathField = new JTextField(15);
         backgroundPathField.setText(useDefaultBackground ? "" : customBackgroundPath);
         backgroundPathField.setEnabled(!useDefaultBackground);
         gbc.gridx = 1;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 1;
         gbc.weightx = 1.0;
         gbc.weighty = 0.0;
         contentPanel.add(backgroundPathField, gbc);
@@ -343,6 +448,7 @@ public class SettingsDialog extends JDialog {
             }
         });
         gbc.gridx = 2;
+        gbc.gridy = gridY;
         gbc.weightx = 0.0;
         contentPanel.add(browseBackgroundButton, gbc);
         
@@ -358,47 +464,7 @@ public class SettingsDialog extends JDialog {
         gbc.gridwidth = 2;
         gbc.weighty = 0.0;
         contentPanel.add(useDefaultBackgroundCheckbox, gbc);
-
-        gridY++;
-        JLabel postLaunchActionLabel = new JLabel("Action after launch:");
-        gbc.gridx = 0;
-        gbc.gridy = gridY;
-        gbc.gridwidth = 1;
-        gbc.weighty = 0.0;
-        contentPanel.add(postLaunchActionLabel, gbc);
-
-        postLaunchActionComboBox = new JComboBox<>(new String[]{"Do Nothing", "Minimize Launcher", "Close Launcher"});
-        postLaunchActionComboBox.setSelectedItem(this.postLaunchAction);
-        gbc.gridx = 1;
-        gbc.gridy = gridY;
-        gbc.gridwidth = 2;
-        gbc.weighty = 0.0;
-        contentPanel.add(postLaunchActionComboBox, gbc);
-
-        gridY++;
-        scaleLabel = new JLabel("Interface Scale: " + (int)(scaleFactor * 100) + "%");
-        gbc.gridx = 0;
-        gbc.gridy = gridY;
-        gbc.gridwidth = 1;
-        gbc.weighty = 0.0;
-        contentPanel.add(scaleLabel, gbc);
-
-        scaleSlider = new JSlider(JSlider.HORIZONTAL, 50, 200, (int)(scaleFactor * 100));
-        scaleSlider.setMajorTickSpacing(50);
-        scaleSlider.setMinorTickSpacing(10);
-        scaleSlider.setPaintTicks(true);
-        scaleSlider.setPaintLabels(true);
-        scaleSlider.setSnapToTicks(true);
-        scaleSlider.addChangeListener(e -> {
-            int value = scaleSlider.getValue();
-            scaleLabel.setText("Interface Scale: " + value + "%");
-        });
-        gbc.gridx = 1;
-        gbc.gridy = gridY;
-        gbc.gridwidth = 2;
-        gbc.weighty = 0.0;
-        contentPanel.add(scaleSlider, gbc);
-
+        
         gridY++;
         JPanel filler = new JPanel();
         gbc.gridx = 0;
@@ -414,13 +480,152 @@ public class SettingsDialog extends JDialog {
         return mainPanel;
     }
     
+    private JPanel createAboutPanel() {
+        JPanel mainPanel = new JPanel(new BorderLayout());
+        JPanel contentPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(5, 5, 5, 5);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        int gridY = 0;
+
+        JLabel headline1 = new JLabel("NostalgiaLauncher");
+        headline1.setFont(new Font("SansSerif", Font.BOLD, 24));
+        gbc.gridx = 0;
+        gbc.gridy = gridY++;
+        gbc.gridwidth = 3;
+        contentPanel.add(headline1, gbc);
+
+        JLabel headline2 = new JLabel("Minecraft PE Alpha versions launcher for Windows");
+        headline2.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        gbc.gridy = gridY++;
+        contentPanel.add(headline2, gbc);
+
+        gbc.gridy = gridY++;
+        gbc.gridx = 0;
+        gbc.gridwidth = 3;
+        gbc.insets = new Insets(15, 5, 5, 5); 
+        contentPanel.add(new JSeparator(), gbc);
+        gbc.insets = new Insets(5, 5, 5, 5); 
+
+        JLabel headline3 = new JLabel("Used materials");
+        headline3.setFont(new Font("SansSerif", Font.BOLD, 16));
+        gbc.gridy = gridY++;
+        contentPanel.add(headline3, gbc);
+        
+        JLabel link1 = createHyperlink("https://cdn.modrinth.com/data/8zAU4tG7/images/40fdccbec5cf60fa79829d431307a60aafa42964_350.webp");
+        gbc.gridy = gridY++;
+        contentPanel.add(link1, gbc);
+
+        JLabel link2 = createHyperlink("https://i.redd.it/y93jrn0jvyt51.png");
+        gbc.gridy = gridY++;
+        contentPanel.add(link2, gbc);
+
+        JLabel link3 = createHyperlink("https://www.formdev.com/flatlaf/");
+        gbc.gridy = gridY++;
+        contentPanel.add(link3, gbc);
+
+        JLabel link4 = createHyperlink("https://github.com/MCPI-Revival/Ninecraft");
+        gbc.gridy = gridY++;
+        contentPanel.add(link4, gbc);
+
+        gbc.gridy = gridY++;
+        gbc.gridx = 0;
+        gbc.gridwidth = 3;
+        gbc.insets = new Insets(15, 5, 5, 5); 
+        contentPanel.add(new JSeparator(), gbc);
+        gbc.insets = new Insets(5, 5, 5, 5); 
+
+        gbc.gridy = gridY++;
+        gbc.weighty = 1.0;
+        contentPanel.add(new JPanel(), gbc);
+        
+        JPanel versionPanel = new JPanel();
+        versionPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 0));
+        JLabel versionLabel = new JLabel("<html><span style='color:gray;'>Current version: " + currentVersion + "</span></html>");
+        versionLabel.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        versionPanel.add(versionLabel);
+
+        JLabel updateStatusLabel = new JLabel("Checking for updates...");
+        updateStatusLabel.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        versionPanel.add(updateStatusLabel);
+
+        SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
+            @Override
+            protected String doInBackground() throws Exception {
+                URL url = new URL(LAST_VERSION);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(5000);
+                connection.setReadTimeout(5000);
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                    return reader.readLine().trim();
+                } finally {
+                    connection.disconnect();
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    String latestVersion = get();
+                    if (currentVersion.equals(latestVersion)) {
+                        updateStatusLabel.setText("Up to date");
+                        updateStatusLabel.setForeground(new Color(76, 175, 80));
+                    } else {
+                        JLabel updateLink = new JLabel("<html><a href='" + "https://nlauncher.github.io/releases.html#desktop" + "'>New update available</a></html>");
+                        updateLink.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                        updateLink.addMouseListener(new MouseAdapter() {
+                            public void mouseClicked(MouseEvent e) {
+                                try {
+                                    Desktop.getDesktop().browse(new URI("https://nlauncher.github.io/releases.html#desktop"));
+                                } catch (Exception ex) {
+                                    ex.printStackTrace();
+                                }
+                            }
+                        });
+                        versionPanel.remove(updateStatusLabel);
+                        versionPanel.add(updateLink);
+                        versionPanel.revalidate();
+                        versionPanel.repaint();
+                    }
+                } catch (Exception e) {
+                    updateStatusLabel.setText("Error checking for updates");
+                    updateStatusLabel.setForeground(Color.RED);
+                }
+            }
+        };
+        worker.execute();
+
+        mainPanel.add(contentPanel, BorderLayout.NORTH);
+        mainPanel.add(versionPanel, BorderLayout.SOUTH);
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 15, 10, 15));
+        return mainPanel;
+    }
+    
     private JLabel createInfoLabel(String text, String linkText, String url) {
         JLabel label = new JLabel("<html><span style='color:gray;'>" + text + "</span><a href='" + url + "'><span style='font-weight:bold;'>" + linkText + "</span></a></html>");
         label.setFont(new Font("SansSerif", Font.PLAIN, 10));
         label.setForeground(Color.GRAY);
         label.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        label.addMouseListener(new java.awt.event.MouseAdapter() {
-            public void mouseClicked(java.awt.event.MouseEvent e) {
+        label.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                try {
+                    Desktop.getDesktop().browse(new URI(url));
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        });
+        return label;
+    }
+
+    private JLabel createHyperlink(String url) {
+        JLabel label = new JLabel("<html><a href='" + url + "'>" + url + "</a></html>");
+        label.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        label.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        label.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
                 try {
                     Desktop.getDesktop().browse(new URI(url));
                 } catch (Exception ex) {
@@ -465,6 +670,10 @@ public class SettingsDialog extends JDialog {
     
     public double getScaleFactor() {
         return scaleFactor;
+    }
+    
+    public String getThemeName() {
+        return themeName;
     }
 
     public boolean isSaved() {

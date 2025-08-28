@@ -1,5 +1,6 @@
 package net.eqozqq.nostalgialauncherdesktop;
 
+import com.formdev.flatlaf.FlatLaf;
 import javax.swing.*;
 import java.awt.*;
 
@@ -7,11 +8,19 @@ public class VersionListCellRenderer extends DefaultListCellRenderer {
     private VersionManager versionManager;
     private Color defaultBackground;
     private Color installedBackground;
+    private Color installedDarkBackground;
+    private Color defaultDarkBackground;
 
     public VersionListCellRenderer(VersionManager versionManager) {
         this.versionManager = versionManager;
-        this.defaultBackground = UIManager.getColor("List.background");
-        this.installedBackground = new Color(200, 200, 200);
+        updateColors();
+    }
+    
+    public void updateColors() {
+        defaultBackground = UIManager.getColor("List.background");
+        installedBackground = new Color(220, 220, 220);
+        installedDarkBackground = new Color(50, 50, 50);
+        defaultDarkBackground = new Color(30, 30, 30);
     }
 
     @Override
@@ -21,16 +30,32 @@ public class VersionListCellRenderer extends DefaultListCellRenderer {
         if (value instanceof Version) {
             Version version = (Version) value;
             if (versionManager.isVersionInstalled(version)) {
-                if (isSelected) {
-                    setBackground(list.getSelectionBackground().darker());
+                if (FlatLaf.isLafDark()) {
+                    if (isSelected) {
+                        setBackground(UIManager.getColor("List.selectionBackground"));
+                    } else {
+                        setBackground(installedDarkBackground);
+                    }
                 } else {
-                    setBackground(installedBackground);
+                    if (isSelected) {
+                        setBackground(list.getSelectionBackground().darker());
+                    } else {
+                        setBackground(installedBackground);
+                    }
                 }
             } else {
-                if (isSelected) {
-                    setBackground(list.getSelectionBackground());
+                if (FlatLaf.isLafDark()) {
+                    if (isSelected) {
+                        setBackground(UIManager.getColor("List.selectionBackground"));
+                    } else {
+                        setBackground(defaultDarkBackground);
+                    }
                 } else {
-                    setBackground(defaultBackground);
+                    if (isSelected) {
+                        setBackground(list.getSelectionBackground());
+                    } else {
+                        setBackground(defaultBackground);
+                    }
                 }
             }
         }
