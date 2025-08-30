@@ -54,11 +54,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private String lastPlayedVersionName;
     private double scaleFactor;
     private String themeName;
-    private static final String CURRENT_VERSION = "1.1.3";
+    private static final String CURRENT_VERSION = "1.1.4";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
-    private static final String DEFAULT_LAUNCHER_URL = "https://github.com/NLauncher/components/raw/refs/main/ninecraft.zip";
+    private static final String DEFAULT_LAUNCHER_URL = "https://github.com/NLauncher/components/raw/refs/heads/main/ninecraft.zip";
 
     public NostalgiaLauncherDesktop() {
         versionManager = new VersionManager();
