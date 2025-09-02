@@ -12,6 +12,9 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
+import java.awt.image.ConvolveOp;
+import java.awt.image.Kernel;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -29,22 +32,25 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import net.eqozqq.nostalgialauncherdesktop.WorldManager.WorldsManagerDialog;
+import net.eqozqq.nostalgialauncherdesktop.TexturesManager.TexturesManagerDialog;
 
 public class NostalgiaLauncherDesktop extends JFrame {
     private JTextField nicknameField;
     private JComboBox<Version> versionComboBox;
     private JButton launchButton;
     private JButton refreshButton;
+    private JButton addVersionButton;
     private JProgressBar progressBar;
     private JLabel statusLabel;
-    private Image backgroundImage;
+    private BufferedImage backgroundImage;
+    private Color customBackgroundColor;
 
     private VersionManager versionManager;
     private GameLauncher gameLauncher;
     private Properties settings;
 
     private String customBackgroundPath;
-    private boolean useDefaultBackground;
     private String customVersionsSource;
     private boolean useDefaultVersionsSource;
     private String customLauncherPath;
@@ -54,7 +60,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private String lastPlayedVersionName;
     private double scaleFactor;
     private String themeName;
-    private static final String CURRENT_VERSION = "1.1.4";
+    private String backgroundMode;
+    private static final String CURRENT_VERSION = "1.2.0";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
@@ -67,7 +74,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
         loadSettings();
         applyTheme();
-        loadBackgroundImage();
+        loadBackground();
         initializeUI();
         loadVersions();
         loadNickname();
@@ -113,32 +120,107 @@ public class NostalgiaLauncherDesktop extends JFrame {
         return new Font("SansSerif", style, (int) size);
     }
 
-    private void loadBackgroundImage() {
+    private BufferedImage applyBlur(BufferedImage source) {
+        if (source == null) {
+            return null;
+        }
+
+        int radius = 15;
+        int size = radius * 2 + 1;
+        float[] data = new float[size * size];
+        float sigma = radius / 3.0f;
+        float twoSigmaSquare = 2.0f * sigma * sigma;
+        float sigmaRoot = (float) Math.sqrt(twoSigmaSquare * Math.PI);
+        float total = 0.0f;
+
+        for (int y = -radius; y <= radius; y++) {
+            for (int x = -radius; x <= radius; x++) {
+                float distance = x * x + y * y;
+                int index = (y + radius) * size + (x + radius);
+                data[index] = (float) Math.exp(-distance / twoSigmaSquare) / sigmaRoot;
+                total += data[index];
+            }
+        }
+
+        for (int i = 0; i < data.length; i++) {
+            data[i] /= total;
+        }
+
+        BufferedImage paddedSource = new BufferedImage(
+            source.getWidth() + radius * 2,
+            source.getHeight() + radius * 2,
+            source.getType());
+
+        Graphics2D g = paddedSource.createGraphics();
+        g.drawImage(source, radius, radius, null);
+        g.drawImage(source.getSubimage(0, 0, 1, source.getHeight()), 0, radius, radius, source.getHeight(), null);
+        g.drawImage(source.getSubimage(source.getWidth() - 1, 0, 1, source.getHeight()), source.getWidth() + radius, radius, radius, source.getHeight(), null);
+        g.drawImage(source.getSubimage(0, 0, source.getWidth(), 1), radius, 0, source.getWidth(), radius, null);
+        g.drawImage(source.getSubimage(0, source.getHeight() - 1, source.getWidth(), 1), radius, source.getHeight() + radius, source.getWidth(), radius, null);
+        g.drawImage(source.getSubimage(0, 0, 1, 1), 0, 0, radius, radius, null);
+        g.drawImage(source.getSubimage(source.getWidth() - 1, 0, 1, 1), source.getWidth() + radius, 0, radius, radius, null);
+        g.drawImage(source.getSubimage(0, source.getHeight() - 1, 1, 1), 0, source.getHeight() + radius, radius, radius, null);
+        g.drawImage(source.getSubimage(source.getWidth() - 1, source.getHeight() - 1, 1, 1), source.getWidth() + radius, source.getHeight() + radius, radius, radius, null);
+        g.dispose();
+
+        Kernel kernel = new Kernel(size, size, data);
+        ConvolveOp convolveOp = new ConvolveOp(kernel, ConvolveOp.EDGE_NO_OP, null);
+        BufferedImage blurredPadded = convolveOp.filter(paddedSource, null);
+
+        return blurredPadded.getSubimage(radius, radius, source.getWidth(), source.getHeight());
+    }
+
+    private void loadBackground() {
+        this.backgroundImage = null;
+        this.customBackgroundColor = null;
+
         try {
-            if (!useDefaultBackground && customBackgroundPath != null && new File(customBackgroundPath).exists()) {
-                backgroundImage = ImageIO.read(new File(customBackgroundPath));
-            } else {
-                String backgroundPath = themeName.equals("Dark") ? "/background_night.png" : "/background_light.png";
-                try (InputStream backgroundStream = NostalgiaLauncherDesktop.class.getResourceAsStream(backgroundPath)) {
-                    if (backgroundStream != null) {
-                        backgroundImage = ImageIO.read(backgroundStream);
-                    } else {
-                        System.err.println("Default background image not found: " + backgroundPath);
-                        backgroundImage = null;
+            switch (backgroundMode) {
+                case "Custom Image":
+                    if (customBackgroundPath != null && new File(customBackgroundPath).exists()) {
+                        BufferedImage sourceImage = ImageIO.read(new File(customBackgroundPath));
+                        this.backgroundImage = applyBlur(sourceImage);
                     }
-                }
+                    break;
+                case "Custom Color":
+                    String rgb = settings.getProperty("customBackgroundColor");
+                    if (rgb != null) {
+                        this.customBackgroundColor = new Color(Integer.parseInt(rgb));
+                    }
+                    break;
+                case "Default":
+                default:
+                    String backgroundPath = themeName.equals("Dark") ? "/background_night.png" : "/background_light.png";
+                    try (InputStream backgroundStream = NostalgiaLauncherDesktop.class.getResourceAsStream(backgroundPath)) {
+                        if (backgroundStream != null) {
+                            BufferedImage sourceImage = ImageIO.read(backgroundStream);
+                            this.backgroundImage = applyBlur(sourceImage);
+                        } else {
+                            System.err.println("Default background image not found: " + backgroundPath);
+                        }
+                    }
+                    break;
             }
         } catch (Exception e) {
-            System.err.println("Could not load background image: " + e.getMessage());
-            backgroundImage = null;
+            System.err.println("Could not load background: " + e.getMessage());
+            this.backgroundImage = null;
+            this.customBackgroundColor = null;
         }
     }
 
     private void loadSettings() {
         try (FileInputStream fis = new FileInputStream("launcher.properties")) {
             settings.load(fis);
+            backgroundMode = settings.getProperty("backgroundMode", "Default");
             customBackgroundPath = settings.getProperty("customBackgroundPath");
-            useDefaultBackground = Boolean.parseBoolean(settings.getProperty("useDefaultBackground", "true"));
+            String rgb = settings.getProperty("customBackgroundColor");
+            if (rgb != null) {
+                try {
+                    customBackgroundColor = new Color(Integer.parseInt(rgb));
+                } catch (NumberFormatException e) {
+                    customBackgroundColor = null;
+                }
+            }
             customVersionsSource = settings.getProperty("customVersionsSource");
             useDefaultVersionsSource = Boolean.parseBoolean(settings.getProperty("useDefaultVersionsSource", "true"));
             customLauncherPath = settings.getProperty("customLauncherPath");
@@ -149,7 +231,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             scaleFactor = Double.parseDouble(settings.getProperty("scaleFactor", "1.0"));
             themeName = settings.getProperty("themeName", "Dark");
         } catch (IOException | NumberFormatException e) {
-            useDefaultBackground = true;
+            backgroundMode = "Default";
             useDefaultVersionsSource = true;
             useDefaultLauncher = true;
             postLaunchAction = "Do Nothing";
@@ -161,10 +243,18 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private void saveSettings() {
         try (FileOutputStream fos = new FileOutputStream("launcher.properties")) {
+            settings.setProperty("backgroundMode", backgroundMode);
             if (customBackgroundPath != null) {
                 settings.setProperty("customBackgroundPath", customBackgroundPath);
+            } else {
+                settings.remove("customBackgroundPath");
             }
-            settings.setProperty("useDefaultBackground", String.valueOf(useDefaultBackground));
+            if (customBackgroundColor != null) {
+                settings.setProperty("customBackgroundColor", String.valueOf(customBackgroundColor.getRGB()));
+            } else {
+                settings.remove("customBackgroundColor");
+            }
+
             if (customVersionsSource != null) {
                 settings.setProperty("customVersionsSource", customVersionsSource);
             }
@@ -302,12 +392,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private void showSettingsDialog() {
         int oldState = getExtendedState();
         SettingsDialog dialog = new SettingsDialog(this,
-            customBackgroundPath, useDefaultBackground, customVersionsSource, useDefaultVersionsSource,
-            customLauncherPath, useDefaultLauncher, postLaunchAction, enableDebugging, scaleFactor, themeName, CURRENT_VERSION);
+            customBackgroundPath, customVersionsSource, useDefaultVersionsSource,
+            customLauncherPath, useDefaultLauncher, postLaunchAction, enableDebugging, scaleFactor, themeName, CURRENT_VERSION, backgroundMode, customBackgroundColor);
         dialog.setVisible(true);
         if (dialog.isSaved()) {
             customBackgroundPath = dialog.getCustomBackgroundPath();
-            useDefaultBackground = dialog.isUseDefaultBackground();
             customVersionsSource = dialog.getCustomVersionsSource();
             useDefaultVersionsSource = dialog.isUseDefaultVersionsSource();
             customLauncherPath = dialog.getCustomLauncherPath();
@@ -315,13 +404,15 @@ public class NostalgiaLauncherDesktop extends JFrame {
             postLaunchAction = dialog.getPostLaunchAction();
             enableDebugging = dialog.isEnableDebugging();
             scaleFactor = dialog.getScaleFactor();
+            backgroundMode = dialog.getBackgroundMode();
+            customBackgroundColor = dialog.getCustomBackgroundColor();
             String newThemeName = dialog.getThemeName();
             if (!newThemeName.equals(themeName)) {
                 themeName = newThemeName;
                 applyTheme();
             }
             saveSettings();
-            loadBackgroundImage();
+            loadBackground();
             initializeUI();
             loadVersions();
             loadNickname();
@@ -375,16 +466,47 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
         contentPanel.add(createLogoPanel());
         contentPanel.add(Box.createVerticalStrut((int)(30 * scaleFactor)));
-
-        JPanel transparentPanel = createTranslucentGamePanel();
-        contentPanel.add(transparentPanel);
-
+        contentPanel.add(createTranslucentGamePanel());
         contentPanel.add(Box.createVerticalStrut((int)(10 * scaleFactor)));
-        contentPanel.add(createProgressPanel());
-        contentPanel.add(Box.createVerticalStrut((int)(10 * scaleFactor)));
-        contentPanel.add(createStatusPanel());
+        contentPanel.add(createBottomActionsPanel());
 
         return contentPanel;
+    }
+
+    private JPanel createBottomActionsPanel() {
+        JPanel panel = new JPanel();
+        panel.setOpaque(false);
+        panel.setLayout(new GridLayout(1, 3, (int)(10 * scaleFactor), 0));
+        Dimension buttonSize = new Dimension(0, (int)(45 * scaleFactor));
+
+        /*
+        JButton marketplaceButton = createThemedIconButton("icons/widgets.svg", "Marketplace", null);
+        marketplaceButton.setText("Marketplace");
+        marketplaceButton.setPreferredSize(buttonSize);
+        marketplaceButton.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
+        marketplaceButton.setIconTextGap(8);
+        marketplaceButton.addActionListener(e -> JOptionPane.showMessageDialog(this, "Marketplace is not yet implemented.", "Info", JOptionPane.INFORMATION_MESSAGE));
+        */
+
+        JButton worldsButton = createThemedIconButton("icons/globe_2.svg", "Worlds manager", null);
+        worldsButton.setText("Worlds manager");
+        worldsButton.setPreferredSize(buttonSize);
+        worldsButton.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
+        worldsButton.setIconTextGap(8);
+        worldsButton.addActionListener(e -> new WorldsManagerDialog(this).setVisible(true));
+
+        JButton texturesButton = createThemedIconButton("icons/texture.svg", "Textures manager", null);
+        texturesButton.setText("Textures manager");
+        texturesButton.setPreferredSize(buttonSize);
+        texturesButton.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
+        texturesButton.setIconTextGap(8);
+        texturesButton.addActionListener(e -> new TexturesManagerDialog(this).setVisible(true));
+
+        //panel.add(marketplaceButton);
+        panel.add(worldsButton);
+        panel.add(texturesButton);
+
+        return panel;
     }
 
     private JPanel createTranslucentGamePanel() {
@@ -392,7 +514,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         gamePanel.setLayout(new BoxLayout(gamePanel, BoxLayout.Y_AXIS));
         gamePanel.setBorder(new EmptyBorder(
             (int)(20 * scaleFactor), (int)(20 * scaleFactor), 
-            (int)(10 * scaleFactor), (int)(20 * scaleFactor)));
+            (int)(20 * scaleFactor), (int)(20 * scaleFactor)));
 
         nicknameField = new JTextField();
         nicknameField.setPreferredSize(new Dimension(
@@ -414,11 +536,24 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
         versionComboBox = new JComboBox<Version>();
         versionComboBox.setPreferredSize(new Dimension(
-            (int)((COMPONENT_WIDTH - 40) * scaleFactor), (int)(35 * scaleFactor)));
+            (int)((COMPONENT_WIDTH - 80) * scaleFactor), (int)(35 * scaleFactor)));
         versionComboBox.setMaximumSize(new Dimension(
-            (int)((COMPONENT_WIDTH - 40) * scaleFactor), (int)(35 * scaleFactor)));
+            (int)((COMPONENT_WIDTH - 80) * scaleFactor), (int)(35 * scaleFactor)));
         versionComboBox.setFont(getRegularFont(Font.PLAIN, (float)(14 * scaleFactor)));
         versionComboBox.setRenderer(new VersionListCellRenderer(versionManager));
+
+        addVersionButton = new JButton();
+        try {
+            FlatSVGIcon icon = new FlatSVGIcon("icons/add.svg", (int)(16 * scaleFactor), (int)(16 * scaleFactor));
+            icon.setColorFilter(new FlatSVGIcon.ColorFilter(color -> themeName.equals("Dark") ? Color.WHITE : Color.BLACK));
+            addVersionButton.setIcon(icon);
+        } catch (Exception e) {
+            System.err.println("Failed to load add icon: " + e.getMessage());
+        }
+        addVersionButton.setPreferredSize(new Dimension((int)(35 * scaleFactor), (int)(35 * scaleFactor)));
+        addVersionButton.setMaximumSize(new Dimension((int)(35 * scaleFactor), (int)(35 * scaleFactor)));
+        addVersionButton.setToolTipText("Add custom version");
+        addVersionButton.addActionListener(e -> showAddVersionDialog());
 
         refreshButton = new JButton();
         try {
@@ -434,6 +569,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
         refreshButton.addActionListener(e -> loadVersions());
 
         versionPanel.add(versionComboBox);
+        versionPanel.add(Box.createHorizontalStrut((int)(5 * scaleFactor)));
+        versionPanel.add(addVersionButton);
         versionPanel.add(Box.createHorizontalStrut((int)(5 * scaleFactor)));
         versionPanel.add(refreshButton);
 
@@ -451,7 +588,34 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
         gamePanel.add(launchButton);
 
+        gamePanel.add(Box.createVerticalStrut((int)(10 * scaleFactor)));
+        gamePanel.add(createProgressPanel());
+        gamePanel.add(Box.createVerticalStrut((int)(5 * scaleFactor)));
+        gamePanel.add(createStatusPanel());
+
         return gamePanel;
+    }
+    
+    private void showAddVersionDialog() {
+        AddCustomVersionDialog dialog = new AddCustomVersionDialog(this);
+        dialog.setVisible(true);
+        Version newVersion = dialog.getNewVersion();
+        if (newVersion != null) {
+            try {
+                versionManager.addAndSaveCustomVersion(newVersion);
+                loadVersions();
+                for (int i = 0; i < versionComboBox.getItemCount(); i++) {
+                    if (versionComboBox.getItemAt(i).getName().equals(newVersion.getName())) {
+                        versionComboBox.setSelectedIndex(i);
+                        break;
+                    }
+                }
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this,
+                        "Failed to save custom version: " + e.getMessage(),
+                        "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     private JPanel createLogoPanel() {
@@ -519,10 +683,10 @@ public class NostalgiaLauncherDesktop extends JFrame {
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
             Graphics2D g2d = (Graphics2D) g.create();
-            g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
+            
             if (backgroundImage != null) {
+                g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 int imgWidth = backgroundImage.getWidth(this);
                 int imgHeight = backgroundImage.getHeight(this);
                 int panelWidth = getWidth();
@@ -538,6 +702,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 int y = (panelHeight - scaledHeight) / 2;
 
                 g2d.drawImage(backgroundImage, x, y, scaledWidth, scaledHeight, this);
+            } else if (customBackgroundColor != null) {
+                g2d.setColor(customBackgroundColor);
+                g2d.fillRect(0, 0, getWidth(), getHeight());
             } else {
                 g2d.setColor(UIManager.getColor("Panel.background"));
                 g2d.fillRect(0, 0, getWidth(), getHeight());
@@ -616,6 +783,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             protected List<Version> doInBackground() throws Exception {
                 statusLabel.setText("Loading versions...");
                 refreshButton.setEnabled(false);
+                addVersionButton.setEnabled(false);
                 String source = useDefaultVersionsSource ? DEFAULT_VERSIONS_URL : customVersionsSource;
                 return versionManager.loadVersions(source);
             }
@@ -647,6 +815,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     statusLabel.setText("Error loading versions");
                 } finally {
                     refreshButton.setEnabled(true);
+                    addVersionButton.setEnabled(true);
                 }
             }
         };
@@ -675,6 +844,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             protected Void doInBackground() throws Exception {
                 launchButton.setEnabled(false);
                 refreshButton.setEnabled(false);
+                addVersionButton.setEnabled(false);
                 nicknameField.setEnabled(false);
                 versionComboBox.setEnabled(false);
                 progressBar.setVisible(true);
@@ -768,6 +938,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 } finally {
                     launchButton.setEnabled(true);
                     refreshButton.setEnabled(true);
+                    addVersionButton.setEnabled(true);
                     nicknameField.setEnabled(true);
                     versionComboBox.setEnabled(true);
                     versionManager.updateInstalledVersions();
@@ -837,6 +1008,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     public static void main(String[] args) {
+        //JFrame.setDefaultLookAndFeelDecorated(true);
+        //JDialog.setDefaultLookAndFeelDecorated(true);
+
         SwingUtilities.invokeLater(() -> {
             try {
                 if (SystemInfo.isMacOS) {

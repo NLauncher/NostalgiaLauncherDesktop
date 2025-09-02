@@ -1,11 +1,6 @@
 package net.eqozqq.nostalgialauncherdesktop;
 
 import com.formdev.flatlaf.FlatClientProperties;
-import com.formdev.flatlaf.FlatDarculaLaf;
-import com.formdev.flatlaf.FlatIntelliJLaf;
-import com.formdev.flatlaf.themes.FlatMacDarkLaf;
-import com.formdev.flatlaf.themes.FlatMacLightLaf;
-import com.formdev.flatlaf.util.SystemInfo;
 import javax.swing.*;
 import java.awt.*;
 import java.io.BufferedReader;
@@ -20,7 +15,6 @@ import java.awt.event.MouseEvent;
 
 public class SettingsDialog extends JDialog {
     private JTextField backgroundPathField;
-    private JCheckBox useDefaultBackgroundCheckbox;
     private JTextField versionsSourceField;
     private JCheckBox useDefaultSourceCheckbox;
     private JTextField customLauncherField;
@@ -37,8 +31,15 @@ public class SettingsDialog extends JDialog {
     private JRadioButton fileRadioButton;
     private JComboBox<String> themeComboBox;
 
+    private JRadioButton defaultBgRadio;
+    private JRadioButton customImageRadio;
+    private JRadioButton customColorRadio;
+    private JButton chooseColorButton;
+    private JPanel colorPreviewPanel;
+    private JPanel imageOptionsPanel;
+    private JPanel colorOptionsPanel;
+
     private String customBackgroundPath;
-    private boolean useDefaultBackground;
     private String customVersionsSource;
     private boolean useDefaultVersionsSource;
     private String customLauncherPath;
@@ -48,17 +49,18 @@ public class SettingsDialog extends JDialog {
     private double scaleFactor;
     private String themeName;
     private String currentVersion;
+    private String backgroundMode;
+    private Color customBackgroundColor;
     private boolean saved = false;
 
     private static final String LAST_VERSION = "https://raw.githubusercontent.com/NLauncher/components/refs/heads/main/lastversion.txt";
 
-    public SettingsDialog(JFrame parent, String currentBackgroundPath, boolean useDefaultBg, String currentVersionsSource, boolean useDefaultVs, String currentCustomLauncherPath, boolean useDefaultLauncher, String currentPostLaunchAction, boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion) {
+    public SettingsDialog(JFrame parent, String currentBackgroundPath, String currentVersionsSource, boolean useDefaultVs, String currentCustomLauncherPath, boolean useDefaultLauncher, String currentPostLaunchAction, boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion, String backgroundMode, Color customBackgroundColor) {
         super(parent, "Settings", true);
         setPreferredSize(new Dimension(600, 550));
         setLayout(new BorderLayout(10, 10));
 
         this.customBackgroundPath = currentBackgroundPath;
-        this.useDefaultBackground = useDefaultBg;
         this.customVersionsSource = currentVersionsSource;
         this.useDefaultVersionsSource = useDefaultVs;
         this.customLauncherPath = currentCustomLauncherPath;
@@ -68,6 +70,8 @@ public class SettingsDialog extends JDialog {
         this.scaleFactor = currentScaleFactor;
         this.themeName = currentTheme;
         this.currentVersion = currentVersion;
+        this.backgroundMode = backgroundMode;
+        this.customBackgroundColor = customBackgroundColor;
 
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.putClientProperty(FlatClientProperties.TABBED_PANE_TAB_ICON_PLACEMENT, SwingConstants.LEFT);
@@ -93,12 +97,20 @@ public class SettingsDialog extends JDialog {
             }
             this.enableDebugging = enableDebuggingCheckbox.isSelected();
 
-            this.useDefaultBackground = useDefaultBackgroundCheckbox.isSelected();
-            if (!this.useDefaultBackground) {
-                this.customBackgroundPath = backgroundPathField.getText();
-            } else {
+            if (defaultBgRadio.isSelected()) {
+                this.backgroundMode = "Default";
                 this.customBackgroundPath = null;
+                this.customBackgroundColor = null;
+            } else if (customImageRadio.isSelected()) {
+                this.backgroundMode = "Custom Image";
+                this.customBackgroundPath = backgroundPathField.getText();
+                this.customBackgroundColor = null;
+            } else if (customColorRadio.isSelected()) {
+                this.backgroundMode = "Custom Color";
+                this.customBackgroundPath = null;
+                this.customBackgroundColor = colorPreviewPanel.getBackground();
             }
+
             this.postLaunchAction = (String) postLaunchActionComboBox.getSelectedItem();
             this.scaleFactor = (double) scaleSlider.getValue() / 100.0;
             this.themeName = (String) themeComboBox.getSelectedItem();
@@ -342,6 +354,11 @@ public class SettingsDialog extends JDialog {
         return mainPanel;
     }
 
+    private void updateBackgroundOptions() {
+        imageOptionsPanel.setVisible(customImageRadio.isSelected());
+        colorOptionsPanel.setVisible(customColorRadio.isSelected());
+    }
+
     private JPanel createLauncherPanel() {
         JPanel mainPanel = new JPanel(new BorderLayout());
         JPanel contentPanel = new JPanel(new GridBagLayout());
@@ -382,12 +399,7 @@ public class SettingsDialog extends JDialog {
         gbc.weighty = 0.0;
         contentPanel.add(themeLabel, gbc);
 
-        String[] themes;
-        if (SystemInfo.isMacOS) {
-            themes = new String[]{"Light", "Dark"};
-        } else {
-            themes = new String[]{"Light", "Dark"};
-        }
+        String[] themes = new String[]{"Light", "Dark"};
         themeComboBox = new JComboBox<>(themes);
         themeComboBox.setSelectedItem(this.themeName);
         gbc.gridx = 1;
@@ -421,24 +433,48 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(scaleSlider, gbc);
 
         gridY++;
-        JLabel backgroundLabel = new JLabel("Background image:");
+        JLabel backgroundLabel = new JLabel("Background:");
         gbc.gridx = 0;
         gbc.gridy = gridY;
         gbc.weighty = 0.0;
+        gbc.anchor = GridBagConstraints.NORTHEAST;
         contentPanel.add(backgroundLabel, gbc);
 
-        backgroundPathField = new JTextField(15);
-        backgroundPathField.setText(useDefaultBackground ? "" : customBackgroundPath);
-        backgroundPathField.setEnabled(!useDefaultBackground);
+        JPanel radioPanel = new JPanel(new GridLayout(0, 1));
+        defaultBgRadio = new JRadioButton("Default background image");
+        customImageRadio = new JRadioButton("Custom background image");
+        customColorRadio = new JRadioButton("Custom color");
+        ButtonGroup bgGroup = new ButtonGroup();
+        bgGroup.add(defaultBgRadio);
+        bgGroup.add(customImageRadio);
+        bgGroup.add(customColorRadio);
+        radioPanel.add(defaultBgRadio);
+        radioPanel.add(customImageRadio);
+        radioPanel.add(customColorRadio);
+
         gbc.gridx = 1;
         gbc.gridy = gridY;
-        gbc.gridwidth = 1;
-        gbc.weightx = 1.0;
-        gbc.weighty = 0.0;
-        contentPanel.add(backgroundPathField, gbc);
+        gbc.gridwidth = 2;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        contentPanel.add(radioPanel, gbc);
+
+        defaultBgRadio.addActionListener(e -> updateBackgroundOptions());
+        customImageRadio.addActionListener(e -> updateBackgroundOptions());
+        customColorRadio.addActionListener(e -> updateBackgroundOptions());
+
+        gridY++;
+        imageOptionsPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints imageGbc = new GridBagConstraints();
+        backgroundPathField = new JTextField(15);
+        backgroundPathField.setText(customBackgroundPath != null ? customBackgroundPath : "");
+        imageGbc.gridx = 0;
+        imageGbc.gridy = 0;
+        imageGbc.weightx = 1.0;
+        imageGbc.fill = GridBagConstraints.HORIZONTAL;
+        imageGbc.insets = new Insets(0, 0, 0, 5);
+        imageOptionsPanel.add(backgroundPathField, imageGbc);
 
         browseBackgroundButton = new JButton("Browse...");
-        browseBackgroundButton.setEnabled(!useDefaultBackground);
         browseBackgroundButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             int option = fileChooser.showOpenDialog(this);
@@ -447,23 +483,52 @@ public class SettingsDialog extends JDialog {
                 backgroundPathField.setText(file.getAbsolutePath());
             }
         });
-        gbc.gridx = 2;
-        gbc.gridy = gridY;
-        gbc.weightx = 0.0;
-        contentPanel.add(browseBackgroundButton, gbc);
+        imageGbc.gridx = 1;
+        imageGbc.weightx = 0;
+        imageOptionsPanel.add(browseBackgroundButton, imageGbc);
         
-        gridY++;
-        useDefaultBackgroundCheckbox = new JCheckBox("Use default background");
-        useDefaultBackgroundCheckbox.setSelected(useDefaultBackground);
-        useDefaultBackgroundCheckbox.addActionListener(e -> {
-            backgroundPathField.setEnabled(!useDefaultBackgroundCheckbox.isSelected());
-            browseBackgroundButton.setEnabled(!useDefaultBackgroundCheckbox.isSelected());
-        });
         gbc.gridx = 1;
         gbc.gridy = gridY;
         gbc.gridwidth = 2;
-        gbc.weighty = 0.0;
-        contentPanel.add(useDefaultBackgroundCheckbox, gbc);
+        contentPanel.add(imageOptionsPanel, gbc);
+        
+        gridY++;
+        colorOptionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        chooseColorButton = new JButton("Choose Color...");
+        colorPreviewPanel = new JPanel();
+        colorPreviewPanel.setPreferredSize(new Dimension(24, 24));
+        colorPreviewPanel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        
+        if (customBackgroundColor != null) {
+            colorPreviewPanel.setBackground(customBackgroundColor);
+        }
+
+        chooseColorButton.addActionListener(e -> {
+            Color newColor = JColorChooser.showDialog(this, "Choose Background Color", colorPreviewPanel.getBackground());
+            if (newColor != null) {
+                colorPreviewPanel.setBackground(newColor);
+            }
+        });
+        colorOptionsPanel.add(chooseColorButton);
+        colorOptionsPanel.add(colorPreviewPanel);
+        gbc.gridx = 1;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 2;
+        contentPanel.add(colorOptionsPanel, gbc);
+
+        switch (backgroundMode) {
+            case "Custom Image":
+                customImageRadio.setSelected(true);
+                break;
+            case "Custom Color":
+                customColorRadio.setSelected(true);
+                break;
+            default:
+                defaultBgRadio.setSelected(true);
+                break;
+        }
+
+        updateBackgroundOptions();
         
         gridY++;
         JPanel filler = new JPanel();
@@ -513,19 +578,19 @@ public class SettingsDialog extends JDialog {
         gbc.gridy = gridY++;
         contentPanel.add(headline3, gbc);
         
-        JLabel link1 = createHyperlink("https://cdn.modrinth.com/data/8zAU4tG7/images/40fdccbec5cf60fa79829d431307a60aafa42964_350.webp");
+        JLabel link1 = createHyperlink("https://fonts.google.com/icons");
         gbc.gridy = gridY++;
         contentPanel.add(link1, gbc);
 
-        JLabel link2 = createHyperlink("https://i.redd.it/y93jrn0jvyt51.png");
+        JLabel link2 = createHyperlink("https://www.formdev.com/flatlaf/");
         gbc.gridy = gridY++;
         contentPanel.add(link2, gbc);
 
-        JLabel link3 = createHyperlink("https://www.formdev.com/flatlaf/");
+        JLabel link3 = createHyperlink("https://github.com/MCPI-Revival/Ninecraft");
         gbc.gridy = gridY++;
         contentPanel.add(link3, gbc);
 
-        JLabel link4 = createHyperlink("https://github.com/MCPI-Revival/Ninecraft");
+        JLabel link4 = createHyperlink("https://github.com/zhuowei/SpoutNBT");
         gbc.gridy = gridY++;
         contentPanel.add(link4, gbc);
 
@@ -640,10 +705,6 @@ public class SettingsDialog extends JDialog {
         return customBackgroundPath;
     }
 
-    public boolean isUseDefaultBackground() {
-        return useDefaultBackground;
-    }
-
     public String getCustomVersionsSource() {
         return customVersionsSource;
     }
@@ -678,5 +739,13 @@ public class SettingsDialog extends JDialog {
 
     public boolean isSaved() {
         return saved;
+    }
+    
+    public String getBackgroundMode() {
+        return backgroundMode;
+    }
+
+    public Color getCustomBackgroundColor() {
+        return customBackgroundColor;
     }
 }

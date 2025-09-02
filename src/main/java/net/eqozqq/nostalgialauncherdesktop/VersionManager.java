@@ -1,6 +1,7 @@
 package net.eqozqq.nostalgialauncherdesktop;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.HttpEntity;
@@ -10,13 +11,18 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.Writer;
 import java.lang.reflect.Type;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -29,6 +35,7 @@ public class VersionManager {
     private static final String VERSIONS_CACHE_DIR = "cache" + File.separator + "versions";
     private static final String GAME_DIR = "game";
     private static final String VERSIONS_DIR = "versions";
+    private static final String CUSTOM_VERSIONS_FILE = "custom_versions.json";
 
     private Set<String> installedVersions;
 
@@ -37,30 +44,30 @@ public class VersionManager {
     }
 
     public List<Version> loadVersions(String source) throws IOException {
+        List<Version> versions = new ArrayList<>();
         try {
-            if (source == null || source.isEmpty()) {
-                throw new IOException("Versions source is not specified.");
-            }
-            if (source.startsWith("http://") || source.startsWith("https://")) {
-                try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-                    HttpGet request = new HttpGet(source);
-                    try (CloseableHttpResponse response = httpClient.execute(request)) {
-                        HttpEntity entity = response.getEntity();
-                        if (entity != null) {
-                            Gson gson = new Gson();
-                            Type listType = new TypeToken<List<Version>>(){}.getType();
-                            return gson.fromJson(new InputStreamReader(entity.getContent()), listType);
+            if (source != null && !source.isEmpty()) {
+                if (source.startsWith("http://") || source.startsWith("https://")) {
+                    try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+                        HttpGet request = new HttpGet(source);
+                        try (CloseableHttpResponse response = httpClient.execute(request)) {
+                            HttpEntity entity = response.getEntity();
+                            if (entity != null) {
+                                Gson gson = new Gson();
+                                Type listType = new TypeToken<List<Version>>(){}.getType();
+                                versions.addAll(gson.fromJson(new InputStreamReader(entity.getContent()), listType));
+                            }
                         }
                     }
-                }
-            } else {
-                File file = new File(source);
-                if (file.exists() && file.isFile()) {
-                    Gson gson = new Gson();
-                    Type listType = new TypeToken<List<Version>>(){}.getType();
-                    return gson.fromJson(new InputStreamReader(Files.newInputStream(file.toPath())), listType);
                 } else {
-                    throw new IOException("File not found or is not a file: " + source);
+                    File file = new File(source);
+                    if (file.exists() && file.isFile()) {
+                        Gson gson = new Gson();
+                        Type listType = new TypeToken<List<Version>>(){}.getType();
+                        versions.addAll(gson.fromJson(new InputStreamReader(Files.newInputStream(file.toPath())), listType));
+                    } else {
+                        throw new IOException("File not found or is not a file: " + source);
+                    }
                 }
             }
         } catch (Exception e) {
@@ -68,7 +75,38 @@ public class VersionManager {
             e.printStackTrace();
             throw new IOException("Failed to load versions: " + e.getMessage(), e);
         }
+
+        versions.addAll(loadCustomVersions());
+        return versions;
+    }
+
+    private List<Version> loadCustomVersions() {
+        File customVersionsFile = new File(CUSTOM_VERSIONS_FILE);
+        if (customVersionsFile.exists()) {
+            try (FileReader reader = new FileReader(customVersionsFile)) {
+                Gson gson = new Gson();
+                Type listType = new TypeToken<List<Version>>(){}.getType();
+                List<Version> customVersions = gson.fromJson(reader, listType);
+                if (customVersions != null) {
+                    return customVersions;
+                }
+            } catch (IOException e) {
+                System.err.println("Error loading custom versions: " + e.getMessage());
+            }
+        }
         return Collections.emptyList();
+    }
+
+    public void addAndSaveCustomVersion(Version version) throws IOException {
+        List<Version> customVersions = new ArrayList<>(loadCustomVersions());
+        customVersions.add(version);
+        try (Writer writer = new FileWriter(CUSTOM_VERSIONS_FILE)) {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            gson.toJson(customVersions, writer);
+        } catch (IOException e) {
+            System.err.println("Error saving custom versions: " + e.getMessage());
+            throw e;
+        }
     }
 
     public void updateInstalledVersions() {
@@ -114,6 +152,17 @@ public class VersionManager {
         if (downloadUrl == null || downloadUrl.isEmpty()) {
             throw new IOException("Download URL is missing for version: " + version.getName());
         }
+
+        if (downloadUrl.startsWith("file:")) {
+             File sourceFile = new File(URI.create(downloadUrl));
+             if(sourceFile.exists()) {
+                 FileUtils.copyFile(sourceFile, outputFile);
+                 return outputFile;
+             } else {
+                 throw new IOException("Custom version file not found: " + sourceFile.getAbsolutePath());
+             }
+        }
+
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpGet request = new HttpGet(downloadUrl);

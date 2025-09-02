@@ -4,6 +4,9 @@ public class Version {
     private String name;
     private String url;
 
+    public Version() {
+    }
+
     public Version(String name, String url) {
         this.name = name;
         this.url = url;
