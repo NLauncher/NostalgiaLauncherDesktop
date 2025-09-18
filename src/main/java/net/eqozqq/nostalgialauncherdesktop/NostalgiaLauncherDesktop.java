@@ -34,6 +34,8 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import net.eqozqq.nostalgialauncherdesktop.WorldManager.WorldsManagerDialog;
 import net.eqozqq.nostalgialauncherdesktop.TexturesManager.TexturesManagerDialog;
+import net.eqozqq.nostalgialauncherdesktop.Instances.InstancesDialog;
+import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 
 public class NostalgiaLauncherDesktop extends JFrame {
     private JTextField nicknameField;
@@ -49,6 +51,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private VersionManager versionManager;
     private GameLauncher gameLauncher;
     private Properties settings;
+    private LocaleManager localeManager;
 
     private String customBackgroundPath;
     private String customVersionsSource;
@@ -61,18 +64,23 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private double scaleFactor;
     private String themeName;
     private String backgroundMode;
-    private static final String CURRENT_VERSION = "1.2.0";
+    private static final String CURRENT_VERSION = "1.3.0";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
-    private static final String DEFAULT_LAUNCHER_URL = "https://github.com/NLauncher/components/raw/refs/heads/main/ninecraft.zip";
+    private static final String DEFAULT_LAUNCHER_URL_WINDOWS = "https://github.com/NLauncher/components/raw/main/ninecraft-windows.zip";
+    private static final String DEFAULT_LAUNCHER_URL_LINUX = "https://github.com/NLauncher/components/raw/main/ninecraft-linux.zip";
+
 
     public NostalgiaLauncherDesktop() {
         versionManager = new VersionManager();
         gameLauncher = new GameLauncher();
         settings = new Properties();
+        localeManager = LocaleManager.getInstance();
 
         loadSettings();
+        localeManager.init(settings);
+        InstanceManager.getInstance().init(settings);
         applyTheme();
         loadBackground();
         initializeUI();
@@ -90,7 +98,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 }
             }
         } catch (IOException e) {
-            System.err.println("Failed to load launcher icon: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -98,11 +106,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
         try (InputStream fontStream = NostalgiaLauncherDesktop.class.getResourceAsStream("/MPLUS1p-Regular.ttf")) {
             if (fontStream != null) {
                 return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-            } else {
-                System.err.println("MPLUS1p-Regular.ttf font file not found.");
             }
         } catch (Exception e) {
-            System.err.println("Error loading MPLUS1p-Regular font: " + e.getMessage());
+            e.printStackTrace();
         }
         return new Font("SansSerif", style, (int) size);
     }
@@ -111,11 +117,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
         try (InputStream fontStream = NostalgiaLauncherDesktop.class.getResourceAsStream("/MPLUS1p-Regular.ttf")) {
             if (fontStream != null) {
                 return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-            } else {
-                System.err.println("MPLUS1p-Regular.ttf font file not found.");
             }
         } catch (Exception e) {
-            System.err.println("Error loading MPLUS1p-Regular font: " + e.getMessage());
+            e.printStackTrace();
         }
         return new Font("SansSerif", style, (int) size);
     }
@@ -195,14 +199,12 @@ public class NostalgiaLauncherDesktop extends JFrame {
                         if (backgroundStream != null) {
                             BufferedImage sourceImage = ImageIO.read(backgroundStream);
                             this.backgroundImage = applyBlur(sourceImage);
-                        } else {
-                            System.err.println("Default background image not found: " + backgroundPath);
                         }
                     }
                     break;
             }
         } catch (Exception e) {
-            System.err.println("Could not load background: " + e.getMessage());
+            e.printStackTrace();
             this.backgroundImage = null;
             this.customBackgroundColor = null;
         }
@@ -270,9 +272,10 @@ public class NostalgiaLauncherDesktop extends JFrame {
             }
             settings.setProperty("scaleFactor", String.valueOf(scaleFactor));
             settings.setProperty("themeName", themeName);
+            settings.setProperty("language", localeManager.getCurrentLanguage());
             settings.store(fos, null);
         } catch (IOException e) {
-            System.err.println("Failed to save settings: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -284,6 +287,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
             newTheme = themeName.equals("Dark") ? new FlatDarculaLaf() : new FlatIntelliJLaf();
         }
         try {
+            FlatLaf.setUseNativeWindowDecorations(false);
+            UIManager.put("TitlePane.useWindowDecorations", Boolean.FALSE);
             UIManager.setLookAndFeel(newTheme);
             SwingUtilities.updateComponentTreeUI(this);
         } catch (UnsupportedLookAndFeelException e) {
@@ -294,14 +299,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private void initializeUI() {
         getContentPane().removeAll();
         
-        setTitle("NostalgiaLauncher Desktop");
+        setTitle(localeManager.get("launcher.title"));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(true);
         setMinimumSize(new Dimension((int)(800 * scaleFactor), (int)(600 * scaleFactor)));
         setLocationRelativeTo(null);
-        if (getExtendedState() != JFrame.MAXIMIZED_BOTH) {
-            setExtendedState(JFrame.NORMAL);
-        }
         
         BackgroundPanel backgroundPanel = new BackgroundPanel();
         backgroundPanel.setLayout(new GridBagLayout());
@@ -345,9 +347,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
         panel.setOpaque(false);
         panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
 
-        JButton discordButton = createThemedIconButton("icons/discord.svg", "Discord", "https://discord.gg/4fv4RrTav4");
-        JButton websiteButton = createThemedIconButton("icons/globe.svg", "Website", "https://nlauncher.github.io/");
-        JButton settingsButton = createThemedIconButton("icons/gear.svg", "Settings", null);
+        JButton discordButton = createThemedIconButton("icons/discord.svg", localeManager.get("tooltip.discord"), "https://discord.gg/4fv4RrTav4");
+        JButton websiteButton = createThemedIconButton("icons/globe.svg", localeManager.get("tooltip.website"), "https://nlauncher.github.io/");
+        JButton settingsButton = createThemedIconButton("icons/gear.svg", localeManager.get("tooltip.settings"), null);
         settingsButton.addActionListener(e -> showSettingsDialog());
 
         panel.add(Box.createHorizontalGlue());
@@ -369,7 +371,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             icon.setColorFilter(new FlatSVGIcon.ColorFilter(color -> foregroundColor));
             button.setIcon(icon);
         } catch (Exception e) {
-            System.err.println("Failed to load icon: " + iconPath);
+            e.printStackTrace();
         }
         button.setToolTipText(tooltip);
         if (url != null) {
@@ -377,7 +379,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 try {
                     Desktop.getDesktop().browse(new URI(url));
                 } catch (Exception ex) {
-                    System.err.println("Failed to open URL: " + ex.getMessage());
+                    ex.printStackTrace();
                 }
             });
         }
@@ -390,10 +392,10 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     private void showSettingsDialog() {
-        int oldState = getExtendedState();
+        final boolean wasMaximized = (getExtendedState() & JFrame.MAXIMIZED_BOTH) != 0;
         SettingsDialog dialog = new SettingsDialog(this,
             customBackgroundPath, customVersionsSource, useDefaultVersionsSource,
-            customLauncherPath, useDefaultLauncher, postLaunchAction, enableDebugging, scaleFactor, themeName, CURRENT_VERSION, backgroundMode, customBackgroundColor);
+            customLauncherPath, useDefaultLauncher, postLaunchAction, enableDebugging, scaleFactor, themeName, CURRENT_VERSION, backgroundMode, customBackgroundColor, localeManager);
         dialog.setVisible(true);
         if (dialog.isSaved()) {
             customBackgroundPath = dialog.getCustomBackgroundPath();
@@ -406,19 +408,49 @@ public class NostalgiaLauncherDesktop extends JFrame {
             scaleFactor = dialog.getScaleFactor();
             backgroundMode = dialog.getBackgroundMode();
             customBackgroundColor = dialog.getCustomBackgroundColor();
+            
+            String newLanguage = dialog.getLanguage();
             String newThemeName = dialog.getThemeName();
-            if (!newThemeName.equals(themeName)) {
-                themeName = newThemeName;
-                applyTheme();
-            }
-            saveSettings();
-            loadBackground();
-            initializeUI();
-            loadVersions();
-            loadNickname();
-            if (oldState == JFrame.MAXIMIZED_BOTH) {
-                setExtendedState(JFrame.MAXIMIZED_BOTH);
-            }
+
+            JDialog applyingDialog = new JDialog(this, localeManager.get("dialog.applyingSettings.title"), true);
+            JPanel p = new JPanel(new BorderLayout(10, 10));
+            p.setBorder(new EmptyBorder(15, 20, 15, 20));
+            JLabel lbl = new JLabel(localeManager.get("dialog.applyingSettings.title"), SwingConstants.CENTER);
+            p.add(lbl, BorderLayout.CENTER);
+            applyingDialog.setContentPane(p);
+            applyingDialog.pack();
+            applyingDialog.setLocationRelativeTo(this);
+
+            SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
+                @Override
+                protected Void doInBackground() throws Exception {
+                    if (!newLanguage.equals(localeManager.getCurrentLanguage())) {
+                        localeManager.loadLanguage(newLanguage);
+                    }
+                    if (!newThemeName.equals(themeName)) {
+                        themeName = newThemeName;
+                        SwingUtilities.invokeAndWait(() -> applyTheme());
+                    }
+                    SwingUtilities.invokeAndWait(() -> {
+                        saveSettings();
+                        loadBackground();
+                        initializeUI();
+                        loadVersions();
+                        loadNickname();
+                        if (wasMaximized) {
+                            setExtendedState(JFrame.MAXIMIZED_BOTH);
+                        }
+                    });
+                    return null;
+                }
+                @Override
+                protected void done() {
+                    applyingDialog.dispose();
+                }
+            };
+
+            worker.execute();
+            applyingDialog.setVisible(true);
         }
     }
 
@@ -440,12 +472,12 @@ public class NostalgiaLauncherDesktop extends JFrame {
         infoPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
         infoPanel.setBorder(BorderFactory.createEmptyBorder((int)(10 * scaleFactor), (int)(10 * scaleFactor), (int)(10 * scaleFactor), (int)(10 * scaleFactor)));
 
-        JLabel versionLabel = new JLabel("NostalgiaLauncher Desktop v" + CURRENT_VERSION + " by eqozqq");
+        JLabel versionLabel = new JLabel(localeManager.get("about.version", CURRENT_VERSION));
         versionLabel.setForeground(UIManager.getColor("Label.foreground"));
         versionLabel.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel disclaimerLabel = new JLabel("This program is not affiliated with Mojang, Microsoft, or any other entity");
+        JLabel disclaimerLabel = new JLabel(localeManager.get("about.disclaimer"));
         disclaimerLabel.setForeground(UIManager.getColor("Label.foreground"));
         disclaimerLabel.setFont(getRegularFont(Font.PLAIN, (float)(10 * scaleFactor)));
         disclaimerLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -479,32 +511,39 @@ public class NostalgiaLauncherDesktop extends JFrame {
         panel.setLayout(new GridLayout(1, 3, (int)(10 * scaleFactor), 0));
         Dimension buttonSize = new Dimension(0, (int)(45 * scaleFactor));
 
-        /*
-        JButton marketplaceButton = createThemedIconButton("icons/widgets.svg", "Marketplace", null);
-        marketplaceButton.setText("Marketplace");
-        marketplaceButton.setPreferredSize(buttonSize);
-        marketplaceButton.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
-        marketplaceButton.setIconTextGap(8);
-        marketplaceButton.addActionListener(e -> JOptionPane.showMessageDialog(this, "Marketplace is not yet implemented.", "Info", JOptionPane.INFORMATION_MESSAGE));
-        */
-
-        JButton worldsButton = createThemedIconButton("icons/globe_2.svg", "Worlds manager", null);
-        worldsButton.setText("Worlds manager");
+        JButton worldsButton = createThemedIconButton("icons/globe_2.svg", localeManager.get("tooltip.worlds"), null);
+        worldsButton.setText(localeManager.get("button.worlds"));
         worldsButton.setPreferredSize(buttonSize);
         worldsButton.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
         worldsButton.setIconTextGap(8);
-        worldsButton.addActionListener(e -> new WorldsManagerDialog(this).setVisible(true));
+        worldsButton.addActionListener(e -> new WorldsManagerDialog(this, localeManager).setVisible(true));
 
-        JButton texturesButton = createThemedIconButton("icons/texture.svg", "Textures manager", null);
-        texturesButton.setText("Textures manager");
+        JButton texturesButton = createThemedIconButton("icons/texture.svg", localeManager.get("tooltip.textures"), null);
+        texturesButton.setText(localeManager.get("button.textures"));
         texturesButton.setPreferredSize(buttonSize);
         texturesButton.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
         texturesButton.setIconTextGap(8);
-        texturesButton.addActionListener(e -> new TexturesManagerDialog(this).setVisible(true));
+        texturesButton.addActionListener(e -> new TexturesManagerDialog(this, localeManager).setVisible(true));
 
-        //panel.add(marketplaceButton);
         panel.add(worldsButton);
         panel.add(texturesButton);
+        JButton instancesButton = createThemedIconButton("icons/apps.svg", localeManager.get("tooltip.instances"), null);
+        instancesButton.setText(localeManager.get("button.instances"));
+        instancesButton.setPreferredSize(buttonSize);
+        instancesButton.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
+        instancesButton.setIconTextGap(8);
+        instancesButton.addActionListener(e -> {
+            boolean wasMaximized2 = (getExtendedState() & JFrame.MAXIMIZED_BOTH) != 0;
+            new InstancesDialog(this, localeManager).setVisible(true);
+            saveSettings();
+            initializeUI();
+            loadVersions();
+            loadNickname();
+            if (wasMaximized2) {
+                setExtendedState(JFrame.MAXIMIZED_BOTH);
+            }
+        });
+        panel.add(instancesButton);
 
         return panel;
     }
@@ -523,8 +562,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
             (int)(COMPONENT_WIDTH * scaleFactor), (int)(35 * scaleFactor)));
         nicknameField.setFont(getRegularFont(Font.PLAIN, (float)(14 * scaleFactor)));
         nicknameField.setAlignmentX(Component.CENTER_ALIGNMENT);
-        nicknameField.putClientProperty("JTextField.placeholderText", "Nickname");
-        nicknameField.setText("Steve");
+        nicknameField.putClientProperty("JTextField.placeholderText", localeManager.get("placeholder.nickname"));
+        nicknameField.setText(localeManager.get("default.nickname"));
 
         gamePanel.add(nicknameField);
         gamePanel.add(Box.createVerticalStrut((int)(2 * scaleFactor)));
@@ -548,11 +587,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
             icon.setColorFilter(new FlatSVGIcon.ColorFilter(color -> themeName.equals("Dark") ? Color.WHITE : Color.BLACK));
             addVersionButton.setIcon(icon);
         } catch (Exception e) {
-            System.err.println("Failed to load add icon: " + e.getMessage());
+            e.printStackTrace();
         }
         addVersionButton.setPreferredSize(new Dimension((int)(35 * scaleFactor), (int)(35 * scaleFactor)));
         addVersionButton.setMaximumSize(new Dimension((int)(35 * scaleFactor), (int)(35 * scaleFactor)));
-        addVersionButton.setToolTipText("Add custom version");
+        addVersionButton.setToolTipText(localeManager.get("tooltip.addVersion"));
         addVersionButton.addActionListener(e -> showAddVersionDialog());
 
         refreshButton = new JButton();
@@ -561,11 +600,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
             icon.setColorFilter(new FlatSVGIcon.ColorFilter(color -> themeName.equals("Dark") ? Color.WHITE : Color.BLACK));
             refreshButton.setIcon(icon);
         } catch (Exception e) {
-            System.err.println("Failed to load refresh icon: " + e.getMessage());
+            e.printStackTrace();
         }
         refreshButton.setPreferredSize(new Dimension((int)(35 * scaleFactor), (int)(35 * scaleFactor)));
         refreshButton.setMaximumSize(new Dimension((int)(35 * scaleFactor), (int)(35 * scaleFactor)));
-        refreshButton.setToolTipText("Refresh versions");
+        refreshButton.setToolTipText(localeManager.get("tooltip.refreshVersions"));
         refreshButton.addActionListener(e -> loadVersions());
 
         versionPanel.add(versionComboBox);
@@ -577,7 +616,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         gamePanel.add(versionPanel);
         gamePanel.add(Box.createVerticalStrut((int)(5 * scaleFactor)));
 
-        launchButton = new JButton("Launch");
+        launchButton = new JButton(localeManager.get("button.launch"));
         launchButton.setPreferredSize(new Dimension(
             (int)(COMPONENT_WIDTH * scaleFactor), (int)(45 * scaleFactor)));
         launchButton.setMaximumSize(new Dimension(
@@ -597,7 +636,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
     
     private void showAddVersionDialog() {
-        AddCustomVersionDialog dialog = new AddCustomVersionDialog(this);
+        AddCustomVersionDialog dialog = new AddCustomVersionDialog(this, localeManager);
         dialog.setVisible(true);
         Version newVersion = dialog.getNewVersion();
         if (newVersion != null) {
@@ -612,8 +651,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 }
             } catch (IOException e) {
                 JOptionPane.showMessageDialog(this,
-                        "Failed to save custom version: " + e.getMessage(),
-                        "Error", JOptionPane.ERROR_MESSAGE);
+                        localeManager.get("version.add.error.save", e.getMessage()),
+                        localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -623,14 +662,14 @@ public class NostalgiaLauncherDesktop extends JFrame {
         logoPanel.setLayout(new BoxLayout(logoPanel, BoxLayout.Y_AXIS));
         logoPanel.setOpaque(false);
 
-        JLabel logoLabel = new JLabel("NLauncher Desktop");
+        JLabel logoLabel = new JLabel(localeManager.get("launcher.logo"));
         logoLabel.setFont(getMinecraftFont(Font.PLAIN, (float)(36 * scaleFactor)));
         logoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         logoLabel.setForeground(UIManager.getColor("Label.foreground"));
         logoLabel.setOpaque(false);
         logoPanel.add(logoLabel);
 
-        JLabel subtitleLabel = new JLabel("Minecraft Pocket Edition Alpha Launcher");
+        JLabel subtitleLabel = new JLabel(localeManager.get("launcher.subtitle"));
         subtitleLabel.setFont(getRegularFont(Font.PLAIN, (float)(18 * scaleFactor)));
         subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         subtitleLabel.setForeground(UIManager.getColor("Label.foreground"));
@@ -667,7 +706,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         statusPanel.setLayout(new BoxLayout(statusPanel, BoxLayout.Y_AXIS));
         statusPanel.setOpaque(false);
 
-        statusLabel = new JLabel("Ready");
+        statusLabel = new JLabel(localeManager.get("status.ready"));
         statusLabel.setFont(getRegularFont(Font.PLAIN, (float)(12 * scaleFactor)));
         statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         statusLabel.setForeground(UIManager.getColor("Label.foreground"));
@@ -733,18 +772,19 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private void loadNickname() {
         try {
-            File optionsFile = new File("game/storage/games/com.mojang/minecraftpe/options.txt");
+            File optionsFile = new File(InstanceManager.getInstance().resolvePath("game/storage/games/com.mojang/minecraftpe/options.txt"));
             if (optionsFile.exists()) {
                 List<String> lines = Files.readAllLines(optionsFile.toPath());
-                if (!lines.isEmpty()) {
-                    String firstLine = lines.get(0);
-                    if (firstLine.startsWith("mp_username:")) {
-                        String nickname = firstLine.substring("mp_username:".length());
+                for (String line : lines) {
+                    if (line.startsWith("mp_username:")) {
+                        String nickname = line.substring("mp_username:".length());
                         nicknameField.setText(nickname);
+                        break;
                     }
                 }
             }
         } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -754,26 +794,28 @@ public class NostalgiaLauncherDesktop extends JFrame {
             if (nickname.isEmpty()) {
                 nickname = "Steve";
             }
-            File optionsDir = new File("game/storage/games/com.mojang/minecraftpe");
+            File optionsDir = new File(InstanceManager.getInstance().resolvePath("game/storage/games/com.mojang/minecraftpe"));
             if (!optionsDir.exists()) {
                 optionsDir.mkdirs();
             }
             File optionsFile = new File(optionsDir, "options.txt");
             List<String> lines;
             if (optionsFile.exists()) {
-                lines = new ArrayList<>(Files.readAllLines(optionsFile.toPath()));
-                if (!lines.isEmpty() && lines.get(0).startsWith("mp_username:")) {
-                    lines.set(0, "mp_username:" + nickname);
-                } else {
-                    lines.add(0, "mp_username:" + nickname);
+                List<String> existing = Files.readAllLines(optionsFile.toPath());
+                lines = new ArrayList<>();
+                for (String line : existing) {
+                    if (!line.startsWith("mp_username:")) {
+                        lines.add(line);
+                    }
                 }
+                lines.add(0, "mp_username:" + nickname);
             } else {
                 lines = new ArrayList<>();
                 lines.add("mp_username:" + nickname);
             }
             Files.write(optionsFile.toPath(), lines);
         } catch (Exception e) {
-            statusLabel.setText("Failed to save nickname");
+            statusLabel.setText(localeManager.get("status.error.saveNickname"));
         }
     }
 
@@ -781,7 +823,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         SwingWorker<List<Version>, Void> worker = new SwingWorker<List<Version>, Void>() {
             @Override
             protected List<Version> doInBackground() throws Exception {
-                statusLabel.setText("Loading versions...");
+                statusLabel.setText(localeManager.get("status.loadingVersions"));
                 refreshButton.setEnabled(false);
                 addVersionButton.setEnabled(false);
                 String source = useDefaultVersionsSource ? DEFAULT_VERSIONS_URL : customVersionsSource;
@@ -797,7 +839,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
                         versionComboBox.addItem(version);
                     }
                     versionManager.updateInstalledVersions();
-                    statusLabel.setText(versions.size() + " versions available");
+                    String instanceName = InstanceManager.getInstance().getActiveInstance();
+                    statusLabel.setText(localeManager.get("status.versionsAvailable", versions.size()) + " — " + localeManager.get("label.instance") + ": " + instanceName);
                     
                     if (lastPlayedVersionName != null) {
                         for (int i = 0; i < versionComboBox.getItemCount(); i++) {
@@ -810,9 +853,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
                 } catch (Exception e) {
                     JOptionPane.showMessageDialog(NostalgiaLauncherDesktop.this,
-                            "Failed to load versions: " + e.getMessage(),
-                            "Error", JOptionPane.ERROR_MESSAGE);
-                    statusLabel.setText("Error loading versions");
+                            localeManager.get("error.loadVersions", e.getMessage()),
+                            localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                    statusLabel.setText(localeManager.get("status.error.loadVersions"));
                 } finally {
                     refreshButton.setEnabled(true);
                     addVersionButton.setEnabled(true);
@@ -828,8 +871,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
             Version selectedVersion = (Version) versionComboBox.getSelectedItem();
             if (selectedVersion == null) {
                 JOptionPane.showMessageDialog(NostalgiaLauncherDesktop.this,
-                        "Please select a version to launch.",
-                        "No version selected", JOptionPane.WARNING_MESSAGE);
+                        localeManager.get("error.noVersionSelected.message"),
+                        localeManager.get("error.noVersionSelected.title"), JOptionPane.WARNING_MESSAGE);
                 return;
             }
             lastPlayedVersionName = selectedVersion.getName();
@@ -849,8 +892,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 versionComboBox.setEnabled(false);
                 progressBar.setVisible(true);
                 progressBar.setValue(0);
-                progressBar.setString("Initializing...");
-                File gameDir = new File("game");
+                progressBar.setString(localeManager.get("progress.initializing"));
+                File gameDir = new File(InstanceManager.getInstance().resolvePath("game"));
                 if (!gameDir.exists()) {
                     gameDir.mkdirs();
                 }
@@ -862,31 +905,31 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     });
                 }
 
-                statusLabel.setText("Checking version installation...");
+                statusLabel.setText(localeManager.get("status.checkingInstallation"));
                 publish(15);
                 if (!versionManager.isVersionInstalled(version)) {
-                    statusLabel.setText("Downloading " + version.getName() + "...");
-                    progressBar.setString("Downloading...");
+                    statusLabel.setText(localeManager.get("status.downloading", version.getName()));
+                    progressBar.setString(localeManager.get("progress.downloading"));
                     publish(20);
                     File apkFile = versionManager.downloadVersion(version, progress -> {
                         int progressValue = 20 + (int)(progress * 45);
                         publish(progressValue);
                     });
-                    statusLabel.setText("Extracting game files...");
-                    progressBar.setString("Extracting...");
+                    statusLabel.setText(localeManager.get("status.extracting"));
+                    progressBar.setString(localeManager.get("progress.extracting"));
                     publish(65);
                     versionManager.extractVersion(apkFile, gameDir);
                 }
-                statusLabel.setText("Preparing game directory...");
-                progressBar.setString("Preparing...");
+                statusLabel.setText(localeManager.get("status.preparingDir"));
+                progressBar.setString(localeManager.get("progress.preparing"));
                 publish(80);
                 versionManager.prepareGameDir(version, gameDir);
-                statusLabel.setText("Setting up nickname...");
-                progressBar.setString("Setting up...");
+                statusLabel.setText(localeManager.get("status.setupNickname"));
+                progressBar.setString(localeManager.get("progress.settingUp"));
                 publish(90);
                 saveNickname();
-                statusLabel.setText("Starting game...");
-                progressBar.setString("Launching...");
+                statusLabel.setText(localeManager.get("status.startingGame"));
+                progressBar.setString(localeManager.get("progress.launching"));
                 publish(95);
                 
                 String launcherPath = useDefaultLauncher ? null : customLauncherPath;
@@ -907,7 +950,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 });
 
                 publish(100);
-                statusLabel.setText("Successfully launched");
+                statusLabel.setText(localeManager.get("status.launched"));
                 progressBar.setVisible(false);
 
                 gameProcess.waitFor();
@@ -927,13 +970,25 @@ public class NostalgiaLauncherDesktop extends JFrame {
             protected void done() {
                 try {
                     get();
-                    statusLabel.setText("Ready");
+                    statusLabel.setText(localeManager.get("status.ready"));
                     progressBar.setVisible(false);
                 } catch (Exception e) {
+                    String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
+                    String title = localeManager.get("error.launchFailed.title");
+                    String finalMessage;
+
+                    if (message != null && message.contains(":")) {
+                        String[] parts = message.split(":", 2);
+                        String key = parts[0];
+                        String param = parts.length > 1 ? parts[1] : "";
+                        finalMessage = localeManager.get(key, param);
+                    } else {
+                        finalMessage = localeManager.get("error.launchFailed.message", message);
+                    }
+
                     JOptionPane.showMessageDialog(NostalgiaLauncherDesktop.this,
-                            "Failed to launch game:\n" + e.getMessage(),
-                            "Launch Error", JOptionPane.ERROR_MESSAGE);
-                    statusLabel.setText("Launch failed");
+                            finalMessage, title, JOptionPane.ERROR_MESSAGE);
+                    statusLabel.setText(localeManager.get("status.error.launchFailed"));
                     progressBar.setVisible(false);
                 } finally {
                     launchButton.setEnabled(true);
@@ -949,20 +1004,27 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
     
     private void downloadLauncherComponents(ProgressCallback callback) throws IOException {
-        File gameDir = new File("game");
-        File executable = new File(gameDir, "ninecraft.exe");
-        File dllFile = new File(gameDir, "D3DCompiler_43.dll");
+        String osName = System.getProperty("os.name").toLowerCase();
+        boolean isWindows = osName.contains("win");
+
+        File gameDir = new File(InstanceManager.getInstance().resolvePath("game"));
+        String executableName = isWindows ? "ninecraft.exe" : "ninecraft";
+        File executable = new File(gameDir, executableName);
         
-        if (executable.exists() && dllFile.exists()) {
+        File dllFile = new File(gameDir, "D3DCompiler_43.dll");
+
+        if (executable.exists() && (!isWindows || dllFile.exists())) {
             callback.onProgress(1.0);
             return;
         }
         
-        statusLabel.setText("Loading launcher components...");
-        progressBar.setString("Loading components...");
+        statusLabel.setText(localeManager.get("status.loadingComponents"));
+        progressBar.setString(localeManager.get("progress.loadingComponents"));
         
+        String launcherUrl = isWindows ? DEFAULT_LAUNCHER_URL_WINDOWS : DEFAULT_LAUNCHER_URL_LINUX;
+
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpGet request = new HttpGet(DEFAULT_LAUNCHER_URL);
+            HttpGet request = new HttpGet(launcherUrl);
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 HttpEntity entity = response.getEntity();
                 if (entity != null) {

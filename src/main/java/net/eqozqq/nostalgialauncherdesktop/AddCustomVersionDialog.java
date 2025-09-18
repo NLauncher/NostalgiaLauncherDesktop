@@ -17,9 +17,11 @@ public class AddCustomVersionDialog extends JDialog {
     private JButton cancelButton;
     private Version newVersion;
     private JPanel cards;
+    private LocaleManager localeManager;
 
-    public AddCustomVersionDialog(JFrame parent) {
-        super(parent, "Add custom version", true);
+    public AddCustomVersionDialog(JFrame parent, LocaleManager localeManager) {
+        super(parent, localeManager.get("dialog.addCustomVersion.title"), true);
+        this.localeManager = localeManager;
         setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
@@ -27,7 +29,7 @@ public class AddCustomVersionDialog extends JDialog {
 
         gbc.gridx = 0;
         gbc.gridy = 0;
-        add(new JLabel("Version name:"), gbc);
+        add(new JLabel(localeManager.get("label.versionName")), gbc);
 
         gbc.gridx = 1;
         gbc.gridy = 0;
@@ -38,14 +40,14 @@ public class AddCustomVersionDialog extends JDialog {
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.gridwidth = 1;
-        add(new JLabel("Source:"), gbc);
+        add(new JLabel(localeManager.get("label.source")), gbc);
 
         gbc.gridx = 1;
         gbc.gridy = 1;
         gbc.gridwidth = 2;
         JPanel sourcePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
-        urlRadioButton = new JRadioButton("URL");
-        fileRadioButton = new JRadioButton("File");
+        urlRadioButton = new JRadioButton(localeManager.get("radio.url"));
+        fileRadioButton = new JRadioButton(localeManager.get("radio.file"));
         ButtonGroup sourceGroup = new ButtonGroup();
         sourceGroup.add(urlRadioButton);
         sourceGroup.add(fileRadioButton);
@@ -67,7 +69,7 @@ public class AddCustomVersionDialog extends JDialog {
 
         gbc.gridx = 0;
         gbc.gridy = 2;
-        add(new JLabel("Path/URL:"), gbc);
+        add(new JLabel(localeManager.get("label.pathUrl")), gbc);
         
         gbc.gridx = 1;
         gbc.gridy = 2;
@@ -76,8 +78,8 @@ public class AddCustomVersionDialog extends JDialog {
         add(cards, gbc);
 
         JPanel buttonPanel = new JPanel();
-        saveButton = new JButton("Save");
-        cancelButton = new JButton("Cancel");
+        saveButton = new JButton(localeManager.get("button.save"));
+        cancelButton = new JButton(localeManager.get("button.cancel"));
         buttonPanel.add(saveButton);
         buttonPanel.add(cancelButton);
 
@@ -95,7 +97,7 @@ public class AddCustomVersionDialog extends JDialog {
 
         browseButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("APK Files", "apk"));
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(localeManager.get("fileChooser.apkFiles"), "apk"));
             int option = fileChooser.showOpenDialog(this);
             if (option == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();
@@ -115,31 +117,31 @@ public class AddCustomVersionDialog extends JDialog {
         String path;
 
         if (name.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Name cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, localeManager.get("error.nameEmpty"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         if (urlRadioButton.isSelected()) {
             path = urlField.getText().trim();
             if (path.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "URL cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, localeManager.get("error.urlEmpty"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
                 return;
             }
             try {
                 new URL(path);
             } catch (MalformedURLException ex) {
-                JOptionPane.showMessageDialog(this, "Invalid URL.", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, localeManager.get("error.invalidUrl"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
                 return;
             }
         } else {
             path = filePathField.getText().trim();
             if (path.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "File path cannot be empty.", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, localeManager.get("error.filePathEmpty"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
                 return;
             }
             File file = new File(path);
             if (!file.exists() || !file.isFile()) {
-                JOptionPane.showMessageDialog(this, "Invalid file path.", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
                 return;
             }
             path = file.toURI().toString();

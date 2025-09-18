@@ -30,6 +30,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 
 public class VersionManager {
     private static final String VERSIONS_CACHE_DIR = "cache" + File.separator + "versions";
@@ -66,14 +67,13 @@ public class VersionManager {
                         Type listType = new TypeToken<List<Version>>(){}.getType();
                         versions.addAll(gson.fromJson(new InputStreamReader(Files.newInputStream(file.toPath())), listType));
                     } else {
-                        throw new IOException("File not found or is not a file: " + source);
+                        throw new IOException("versionManager.error.fileNotFound:" + source);
                     }
                 }
             }
         } catch (Exception e) {
-            System.err.println("Failed to load versions from source: " + source);
             e.printStackTrace();
-            throw new IOException("Failed to load versions: " + e.getMessage(), e);
+            throw new IOException("versionManager.error.loadVersionsGeneric:" + e.getMessage(), e);
         }
 
         versions.addAll(loadCustomVersions());
@@ -81,7 +81,7 @@ public class VersionManager {
     }
 
     private List<Version> loadCustomVersions() {
-        File customVersionsFile = new File(CUSTOM_VERSIONS_FILE);
+        File customVersionsFile = new File(InstanceManager.getInstance().resolvePath(CUSTOM_VERSIONS_FILE));
         if (customVersionsFile.exists()) {
             try (FileReader reader = new FileReader(customVersionsFile)) {
                 Gson gson = new Gson();
@@ -91,7 +91,7 @@ public class VersionManager {
                     return customVersions;
                 }
             } catch (IOException e) {
-                System.err.println("Error loading custom versions: " + e.getMessage());
+                e.printStackTrace();
             }
         }
         return Collections.emptyList();
@@ -100,24 +100,26 @@ public class VersionManager {
     public void addAndSaveCustomVersion(Version version) throws IOException {
         List<Version> customVersions = new ArrayList<>(loadCustomVersions());
         customVersions.add(version);
-        try (Writer writer = new FileWriter(CUSTOM_VERSIONS_FILE)) {
+        File targetFile = new File(InstanceManager.getInstance().resolvePath(CUSTOM_VERSIONS_FILE));
+        File parent = targetFile.getParentFile();
+        if (parent != null && !parent.exists()) parent.mkdirs();
+        try (Writer writer = new FileWriter(targetFile)) {
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             gson.toJson(customVersions, writer);
         } catch (IOException e) {
-            System.err.println("Error saving custom versions: " + e.getMessage());
             throw e;
         }
     }
 
     public void updateInstalledVersions() {
-        Path versionsPath = Paths.get(VERSIONS_DIR);
+        Path versionsPath = Paths.get(InstanceManager.getInstance().resolvePath(VERSIONS_DIR));
         if (Files.exists(versionsPath)) {
             try (Stream<Path> paths = Files.list(versionsPath)) {
                 installedVersions = paths.filter(Files::isDirectory)
                                          .map(path -> path.getFileName().toString())
                                          .collect(Collectors.toSet());
             } catch (IOException e) {
-                System.err.println("Error listing installed versions: " + e.getMessage());
+                e.printStackTrace();
                 installedVersions = Collections.emptySet();
             }
         } else {
@@ -133,11 +135,10 @@ public class VersionManager {
     }
 
     public File downloadVersion(Version version, ProgressCallback callback) throws IOException {
-        File versionsCacheDir = new File(VERSIONS_CACHE_DIR);
+        File versionsCacheDir = new File(InstanceManager.getInstance().resolvePath(VERSIONS_CACHE_DIR));
         if (!versionsCacheDir.exists()) {
-            boolean created = versionsCacheDir.mkdirs();
-            if (!created) {
-                throw new IOException("Failed to create cache directory: " + versionsCacheDir.getAbsolutePath());
+            if (!versionsCacheDir.mkdirs()) {
+                throw new IOException("versionManager.error.createCacheDirFailed:" + versionsCacheDir.getAbsolutePath());
             }
         }
 
@@ -150,7 +151,7 @@ public class VersionManager {
 
         String downloadUrl = version.getUrl();
         if (downloadUrl == null || downloadUrl.isEmpty()) {
-            throw new IOException("Download URL is missing for version: " + version.getName());
+            throw new IOException("versionManager.error.missingUrl:" + version.getName());
         }
 
         if (downloadUrl.startsWith("file:")) {
@@ -159,7 +160,7 @@ public class VersionManager {
                  FileUtils.copyFile(sourceFile, outputFile);
                  return outputFile;
              } else {
-                 throw new IOException("Custom version file not found: " + sourceFile.getAbsolutePath());
+                 throw new IOException("versionManager.error.customVersionNotFound:" + sourceFile.getAbsolutePath());
              }
         }
 
@@ -189,7 +190,7 @@ public class VersionManager {
         }
         
         if (!outputFile.exists() || outputFile.length() == 0) {
-            throw new IOException("Failed to download version file: " + outputFile.getAbsolutePath());
+            throw new IOException("versionManager.error.downloadFailed:" + outputFile.getAbsolutePath());
         }
         
         return outputFile;
@@ -197,23 +198,21 @@ public class VersionManager {
 
     public void extractVersion(File apkFile, File gameDir) throws IOException {
         if (!apkFile.exists()) {
-            throw new IOException("APK file does not exist: " + apkFile.getAbsolutePath());
+            throw new IOException("versionManager.error.apkNotFound:" + apkFile.getAbsolutePath());
         }
 
-        File versionsDir = new File(VERSIONS_DIR);
+        File versionsDir = new File(InstanceManager.getInstance().resolvePath(VERSIONS_DIR));
         if (!versionsDir.exists()) {
-            boolean created = versionsDir.mkdirs();
-            if (!created) {
-                throw new IOException("Failed to create versions directory: " + versionsDir.getAbsolutePath());
+            if (!versionsDir.mkdirs()) {
+                throw new IOException("versionManager.error.createVersionsDirFailed:" + versionsDir.getAbsolutePath());
             }
         }
 
         String versionName = apkFile.getName().replace(".apk", "");
         File targetDir = new File(versionsDir, versionName);
         if (!targetDir.exists()) {
-            boolean created = targetDir.mkdirs();
-            if (!created) {
-                throw new IOException("Failed to create target directory: " + targetDir.getAbsolutePath());
+            if (!targetDir.mkdirs()) {
+                throw new IOException("versionManager.error.createTargetDirFailed:" + targetDir.getAbsolutePath());
             }
         }
 
@@ -231,9 +230,7 @@ public class VersionManager {
                     
                     File parentDir = newFile.getParentFile();
                     if (parentDir != null && !parentDir.exists()) {
-                        boolean created = parentDir.mkdirs();
-                        if (!created) {
-                            System.err.println("Failed to create directory: " + parentDir.getAbsolutePath());
+                        if (!parentDir.mkdirs()) {
                             continue;
                         }
                     }
@@ -252,61 +249,37 @@ public class VersionManager {
     }
 
     public void prepareGameDir(Version version, File gameDir) throws IOException {
-        File versionsDir = new File(VERSIONS_DIR);
+        File versionsDir = new File(InstanceManager.getInstance().resolvePath(VERSIONS_DIR));
         File currentVersionDir = new File(versionsDir, version.getName());
 
         if (!currentVersionDir.exists()) {
-            throw new IOException("Version directory does not exist: " + currentVersionDir.getAbsolutePath());
+            throw new IOException("versionManager.error.versionDirNotFound:" + currentVersionDir.getAbsolutePath());
         }
 
         File assetsDir = new File(gameDir, "assets");
         if (assetsDir.exists()) {
-            try {
-                FileUtils.deleteDirectory(assetsDir);
-            } catch (IOException e) {
-                System.err.println("Failed to delete assets directory: " + e.getMessage());
-            }
+            FileUtils.deleteDirectory(assetsDir);
         }
         File libDir = new File(gameDir, "lib");
         if (libDir.exists()) {
-            try {
-                FileUtils.deleteDirectory(libDir);
-            } catch (IOException e) {
-                System.err.println("Failed to delete lib directory: " + e.getMessage());
-            }
+            FileUtils.deleteDirectory(libDir);
         }
         File resDir = new File(gameDir, "res");
         if (resDir.exists()) {
-            try {
-                FileUtils.deleteDirectory(resDir);
-            } catch (IOException e) {
-                System.err.println("Failed to delete res directory: " + e.getMessage());
-            }
+            FileUtils.deleteDirectory(resDir);
         }
 
         File currentVersionAssets = new File(currentVersionDir, "assets");
         if (currentVersionAssets.exists()) {
-            try {
-                FileUtils.copyDirectory(currentVersionAssets, assetsDir);
-            } catch (IOException e) {
-                System.err.println("Failed to copy assets directory: " + e.getMessage());
-            }
+            FileUtils.copyDirectory(currentVersionAssets, assetsDir);
         }
         File currentVersionLib = new File(currentVersionDir, "lib");
         if (currentVersionLib.exists()) {
-            try {
-                FileUtils.copyDirectory(currentVersionLib, libDir);
-            } catch (IOException e) {
-                System.err.println("Failed to copy lib directory: " + e.getMessage());
-            }
+            FileUtils.copyDirectory(currentVersionLib, libDir);
         }
         File currentVersionRes = new File(currentVersionDir, "res");
         if (currentVersionRes.exists()) {
-            try {
-                FileUtils.copyDirectory(currentVersionRes, resDir);
-            } catch (IOException e) {
-                System.err.println("Failed to copy res directory: " + e.getMessage());
-            }
+            FileUtils.copyDirectory(currentVersionRes, resDir);
         }
     }
 }

@@ -12,6 +12,9 @@ import java.net.URL;
 import java.net.HttpURLConnection;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class SettingsDialog extends JDialog {
     private JTextField backgroundPathField;
@@ -30,6 +33,7 @@ public class SettingsDialog extends JDialog {
     private JRadioButton urlRadioButton;
     private JRadioButton fileRadioButton;
     private JComboBox<String> themeComboBox;
+    private JComboBox<String> languageComboBox;
 
     private JRadioButton defaultBgRadio;
     private JRadioButton customImageRadio;
@@ -51,12 +55,19 @@ public class SettingsDialog extends JDialog {
     private String currentVersion;
     private String backgroundMode;
     private Color customBackgroundColor;
+    private String language;
     private boolean saved = false;
+    private LocaleManager localeManager;
+
+    private final Map<String, String> languageMap = new LinkedHashMap<>();
+    private final Map<String, String> postActionMap = new LinkedHashMap<>();
+    private final Map<String, String> themeMap = new LinkedHashMap<>();
 
     private static final String LAST_VERSION = "https://raw.githubusercontent.com/NLauncher/components/refs/heads/main/lastversion.txt";
 
-    public SettingsDialog(JFrame parent, String currentBackgroundPath, String currentVersionsSource, boolean useDefaultVs, String currentCustomLauncherPath, boolean useDefaultLauncher, String currentPostLaunchAction, boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion, String backgroundMode, Color customBackgroundColor) {
-        super(parent, "Settings", true);
+    public SettingsDialog(JFrame parent, String currentBackgroundPath, String currentVersionsSource, boolean useDefaultVs, String currentCustomLauncherPath, boolean useDefaultLauncher, String currentPostLaunchAction, boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion, String backgroundMode, Color customBackgroundColor, LocaleManager localeManager) {
+        super(parent, localeManager.get("dialog.settings.title"), true);
+        this.localeManager = localeManager;
         setPreferredSize(new Dimension(600, 550));
         setLayout(new BorderLayout(10, 10));
 
@@ -72,61 +83,75 @@ public class SettingsDialog extends JDialog {
         this.currentVersion = currentVersion;
         this.backgroundMode = backgroundMode;
         this.customBackgroundColor = customBackgroundColor;
+        this.language = localeManager.getCurrentLanguage();
+
+        languageMap.put("English", "en");
+        languageMap.put("Русский", "ru");
+        languageMap.put("Українська", "uk");
+        languageMap.put("Português", "pt");
+        languageMap.put("简体中文", "zh_CN");
+
+        postActionMap.put("Do Nothing", localeManager.get("combo.postLaunch.doNothing"));
+        postActionMap.put("Minimize Launcher", localeManager.get("combo.postLaunch.minimize"));
+        postActionMap.put("Close Launcher", localeManager.get("combo.postLaunch.close"));
+
+        themeMap.put("Light", localeManager.get("combo.theme.light"));
+        themeMap.put("Dark", localeManager.get("combo.theme.dark"));
 
         JTabbedPane tabbedPane = new JTabbedPane();
         tabbedPane.putClientProperty(FlatClientProperties.TABBED_PANE_TAB_ICON_PLACEMENT, SwingConstants.LEFT);
-        tabbedPane.addTab("Game", createGamePanel());
-        tabbedPane.addTab("Launcher", createLauncherPanel());
-        tabbedPane.addTab("About", createAboutPanel());
+        tabbedPane.addTab(localeManager.get("tab.game"), createGamePanel());
+        tabbedPane.addTab(localeManager.get("tab.launcher"), createLauncherPanel());
+        tabbedPane.addTab(localeManager.get("tab.about"), createAboutPanel());
 
         JPanel buttonPanel = new JPanel();
-        saveButton = new JButton("Save");
+        saveButton = new JButton(localeManager.get("button.save"));
         saveButton.addActionListener(e -> {
             this.useDefaultVersionsSource = useDefaultSourceCheckbox.isSelected();
-            if (!this.useDefaultVersionsSource) {
-                this.customVersionsSource = versionsSourceField.getText();
-            } else {
-                this.customVersionsSource = null;
-            }
+            this.customVersionsSource = this.useDefaultVersionsSource ? null : versionsSourceField.getText();
             
             this.useDefaultLauncher = useDefaultLauncherCheckbox.isSelected();
-            if (!this.useDefaultLauncher) {
-                this.customLauncherPath = customLauncherField.getText();
-            } else {
-                this.customLauncherPath = null;
-            }
+            this.customLauncherPath = this.useDefaultLauncher ? null : customLauncherField.getText();
+            
             this.enableDebugging = enableDebuggingCheckbox.isSelected();
 
             if (defaultBgRadio.isSelected()) {
                 this.backgroundMode = "Default";
-                this.customBackgroundPath = null;
-                this.customBackgroundColor = null;
             } else if (customImageRadio.isSelected()) {
                 this.backgroundMode = "Custom Image";
                 this.customBackgroundPath = backgroundPathField.getText();
-                this.customBackgroundColor = null;
             } else if (customColorRadio.isSelected()) {
                 this.backgroundMode = "Custom Color";
-                this.customBackgroundPath = null;
                 this.customBackgroundColor = colorPreviewPanel.getBackground();
             }
+            
+            String selectedPostActionDisplay = (String) postLaunchActionComboBox.getSelectedItem();
+            this.postLaunchAction = postActionMap.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(selectedPostActionDisplay))
+                .map(Map.Entry::getKey)
+                .findFirst().orElse("Do Nothing");
 
-            this.postLaunchAction = (String) postLaunchActionComboBox.getSelectedItem();
+            String selectedThemeDisplay = (String) themeComboBox.getSelectedItem();
+            this.themeName = themeMap.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(selectedThemeDisplay))
+                .map(Map.Entry::getKey)
+                .findFirst().orElse("Dark");
+
             this.scaleFactor = (double) scaleSlider.getValue() / 100.0;
-            this.themeName = (String) themeComboBox.getSelectedItem();
+            this.language = languageMap.get((String)languageComboBox.getSelectedItem());
 
             if (!useDefaultVersionsSource) {
                 if (urlRadioButton.isSelected()) {
                     try {
                         new URL(versionsSourceField.getText());
                     } catch (MalformedURLException ex) {
-                        JOptionPane.showMessageDialog(this, "Invalid URL for versions source.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(this, localeManager.get("error.invalidUrl"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
                         return;
                     }
                 } else if (fileRadioButton.isSelected()) {
                     File file = new File(versionsSourceField.getText());
                     if (!file.exists() || !file.isFile()) {
-                        JOptionPane.showMessageDialog(this, "Invalid file path for versions source.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
                         return;
                     }
                 }
@@ -135,7 +160,7 @@ public class SettingsDialog extends JDialog {
             if (!useDefaultLauncher) {
                 File file = new File(customLauncherField.getText());
                 if (!file.exists() || !file.isFile()) {
-                        JOptionPane.showMessageDialog(this, "Invalid file path for custom launcher.", "Error", JOptionPane.ERROR_MESSAGE);
+                        JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
                         return;
                 }
             }
@@ -151,7 +176,7 @@ public class SettingsDialog extends JDialog {
         setLocationRelativeTo(parent);
 
         tabbedPane.addChangeListener(e -> {
-            if (tabbedPane.getTitleAt(tabbedPane.getSelectedIndex()).equals("About")) {
+            if (tabbedPane.getTitleAt(tabbedPane.getSelectedIndex()).equals(localeManager.get("tab.about"))) {
                 buttonPanel.remove(saveButton);
                 buttonPanel.revalidate();
                 buttonPanel.repaint();
@@ -174,7 +199,7 @@ public class SettingsDialog extends JDialog {
         gbc.anchor = GridBagConstraints.NORTHWEST;
         int gridY = 0;
 
-        JLabel versionsLabel = new JLabel("Versions source:");
+        JLabel versionsLabel = new JLabel(localeManager.get("label.versionsSource"));
         gbc.gridx = 0;
         gbc.gridy = gridY;
         gbc.gridwidth = 1;
@@ -183,8 +208,8 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(versionsLabel, gbc);
 
         JPanel sourceSelectionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        urlRadioButton = new JRadioButton("URL");
-        fileRadioButton = new JRadioButton("File");
+        urlRadioButton = new JRadioButton(localeManager.get("radio.url"));
+        fileRadioButton = new JRadioButton(localeManager.get("radio.file"));
         ButtonGroup group = new ButtonGroup();
         group.add(urlRadioButton);
         group.add(fileRadioButton);
@@ -216,7 +241,7 @@ public class SettingsDialog extends JDialog {
         gbc.weighty = 0.0;
         contentPanel.add(versionsSourceField, gbc);
 
-        browseVersionsButton = new JButton("Browse...");
+        browseVersionsButton = new JButton(localeManager.get("button.browse"));
         browseVersionsButton.setEnabled(!useDefaultVersionsSource && fileRadioButton.isSelected());
         browseVersionsButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
@@ -242,7 +267,7 @@ public class SettingsDialog extends JDialog {
         });
 
         gridY++;
-        useDefaultSourceCheckbox = new JCheckBox("Use default URL");
+        useDefaultSourceCheckbox = new JCheckBox(localeManager.get("checkbox.useDefaultUrl"));
         useDefaultSourceCheckbox.setSelected(useDefaultVersionsSource);
         useDefaultSourceCheckbox.addActionListener(e -> {
             versionsSourceField.setEnabled(!useDefaultSourceCheckbox.isSelected());
@@ -257,7 +282,7 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(useDefaultSourceCheckbox, gbc);
 
         gridY++;
-        JLabel versionsInfoLabel = createInfoLabel("Add your own versions list source. ", "Learn more", "https://nlauncher.github.io/docs/custom-versions-list-source.html");
+        JLabel versionsInfoLabel = createInfoLabel(localeManager.get("info.customVersions"), localeManager.get("link.learnMore"), "https://nlauncher.github.io/docs/custom-versions-list-source.html");
         gbc.gridx = 1;
         gbc.gridy = gridY;
         gbc.gridwidth = 2;
@@ -266,7 +291,7 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(versionsInfoLabel, gbc);
 
         gridY++;
-        JLabel customLauncherLabel = new JLabel("Custom executable for launching versions:");
+        JLabel customLauncherLabel = new JLabel(localeManager.get("label.customExecutable"));
         gbc.gridx = 0;
         gbc.gridy = gridY;
         gbc.gridwidth = 1;
@@ -283,7 +308,7 @@ public class SettingsDialog extends JDialog {
         gbc.weighty = 0.0;
         contentPanel.add(customLauncherField, gbc);
 
-        browseLauncherButton = new JButton("Browse...");
+        browseLauncherButton = new JButton(localeManager.get("button.browse"));
         browseLauncherButton.setEnabled(!useDefaultLauncher);
         browseLauncherButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
@@ -300,7 +325,7 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(browseLauncherButton, gbc);
         
         gridY++;
-        useDefaultLauncherCheckbox = new JCheckBox("Use default executable");
+        useDefaultLauncherCheckbox = new JCheckBox(localeManager.get("checkbox.useDefaultExecutable"));
         useDefaultLauncherCheckbox.setSelected(useDefaultLauncher);
         useDefaultLauncherCheckbox.addActionListener(e -> {
             customLauncherField.setEnabled(!useDefaultLauncherCheckbox.isSelected());
@@ -313,7 +338,7 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(useDefaultLauncherCheckbox, gbc);
 
         gridY++;
-        JLabel launcherInfoLabel = createInfoLabel("Add your executable for launching versions. ", "Learn more", "https://nlauncher.github.io/docs/custom-executable-for-versions.html");
+        JLabel launcherInfoLabel = createInfoLabel(localeManager.get("info.customExecutable"), localeManager.get("link.learnMore"), "https://nlauncher.github.io/docs/custom-executable-for-versions.html");
         gbc.gridx = 1;
         gbc.gridy = gridY;
         gbc.gridwidth = 2;
@@ -331,7 +356,7 @@ public class SettingsDialog extends JDialog {
         gbc.insets = new Insets(5, 5, 5, 5);
         
         gridY++;
-        enableDebuggingCheckbox = new JCheckBox("Enable debugging");
+        enableDebuggingCheckbox = new JCheckBox(localeManager.get("checkbox.enableDebugging"));
         enableDebuggingCheckbox.setSelected(this.enableDebugging);
         gbc.gridx = 0;
         gbc.gridy = gridY;
@@ -368,15 +393,15 @@ public class SettingsDialog extends JDialog {
         gbc.anchor = GridBagConstraints.NORTHWEST;
         int gridY = 0;
 
-        JLabel postLaunchActionLabel = new JLabel("Action after launch:");
+        JLabel postLaunchActionLabel = new JLabel(localeManager.get("label.postLaunchAction"));
         gbc.gridx = 0;
         gbc.gridy = gridY;
         gbc.gridwidth = 1;
         gbc.weighty = 0.0;
         contentPanel.add(postLaunchActionLabel, gbc);
 
-        postLaunchActionComboBox = new JComboBox<>(new String[]{"Do Nothing", "Minimize Launcher", "Close Launcher"});
-        postLaunchActionComboBox.setSelectedItem(this.postLaunchAction);
+        postLaunchActionComboBox = new JComboBox<>(postActionMap.values().toArray(new String[0]));
+        postLaunchActionComboBox.setSelectedItem(postActionMap.get(this.postLaunchAction));
         gbc.gridx = 1;
         gbc.gridy = gridY;
         gbc.gridwidth = 2;
@@ -392,16 +417,35 @@ public class SettingsDialog extends JDialog {
         gbc.insets = new Insets(5, 5, 5, 5);
 
         gridY++;
-        JLabel themeLabel = new JLabel("Theme:");
+        JLabel languageLabel = new JLabel(localeManager.get("label.language"));
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 1;
+        gbc.weighty = 0.0;
+        contentPanel.add(languageLabel, gbc);
+
+        languageComboBox = new JComboBox<>(languageMap.keySet().toArray(new String[0]));
+        languageMap.forEach((name, code) -> {
+            if (code.equals(this.language)) {
+                languageComboBox.setSelectedItem(name);
+            }
+        });
+        gbc.gridx = 1;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 2;
+        gbc.weighty = 0.0;
+        contentPanel.add(languageComboBox, gbc);
+
+        gridY++;
+        JLabel themeLabel = new JLabel(localeManager.get("label.theme"));
         gbc.gridx = 0;
         gbc.gridy = gridY;
         gbc.gridwidth = 1;
         gbc.weighty = 0.0;
         contentPanel.add(themeLabel, gbc);
 
-        String[] themes = new String[]{"Light", "Dark"};
-        themeComboBox = new JComboBox<>(themes);
-        themeComboBox.setSelectedItem(this.themeName);
+        themeComboBox = new JComboBox<>(themeMap.values().toArray(new String[0]));
+        themeComboBox.setSelectedItem(themeMap.get(this.themeName));
         gbc.gridx = 1;
         gbc.gridy = gridY;
         gbc.gridwidth = 2;
@@ -409,7 +453,7 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(themeComboBox, gbc);
 
         gridY++;
-        scaleLabel = new JLabel("Interface scale: " + (int)(scaleFactor * 100) + "%");
+        scaleLabel = new JLabel(localeManager.get("label.interfaceScale", (int)(scaleFactor * 100)));
         gbc.gridx = 0;
         gbc.gridy = gridY;
         gbc.gridwidth = 1;
@@ -424,7 +468,7 @@ public class SettingsDialog extends JDialog {
         scaleSlider.setSnapToTicks(true);
         scaleSlider.addChangeListener(e -> {
             int value = scaleSlider.getValue();
-            scaleLabel.setText("Interface scale: " + value + "%");
+            scaleLabel.setText(localeManager.get("label.interfaceScale", value));
         });
         gbc.gridx = 1;
         gbc.gridy = gridY;
@@ -433,7 +477,7 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(scaleSlider, gbc);
 
         gridY++;
-        JLabel backgroundLabel = new JLabel("Background:");
+        JLabel backgroundLabel = new JLabel(localeManager.get("label.background"));
         gbc.gridx = 0;
         gbc.gridy = gridY;
         gbc.weighty = 0.0;
@@ -441,9 +485,9 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(backgroundLabel, gbc);
 
         JPanel radioPanel = new JPanel(new GridLayout(0, 1));
-        defaultBgRadio = new JRadioButton("Default background image");
-        customImageRadio = new JRadioButton("Custom background image");
-        customColorRadio = new JRadioButton("Custom color");
+        defaultBgRadio = new JRadioButton(localeManager.get("radio.bg.default"));
+        customImageRadio = new JRadioButton(localeManager.get("radio.bg.customImage"));
+        customColorRadio = new JRadioButton(localeManager.get("radio.bg.customColor"));
         ButtonGroup bgGroup = new ButtonGroup();
         bgGroup.add(defaultBgRadio);
         bgGroup.add(customImageRadio);
@@ -474,7 +518,7 @@ public class SettingsDialog extends JDialog {
         imageGbc.insets = new Insets(0, 0, 0, 5);
         imageOptionsPanel.add(backgroundPathField, imageGbc);
 
-        browseBackgroundButton = new JButton("Browse...");
+        browseBackgroundButton = new JButton(localeManager.get("button.browse"));
         browseBackgroundButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             int option = fileChooser.showOpenDialog(this);
@@ -494,7 +538,7 @@ public class SettingsDialog extends JDialog {
         
         gridY++;
         colorOptionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
-        chooseColorButton = new JButton("Choose Color...");
+        chooseColorButton = new JButton(localeManager.get("button.chooseColor"));
         colorPreviewPanel = new JPanel();
         colorPreviewPanel.setPreferredSize(new Dimension(24, 24));
         colorPreviewPanel.setBorder(BorderFactory.createLineBorder(Color.GRAY));
@@ -504,7 +548,7 @@ public class SettingsDialog extends JDialog {
         }
 
         chooseColorButton.addActionListener(e -> {
-            Color newColor = JColorChooser.showDialog(this, "Choose Background Color", colorPreviewPanel.getBackground());
+            Color newColor = JColorChooser.showDialog(this, localeManager.get("dialog.chooseColor.title"), colorPreviewPanel.getBackground());
             if (newColor != null) {
                 colorPreviewPanel.setBackground(newColor);
             }
@@ -554,14 +598,14 @@ public class SettingsDialog extends JDialog {
         gbc.anchor = GridBagConstraints.NORTHWEST;
         int gridY = 0;
 
-        JLabel headline1 = new JLabel("NostalgiaLauncher");
+        JLabel headline1 = new JLabel(localeManager.get("about.headline1"));
         headline1.setFont(new Font("SansSerif", Font.BOLD, 24));
         gbc.gridx = 0;
         gbc.gridy = gridY++;
         gbc.gridwidth = 3;
         contentPanel.add(headline1, gbc);
 
-        JLabel headline2 = new JLabel("Minecraft PE Alpha versions launcher for Windows");
+        JLabel headline2 = new JLabel(localeManager.get("about.headline2"));
         headline2.setFont(new Font("SansSerif", Font.PLAIN, 16));
         gbc.gridy = gridY++;
         contentPanel.add(headline2, gbc);
@@ -573,7 +617,7 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(new JSeparator(), gbc);
         gbc.insets = new Insets(5, 5, 5, 5); 
 
-        JLabel headline3 = new JLabel("Used materials");
+        JLabel headline3 = new JLabel(localeManager.get("about.headline3"));
         headline3.setFont(new Font("SansSerif", Font.BOLD, 16));
         gbc.gridy = gridY++;
         contentPanel.add(headline3, gbc);
@@ -607,11 +651,11 @@ public class SettingsDialog extends JDialog {
         
         JPanel versionPanel = new JPanel();
         versionPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 0));
-        JLabel versionLabel = new JLabel("<html><span style='color:gray;'>Current version: " + currentVersion + "</span></html>");
+        JLabel versionLabel = new JLabel(localeManager.get("about.currentVersion", currentVersion));
         versionLabel.setFont(new Font("SansSerif", Font.PLAIN, 10));
         versionPanel.add(versionLabel);
 
-        JLabel updateStatusLabel = new JLabel("Checking for updates...");
+        JLabel updateStatusLabel = new JLabel(localeManager.get("about.update.checking"));
         updateStatusLabel.setFont(new Font("SansSerif", Font.PLAIN, 10));
         versionPanel.add(updateStatusLabel);
 
@@ -635,10 +679,11 @@ public class SettingsDialog extends JDialog {
                 try {
                     String latestVersion = get();
                     if (currentVersion.equals(latestVersion)) {
-                        updateStatusLabel.setText("Up to date");
+                        updateStatusLabel.setText(localeManager.get("about.update.upToDate"));
                         updateStatusLabel.setForeground(new Color(76, 175, 80));
                     } else {
-                        JLabel updateLink = new JLabel("<html><a href='" + "https://nlauncher.github.io/releases.html#desktop" + "'>New update available</a></html>");
+                        String linkText = localeManager.get("about.update.available");
+                        JLabel updateLink = new JLabel("<html><a href='https://nlauncher.github.io/releases.html#desktop'>" + linkText + "</a></html>");
                         updateLink.setCursor(new Cursor(Cursor.HAND_CURSOR));
                         updateLink.addMouseListener(new MouseAdapter() {
                             public void mouseClicked(MouseEvent e) {
@@ -655,7 +700,7 @@ public class SettingsDialog extends JDialog {
                         versionPanel.repaint();
                     }
                 } catch (Exception e) {
-                    updateStatusLabel.setText("Error checking for updates");
+                    updateStatusLabel.setText(localeManager.get("about.update.error"));
                     updateStatusLabel.setForeground(Color.RED);
                 }
             }
@@ -701,51 +746,17 @@ public class SettingsDialog extends JDialog {
         return label;
     }
 
-    public String getCustomBackgroundPath() {
-        return customBackgroundPath;
-    }
-
-    public String getCustomVersionsSource() {
-        return customVersionsSource;
-    }
-
-    public boolean isUseDefaultVersionsSource() {
-        return useDefaultVersionsSource;
-    }
-
-    public String getCustomLauncherPath() {
-        return customLauncherPath;
-    }
-
-    public boolean isUseDefaultLauncher() {
-        return useDefaultLauncher;
-    }
-
-    public String getPostLaunchAction() {
-        return postLaunchAction;
-    }
-
-    public boolean isEnableDebugging() {
-        return enableDebugging;
-    }
-    
-    public double getScaleFactor() {
-        return scaleFactor;
-    }
-    
-    public String getThemeName() {
-        return themeName;
-    }
-
-    public boolean isSaved() {
-        return saved;
-    }
-    
-    public String getBackgroundMode() {
-        return backgroundMode;
-    }
-
-    public Color getCustomBackgroundColor() {
-        return customBackgroundColor;
-    }
+    public String getCustomBackgroundPath() { return customBackgroundPath; }
+    public String getCustomVersionsSource() { return customVersionsSource; }
+    public boolean isUseDefaultVersionsSource() { return useDefaultVersionsSource; }
+    public String getCustomLauncherPath() { return customLauncherPath; }
+    public boolean isUseDefaultLauncher() { return useDefaultLauncher; }
+    public String getPostLaunchAction() { return postLaunchAction; }
+    public boolean isEnableDebugging() { return enableDebugging; }
+    public double getScaleFactor() { return scaleFactor; }
+    public String getThemeName() { return themeName; }
+    public boolean isSaved() { return saved; }
+    public String getBackgroundMode() { return backgroundMode; }
+    public Color getCustomBackgroundColor() { return customBackgroundColor; }
+    public String getLanguage() { return language; }
 }
