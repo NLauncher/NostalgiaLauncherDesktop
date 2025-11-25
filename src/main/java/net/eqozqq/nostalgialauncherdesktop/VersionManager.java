@@ -37,6 +37,7 @@ public class VersionManager {
     private static final String GAME_DIR = "game";
     private static final String VERSIONS_DIR = "versions";
     private static final String CUSTOM_VERSIONS_FILE = "custom_versions.json";
+    private static final String VERSIONS_LIST_CACHE_FILE = "cache" + File.separator + "versions_list.json";
 
     private Set<String> installedVersions;
 
@@ -46,6 +47,8 @@ public class VersionManager {
 
     public List<Version> loadVersions(String source) throws IOException {
         List<Version> versions = new ArrayList<>();
+        boolean isOffline = false;
+
         try {
             if (source != null && !source.isEmpty()) {
                 if (source.startsWith("http://") || source.startsWith("https://")) {
@@ -54,9 +57,12 @@ public class VersionManager {
                         try (CloseableHttpResponse response = httpClient.execute(request)) {
                             HttpEntity entity = response.getEntity();
                             if (entity != null) {
+                                String jsonString = org.apache.commons.io.IOUtils.toString(entity.getContent(), "UTF-8");
                                 Gson gson = new Gson();
                                 Type listType = new TypeToken<List<Version>>(){}.getType();
-                                versions.addAll(gson.fromJson(new InputStreamReader(entity.getContent()), listType));
+                                List<Version> networkVersions = gson.fromJson(jsonString, listType);
+                                versions.addAll(networkVersions);
+                                saveVersionsCache(networkVersions);
                             }
                         }
                     }
@@ -72,12 +78,56 @@ public class VersionManager {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new IOException("versionManager.error.loadVersionsGeneric:" + e.getMessage(), e);
+            System.err.println("Failed to load versions from source, switching to offline cache: " + e.getMessage());
+            isOffline = true;
+        }
+
+        if (versions.isEmpty()) {
+            versions.addAll(loadVersionsCache());
         }
 
         versions.addAll(loadCustomVersions());
-        return versions;
+
+        if (isOffline) {
+            versions = versions.stream()
+                .filter(v -> isVersionInstalled(v) || isApkCached(v))
+                .collect(Collectors.toList());
+        }
+
+        return versions.stream().distinct().collect(Collectors.toList());
+    }
+
+    private void saveVersionsCache(List<Version> versions) {
+        try {
+            File cacheFile = new File(InstanceManager.getInstance().resolvePath(VERSIONS_LIST_CACHE_FILE));
+            File parent = cacheFile.getParentFile();
+            if (parent != null && !parent.exists()) {
+                parent.mkdirs();
+            }
+            try (Writer writer = new FileWriter(cacheFile)) {
+                Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                gson.toJson(versions, writer);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private List<Version> loadVersionsCache() {
+        File cacheFile = new File(InstanceManager.getInstance().resolvePath(VERSIONS_LIST_CACHE_FILE));
+        if (cacheFile.exists()) {
+            try (FileReader reader = new FileReader(cacheFile)) {
+                Gson gson = new Gson();
+                Type listType = new TypeToken<List<Version>>(){}.getType();
+                List<Version> cachedVersions = gson.fromJson(reader, listType);
+                if (cachedVersions != null) {
+                    return cachedVersions;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        return Collections.emptyList();
     }
 
     private List<Version> loadCustomVersions() {
@@ -132,6 +182,12 @@ public class VersionManager {
             updateInstalledVersions();
         }
         return installedVersions.contains(version.getName());
+    }
+
+    public boolean isApkCached(Version version) {
+        File versionsCacheDir = new File(InstanceManager.getInstance().resolvePath(VERSIONS_CACHE_DIR));
+        File apkFile = new File(versionsCacheDir, version.getName() + ".apk");
+        return apkFile.exists() && apkFile.length() > 0;
     }
 
     public File downloadVersion(Version version, ProgressCallback callback) throws IOException {

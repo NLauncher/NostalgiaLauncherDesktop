@@ -87,7 +87,7 @@
   "checkbox.useDefaultExecutable": "使用默认可执行文件",
   "info.customExecutable": "添加您的可执行文件以启动版本。",
   "checkbox.enableDebugging": "启用调试",
-  "label.postLaunchAction": "启动后操作：",
+  "label.postLaunchAction": "版本启动后的操作：",
   "combo.postLaunch.doNothing": "无操作",
   "combo.postLaunch.minimize": "最小化启动器",
   "combo.postLaunch.close": "关闭启动器",

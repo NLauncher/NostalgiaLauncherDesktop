@@ -87,7 +87,7 @@
   "checkbox.useDefaultExecutable": "Usar executável padrão",
   "info.customExecutable": "Adicione seu executável para iniciar versões.",
   "checkbox.enableDebugging": "Habilitar depuração",
-  "label.postLaunchAction": "Ação após iniciar:",
+  "label.postLaunchAction": "Ação após iniciar a versão:",
   "combo.postLaunch.doNothing": "Não fazer nada",
   "combo.postLaunch.minimize": "Minimizar o Launcher",
   "combo.postLaunch.close": "Fechar o Launcher",

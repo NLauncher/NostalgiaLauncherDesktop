@@ -3,18 +3,20 @@ package net.eqozqq.nostalgialauncherdesktop;
 import com.formdev.flatlaf.FlatClientProperties;
 import javax.swing.*;
 import java.awt.*;
-import java.io.BufferedReader;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.File;
-import java.io.InputStreamReader;
+import java.io.InputStream;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
-import java.net.HttpURLConnection;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.HashMap;
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseAdapter;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.net.HttpURLConnection;
 
 public class SettingsDialog extends JDialog {
     private JTextField backgroundPathField;
@@ -68,7 +70,11 @@ public class SettingsDialog extends JDialog {
     public SettingsDialog(JFrame parent, String currentBackgroundPath, String currentVersionsSource, boolean useDefaultVs, String currentCustomLauncherPath, boolean useDefaultLauncher, String currentPostLaunchAction, boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion, String backgroundMode, Color customBackgroundColor, LocaleManager localeManager) {
         super(parent, localeManager.get("dialog.settings.title"), true);
         this.localeManager = localeManager;
-        setPreferredSize(new Dimension(600, 550));
+        
+        setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+        setResizable(false);
+        setSize(600, 550);
+        setLocationRelativeTo(parent);
         setLayout(new BorderLayout(10, 10));
 
         this.customBackgroundPath = currentBackgroundPath;
@@ -87,6 +93,7 @@ public class SettingsDialog extends JDialog {
 
         languageMap.put("English", "en");
         languageMap.put("Русский", "ru");
+        languageMap.put("Беларуская", "be");
         languageMap.put("Українська", "uk");
         languageMap.put("Português", "pt");
         languageMap.put("简体中文", "zh_CN");
@@ -107,64 +114,7 @@ public class SettingsDialog extends JDialog {
         JPanel buttonPanel = new JPanel();
         saveButton = new JButton(localeManager.get("button.save"));
         saveButton.addActionListener(e -> {
-            this.useDefaultVersionsSource = useDefaultSourceCheckbox.isSelected();
-            this.customVersionsSource = this.useDefaultVersionsSource ? null : versionsSourceField.getText();
-            
-            this.useDefaultLauncher = useDefaultLauncherCheckbox.isSelected();
-            this.customLauncherPath = this.useDefaultLauncher ? null : customLauncherField.getText();
-            
-            this.enableDebugging = enableDebuggingCheckbox.isSelected();
-
-            if (defaultBgRadio.isSelected()) {
-                this.backgroundMode = "Default";
-            } else if (customImageRadio.isSelected()) {
-                this.backgroundMode = "Custom Image";
-                this.customBackgroundPath = backgroundPathField.getText();
-            } else if (customColorRadio.isSelected()) {
-                this.backgroundMode = "Custom Color";
-                this.customBackgroundColor = colorPreviewPanel.getBackground();
-            }
-            
-            String selectedPostActionDisplay = (String) postLaunchActionComboBox.getSelectedItem();
-            this.postLaunchAction = postActionMap.entrySet().stream()
-                .filter(entry -> entry.getValue().equals(selectedPostActionDisplay))
-                .map(Map.Entry::getKey)
-                .findFirst().orElse("Do Nothing");
-
-            String selectedThemeDisplay = (String) themeComboBox.getSelectedItem();
-            this.themeName = themeMap.entrySet().stream()
-                .filter(entry -> entry.getValue().equals(selectedThemeDisplay))
-                .map(Map.Entry::getKey)
-                .findFirst().orElse("Dark");
-
-            this.scaleFactor = (double) scaleSlider.getValue() / 100.0;
-            this.language = languageMap.get((String)languageComboBox.getSelectedItem());
-
-            if (!useDefaultVersionsSource) {
-                if (urlRadioButton.isSelected()) {
-                    try {
-                        new URL(versionsSourceField.getText());
-                    } catch (MalformedURLException ex) {
-                        JOptionPane.showMessageDialog(this, localeManager.get("error.invalidUrl"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
-                        return;
-                    }
-                } else if (fileRadioButton.isSelected()) {
-                    File file = new File(versionsSourceField.getText());
-                    if (!file.exists() || !file.isFile()) {
-                        JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
-                        return;
-                    }
-                }
-            }
-
-            if (!useDefaultLauncher) {
-                File file = new File(customLauncherField.getText());
-                if (!file.exists() || !file.isFile()) {
-                        JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
-                        return;
-                }
-            }
-            
+            handleSave();
             saved = true;
             dispose();
         });
@@ -172,22 +122,85 @@ public class SettingsDialog extends JDialog {
         
         add(tabbedPane, BorderLayout.CENTER);
         add(buttonPanel, BorderLayout.SOUTH);
-        pack();
-        setLocationRelativeTo(parent);
 
         tabbedPane.addChangeListener(e -> {
             if (tabbedPane.getTitleAt(tabbedPane.getSelectedIndex()).equals(localeManager.get("tab.about"))) {
-                buttonPanel.remove(saveButton);
-                buttonPanel.revalidate();
-                buttonPanel.repaint();
+                buttonPanel.setVisible(false);
             } else {
-                if (!java.util.Arrays.asList(buttonPanel.getComponents()).contains(saveButton)) {
-                    buttonPanel.add(saveButton);
-                    buttonPanel.revalidate();
-                    buttonPanel.repaint();
-                }
+                buttonPanel.setVisible(true);
             }
         });
+    }
+    
+    private void handleSave() {
+        this.useDefaultVersionsSource = useDefaultSourceCheckbox.isSelected();
+        this.customVersionsSource = this.useDefaultVersionsSource ? null : versionsSourceField.getText();
+        
+        this.useDefaultLauncher = useDefaultLauncherCheckbox.isSelected();
+        this.customLauncherPath = this.useDefaultLauncher ? null : customLauncherField.getText();
+        
+        this.enableDebugging = enableDebuggingCheckbox.isSelected();
+
+        if (defaultBgRadio.isSelected()) {
+            this.backgroundMode = "Default";
+        } else if (customImageRadio.isSelected()) {
+            this.backgroundMode = "Custom Image";
+            this.customBackgroundPath = backgroundPathField.getText();
+        } else if (customColorRadio.isSelected()) {
+            this.backgroundMode = "Custom Color";
+            this.customBackgroundColor = colorPreviewPanel.getBackground();
+        }
+        
+        String selectedPostActionDisplay = (String) postLaunchActionComboBox.getSelectedItem();
+        this.postLaunchAction = postActionMap.entrySet().stream()
+            .filter(entry -> entry.getValue().equals(selectedPostActionDisplay))
+            .map(Map.Entry::getKey)
+            .findFirst().orElse("Do Nothing");
+
+        String selectedThemeDisplay = (String) themeComboBox.getSelectedItem();
+        this.themeName = themeMap.entrySet().stream()
+            .filter(entry -> entry.getValue().equals(selectedThemeDisplay))
+            .map(Map.Entry::getKey)
+            .findFirst().orElse("Dark");
+
+        this.scaleFactor = (double) scaleSlider.getValue() / 100.0;
+        this.language = languageMap.get((String)languageComboBox.getSelectedItem());
+
+        if (!useDefaultVersionsSource) {
+            if (urlRadioButton.isSelected()) {
+                try {
+                    new URL(versionsSourceField.getText());
+                } catch (MalformedURLException ex) {
+                    JOptionPane.showMessageDialog(this, localeManager.get("error.invalidUrl"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            } else if (fileRadioButton.isSelected()) {
+                File file = new File(versionsSourceField.getText());
+                if (!file.exists() || !file.isFile()) {
+                    JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+            }
+        }
+
+        if (!useDefaultLauncher) {
+            File file = new File(customLauncherField.getText());
+            if (!file.exists() || !file.isFile()) {
+                    JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                    return;
+            }
+        }
+    }
+
+    private Font getFont(int style, float size) {
+        try (InputStream fontStream = getClass().getResourceAsStream("/MPLUS1p-Regular.ttf")) {
+            if (fontStream != null) {
+                return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return new Font("SansSerif", style, (int) size);
     }
     
     private JPanel createGamePanel() {
@@ -599,14 +612,14 @@ public class SettingsDialog extends JDialog {
         int gridY = 0;
 
         JLabel headline1 = new JLabel(localeManager.get("about.headline1"));
-        headline1.setFont(new Font("SansSerif", Font.BOLD, 24));
+        headline1.setFont(getFont(Font.BOLD, 32f));
         gbc.gridx = 0;
         gbc.gridy = gridY++;
         gbc.gridwidth = 3;
         contentPanel.add(headline1, gbc);
 
         JLabel headline2 = new JLabel(localeManager.get("about.headline2"));
-        headline2.setFont(new Font("SansSerif", Font.PLAIN, 16));
+        headline2.setFont(getFont(Font.PLAIN, 18f));
         gbc.gridy = gridY++;
         contentPanel.add(headline2, gbc);
 
@@ -618,7 +631,7 @@ public class SettingsDialog extends JDialog {
         gbc.insets = new Insets(5, 5, 5, 5); 
 
         JLabel headline3 = new JLabel(localeManager.get("about.headline3"));
-        headline3.setFont(new Font("SansSerif", Font.BOLD, 16));
+        headline3.setFont(getFont(Font.BOLD, 18f));
         gbc.gridy = gridY++;
         contentPanel.add(headline3, gbc);
         
@@ -638,6 +651,11 @@ public class SettingsDialog extends JDialog {
         gbc.gridy = gridY++;
         contentPanel.add(link4, gbc);
 
+        JLabel translationCredit = new JLabel("Belarusian translation: Djabał Pažyralnik Kaleniaŭ");
+        translationCredit.setFont(getFont(Font.PLAIN, 14f));
+        gbc.gridy = gridY++;
+        contentPanel.add(translationCredit, gbc);
+
         gbc.gridy = gridY++;
         gbc.gridx = 0;
         gbc.gridwidth = 3;
@@ -652,11 +670,11 @@ public class SettingsDialog extends JDialog {
         JPanel versionPanel = new JPanel();
         versionPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 20, 0));
         JLabel versionLabel = new JLabel(localeManager.get("about.currentVersion", currentVersion));
-        versionLabel.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        versionLabel.setFont(getFont(Font.PLAIN, 12f));
         versionPanel.add(versionLabel);
 
         JLabel updateStatusLabel = new JLabel(localeManager.get("about.update.checking"));
-        updateStatusLabel.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        updateStatusLabel.setFont(getFont(Font.PLAIN, 12f));
         versionPanel.add(updateStatusLabel);
 
         SwingWorker<String, Void> worker = new SwingWorker<String, Void>() {
@@ -684,6 +702,7 @@ public class SettingsDialog extends JDialog {
                     } else {
                         String linkText = localeManager.get("about.update.available");
                         JLabel updateLink = new JLabel("<html><a href='https://nlauncher.github.io/releases.html#desktop'>" + linkText + "</a></html>");
+                        updateLink.setFont(getFont(Font.PLAIN, 12f));
                         updateLink.setCursor(new Cursor(Cursor.HAND_CURSOR));
                         updateLink.addMouseListener(new MouseAdapter() {
                             public void mouseClicked(MouseEvent e) {
@@ -715,7 +734,7 @@ public class SettingsDialog extends JDialog {
     
     private JLabel createInfoLabel(String text, String linkText, String url) {
         JLabel label = new JLabel("<html><span style='color:gray;'>" + text + "</span><a href='" + url + "'><span style='font-weight:bold;'>" + linkText + "</span></a></html>");
-        label.setFont(new Font("SansSerif", Font.PLAIN, 10));
+        label.setFont(getFont(Font.PLAIN, 10f));
         label.setForeground(Color.GRAY);
         label.setCursor(new Cursor(Cursor.HAND_CURSOR));
         label.addMouseListener(new MouseAdapter() {
@@ -732,7 +751,7 @@ public class SettingsDialog extends JDialog {
 
     private JLabel createHyperlink(String url) {
         JLabel label = new JLabel("<html><a href='" + url + "'>" + url + "</a></html>");
-        label.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        label.setFont(getFont(Font.PLAIN, 14f));
         label.setCursor(new Cursor(Cursor.HAND_CURSOR));
         label.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {

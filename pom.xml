@@ -7,11 +7,11 @@
 
     <groupId>net.eqozqq</groupId>
     <artifactId>NostalgiaLauncherDesktop</artifactId>
-    <version>1.3.0</version>
+    <version>1.4.0</version>
     <packaging>jar</packaging>
 
     <name>NostalgiaLauncherDesktop</name>
-    <description>Launcher for Minecraft Pocket Edition Alpha versions for Windows</description>
+    <description>Minecraft Pocket Edition Alpha Launcher</description>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>

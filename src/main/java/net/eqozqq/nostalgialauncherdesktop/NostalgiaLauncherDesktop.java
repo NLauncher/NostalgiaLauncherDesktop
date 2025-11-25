@@ -12,6 +12,7 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
 import java.awt.image.BufferedImage;
 import java.awt.image.ConvolveOp;
 import java.awt.image.Kernel;
@@ -52,6 +53,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private GameLauncher gameLauncher;
     private Properties settings;
     private LocaleManager localeManager;
+    private LoadingOverlay loadingOverlay;
 
     private String customBackgroundPath;
     private String customVersionsSource;
@@ -64,7 +66,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private double scaleFactor;
     private String themeName;
     private String backgroundMode;
-    private static final String CURRENT_VERSION = "1.3.0";
+    private static final String CURRENT_VERSION = "1.4.0";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
@@ -83,10 +85,15 @@ public class NostalgiaLauncherDesktop extends JFrame {
         InstanceManager.getInstance().init(settings);
         applyTheme();
         loadBackground();
+        
+        loadingOverlay = new LoadingOverlay();
+        
         initializeUI();
         loadVersions();
         loadNickname();
         setIcon();
+        
+        setGlassPane(loadingOverlay);
     }
 
     private void setIcon() {
@@ -412,14 +419,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             String newLanguage = dialog.getLanguage();
             String newThemeName = dialog.getThemeName();
 
-            JDialog applyingDialog = new JDialog(this, localeManager.get("dialog.applyingSettings.title"), true);
-            JPanel p = new JPanel(new BorderLayout(10, 10));
-            p.setBorder(new EmptyBorder(15, 20, 15, 20));
-            JLabel lbl = new JLabel(localeManager.get("dialog.applyingSettings.title"), SwingConstants.CENTER);
-            p.add(lbl, BorderLayout.CENTER);
-            applyingDialog.setContentPane(p);
-            applyingDialog.pack();
-            applyingDialog.setLocationRelativeTo(this);
+            loadingOverlay.start();
 
             SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
                 @Override
@@ -445,12 +445,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 }
                 @Override
                 protected void done() {
-                    applyingDialog.dispose();
+                    loadingOverlay.stop();
                 }
             };
 
             worker.execute();
-            applyingDialog.setVisible(true);
         }
     }
 
@@ -899,10 +898,20 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 }
 
                 if (useDefaultLauncher) {
-                    downloadLauncherComponents(progress -> {
-                        int progressValue = (int)(progress * 15);
-                        publish(progressValue);
-                    });
+                    try {
+                        downloadLauncherComponents(progress -> {
+                            int progressValue = (int)(progress * 15);
+                            publish(progressValue);
+                        });
+                    } catch (IOException e) {
+                        String osName = System.getProperty("os.name").toLowerCase();
+                        boolean isWindows = osName.contains("win");
+                        String executableName = isWindows ? "ninecraft.exe" : "ninecraft";
+                        File executable = new File(gameDir, executableName);
+                        if (!executable.exists()) {
+                             throw e;
+                        }
+                    }
                 }
 
                 statusLabel.setText(localeManager.get("status.checkingInstallation"));
@@ -1086,5 +1095,54 @@ public class NostalgiaLauncherDesktop extends JFrame {
             NostalgiaLauncherDesktop launcher = new NostalgiaLauncherDesktop();
             launcher.setVisible(true);
         });
+    }
+
+    private class LoadingOverlay extends JComponent implements ActionListener {
+        private final Timer timer;
+        private int angle = 0;
+        private boolean visible = false;
+
+        public LoadingOverlay() {
+            timer = new Timer(40, this);
+            setOpaque(false);
+            addMouseListener(new MouseAdapter() {});
+            addMouseMotionListener(new MouseAdapter() {});
+        }
+
+        public void start() {
+            visible = true;
+            setVisible(true);
+            timer.start();
+        }
+
+        public void stop() {
+            visible = false;
+            timer.stop();
+            setVisible(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            if (!visible) return;
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            
+            g2.setColor(new Color(0, 0, 0, 128));
+            g2.fillRect(0, 0, getWidth(), getHeight());
+
+            int size = 50;
+            int x = (getWidth() - size) / 2;
+            int y = (getHeight() - size) / 2;
+
+            g2.setColor(Color.WHITE);
+            g2.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.drawArc(x, y, size, size, angle, 270);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            angle = (angle + 10) % 360;
+            repaint();
+        }
     }
 }

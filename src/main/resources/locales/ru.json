@@ -14,7 +14,7 @@
 
   "launcher.title": "NostalgiaLauncher Desktop",
   "launcher.logo": "NLauncher Desktop",
-  "launcher.subtitle": "Лаунчер для Minecraft Pocket Edition Alpha",
+  "launcher.subtitle": "Minecraft Pocket Edition Alpha лаунчер",
   "placeholder.nickname": "Никнейм",
   "default.nickname": "Steve",
   "button.launch": "Запустить",
@@ -87,7 +87,7 @@
   "checkbox.useDefaultExecutable": "Использовать исполняемый файл по умолчанию",
   "info.customExecutable": "Добавьте свой исполняемый файл для запуска версий.",
   "checkbox.enableDebugging": "Включить отладку",
-  "label.postLaunchAction": "Действие после запуска:",
+  "label.postLaunchAction": "Действие после запуска версии:",
   "combo.postLaunch.doNothing": "Ничего не делать",
   "combo.postLaunch.minimize": "Свернуть лаунчер",
   "combo.postLaunch.close": "Закрыть лаунчер",

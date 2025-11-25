@@ -87,7 +87,7 @@
   "checkbox.useDefaultExecutable": "Use default executable",
   "info.customExecutable": "Add your executable for launching versions.",
   "checkbox.enableDebugging": "Enable debugging",
-  "label.postLaunchAction": "Action after launch:",
+  "label.postLaunchAction": "Action after launch version:",
   "combo.postLaunch.doNothing": "Do Nothing",
   "combo.postLaunch.minimize": "Minimize Launcher",
   "combo.postLaunch.close": "Close Launcher",
