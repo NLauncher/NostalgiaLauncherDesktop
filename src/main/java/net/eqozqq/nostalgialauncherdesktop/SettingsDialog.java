@@ -5,25 +5,30 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
-import java.net.URL;
 import java.net.URI;
+import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.awt.event.MouseEvent;
 import java.awt.event.MouseAdapter;
-import java.io.InputStreamReader;
-import java.io.BufferedReader;
-import java.net.HttpURLConnection;
+import java.awt.event.MouseEvent;
 
 public class SettingsDialog extends JDialog {
     private JTextField backgroundPathField;
     private JTextField versionsSourceField;
     private JCheckBox useDefaultSourceCheckbox;
+    
+    private JRadioButton compiledExeRadio;
+    private JRadioButton serverExeRadio;
+    private JRadioButton customExeRadio;
     private JTextField customLauncherField;
-    private JCheckBox useDefaultLauncherCheckbox;
+    private JButton browseLauncherButton;
+    
     private JComboBox<String> postLaunchActionComboBox;
     private JCheckBox enableDebuggingCheckbox;
     private JSlider scaleSlider;
@@ -31,7 +36,6 @@ public class SettingsDialog extends JDialog {
     private JButton saveButton;
     private JButton browseBackgroundButton;
     private JButton browseVersionsButton;
-    private JButton browseLauncherButton;
     private JRadioButton urlRadioButton;
     private JRadioButton fileRadioButton;
     private JComboBox<String> themeComboBox;
@@ -48,8 +52,11 @@ public class SettingsDialog extends JDialog {
     private String customBackgroundPath;
     private String customVersionsSource;
     private boolean useDefaultVersionsSource;
+    
+    private String executableSource; 
     private String customLauncherPath;
-    private boolean useDefaultLauncher;
+    private boolean useDefaultLauncher; 
+    
     private String postLaunchAction;
     private boolean enableDebugging;
     private double scaleFactor;
@@ -60,6 +67,7 @@ public class SettingsDialog extends JDialog {
     private String language;
     private boolean saved = false;
     private LocaleManager localeManager;
+    private LoadingOverlay loadingOverlay;
 
     private final Map<String, String> languageMap = new LinkedHashMap<>();
     private final Map<String, String> postActionMap = new LinkedHashMap<>();
@@ -67,21 +75,24 @@ public class SettingsDialog extends JDialog {
 
     private static final String LAST_VERSION = "https://raw.githubusercontent.com/NLauncher/components/refs/heads/main/lastversion.txt";
 
-    public SettingsDialog(JFrame parent, String currentBackgroundPath, String currentVersionsSource, boolean useDefaultVs, String currentCustomLauncherPath, boolean useDefaultLauncher, String currentPostLaunchAction, boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion, String backgroundMode, Color customBackgroundColor, LocaleManager localeManager) {
+    public SettingsDialog(JFrame parent, String currentBackgroundPath, String currentVersionsSource, boolean useDefaultVs, String currentExecutableSource, String currentCustomLauncherPath, String currentPostLaunchAction, boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion, String backgroundMode, Color customBackgroundColor, LocaleManager localeManager) {
         super(parent, localeManager.get("dialog.settings.title"), true);
         this.localeManager = localeManager;
         
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setResizable(false);
-        setSize(600, 550);
+        setSize(600, 600);
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout(10, 10));
 
         this.customBackgroundPath = currentBackgroundPath;
         this.customVersionsSource = currentVersionsSource;
         this.useDefaultVersionsSource = useDefaultVs;
+        
+        this.executableSource = currentExecutableSource;
         this.customLauncherPath = currentCustomLauncherPath;
-        this.useDefaultLauncher = useDefaultLauncher;
+        this.useDefaultLauncher = !"CUSTOM".equals(currentExecutableSource);
+        
         this.postLaunchAction = currentPostLaunchAction;
         this.enableDebugging = currentEnableDebugging;
         this.scaleFactor = currentScaleFactor;
@@ -90,6 +101,9 @@ public class SettingsDialog extends JDialog {
         this.backgroundMode = backgroundMode;
         this.customBackgroundColor = customBackgroundColor;
         this.language = localeManager.getCurrentLanguage();
+        
+        loadingOverlay = new LoadingOverlay();
+        setGlassPane(loadingOverlay);
 
         languageMap.put("English", "en");
         languageMap.put("Русский", "ru");
@@ -136,8 +150,18 @@ public class SettingsDialog extends JDialog {
         this.useDefaultVersionsSource = useDefaultSourceCheckbox.isSelected();
         this.customVersionsSource = this.useDefaultVersionsSource ? null : versionsSourceField.getText();
         
-        this.useDefaultLauncher = useDefaultLauncherCheckbox.isSelected();
-        this.customLauncherPath = this.useDefaultLauncher ? null : customLauncherField.getText();
+        if (compiledExeRadio.isSelected()) {
+            this.executableSource = "COMPILED";
+            this.useDefaultLauncher = true;
+        } else if (serverExeRadio.isSelected()) {
+            this.executableSource = "SERVER";
+            this.useDefaultLauncher = true;
+        } else {
+            this.executableSource = "CUSTOM";
+            this.useDefaultLauncher = false;
+        }
+        
+        this.customLauncherPath = customLauncherField.getText();
         
         this.enableDebugging = enableDebuggingCheckbox.isSelected();
 
@@ -183,7 +207,7 @@ public class SettingsDialog extends JDialog {
             }
         }
 
-        if (!useDefaultLauncher) {
+        if ("CUSTOM".equals(this.executableSource)) {
             File file = new File(customLauncherField.getText());
             if (!file.exists() || !file.isFile()) {
                     JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
@@ -304,25 +328,63 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(versionsInfoLabel, gbc);
 
         gridY++;
-        JLabel customLauncherLabel = new JLabel(localeManager.get("label.customExecutable"));
         gbc.gridx = 0;
         gbc.gridy = gridY;
-        gbc.gridwidth = 1;
-        gbc.weighty = 0.0;
-        contentPanel.add(customLauncherLabel, gbc);
+        gbc.gridwidth = 3;
+        gbc.insets = new Insets(15, 5, 5, 5);
+        contentPanel.add(new JSeparator(), gbc);
+        gbc.insets = new Insets(5, 5, 5, 5);
 
-        customLauncherField = new JTextField(20);
-        customLauncherField.setText(useDefaultLauncher ? "" : customLauncherPath);
-        customLauncherField.setEnabled(!useDefaultLauncher);
-        gbc.gridx = 1;
+        gridY++;
+        JLabel exeLabel = new JLabel(localeManager.get("label.executableSource")); 
+        gbc.gridx = 0;
         gbc.gridy = gridY;
-        gbc.gridwidth = 1;
-        gbc.weightx = 1.0;
+        gbc.gridwidth = 3;
         gbc.weighty = 0.0;
+        contentPanel.add(exeLabel, gbc);
+
+        gridY++;
+        ButtonGroup exeGroup = new ButtonGroup();
+        compiledExeRadio = new JRadioButton(localeManager.get("radio.executable.compiled"));
+        serverExeRadio = new JRadioButton(localeManager.get("radio.executable.server"));
+        customExeRadio = new JRadioButton(localeManager.get("radio.executable.custom"));
+        exeGroup.add(compiledExeRadio);
+        exeGroup.add(serverExeRadio);
+        exeGroup.add(customExeRadio);
+
+        if ("COMPILED".equals(executableSource)) {
+            compiledExeRadio.setSelected(true);
+        } else if ("SERVER".equals(executableSource)) {
+            serverExeRadio.setSelected(true);
+        } else {
+            customExeRadio.setSelected(true);
+        }
+
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 3;
+        contentPanel.add(compiledExeRadio, gbc);
+        
+        gridY++;
+        gbc.gridy = gridY;
+        contentPanel.add(serverExeRadio, gbc);
+        
+        gridY++;
+        gbc.gridy = gridY;
+        contentPanel.add(customExeRadio, gbc);
+
+        gridY++;
+        customLauncherField = new JTextField(20);
+        customLauncherField.setText(customLauncherPath);
+        customLauncherField.setEnabled(customExeRadio.isSelected());
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 2;
+        gbc.weightx = 1.0;
         contentPanel.add(customLauncherField, gbc);
 
         browseLauncherButton = new JButton(localeManager.get("button.browse"));
-        browseLauncherButton.setEnabled(!useDefaultLauncher);
+        browseLauncherButton.setEnabled(customExeRadio.isSelected());
         browseLauncherButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
@@ -335,29 +397,17 @@ public class SettingsDialog extends JDialog {
         gbc.gridx = 2;
         gbc.gridy = gridY;
         gbc.weightx = 0.0;
+        gbc.gridwidth = 1;
         contentPanel.add(browseLauncherButton, gbc);
-        
-        gridY++;
-        useDefaultLauncherCheckbox = new JCheckBox(localeManager.get("checkbox.useDefaultExecutable"));
-        useDefaultLauncherCheckbox.setSelected(useDefaultLauncher);
-        useDefaultLauncherCheckbox.addActionListener(e -> {
-            customLauncherField.setEnabled(!useDefaultLauncherCheckbox.isSelected());
-            browseLauncherButton.setEnabled(!useDefaultLauncherCheckbox.isSelected());
-        });
-        gbc.gridx = 1;
-        gbc.gridy = gridY;
-        gbc.gridwidth = 2;
-        gbc.weighty = 0.0;
-        contentPanel.add(useDefaultLauncherCheckbox, gbc);
 
-        gridY++;
-        JLabel launcherInfoLabel = createInfoLabel(localeManager.get("info.customExecutable"), localeManager.get("link.learnMore"), "https://nlauncher.github.io/docs/custom-executable-for-versions.html");
-        gbc.gridx = 1;
-        gbc.gridy = gridY;
-        gbc.gridwidth = 2;
-        gbc.weightx = 1.0;
-        gbc.weighty = 0.0;
-        contentPanel.add(launcherInfoLabel, gbc);
+        ActionListener exeRadioListener = e -> {
+            boolean isCustom = customExeRadio.isSelected();
+            customLauncherField.setEnabled(isCustom);
+            browseLauncherButton.setEnabled(isCustom);
+        };
+        compiledExeRadio.addActionListener(exeRadioListener);
+        serverExeRadio.addActionListener(exeRadioListener);
+        customExeRadio.addActionListener(exeRadioListener);
 
         gridY++;
         gbc.gridx = 0;
@@ -396,7 +446,7 @@ public class SettingsDialog extends JDialog {
         imageOptionsPanel.setVisible(customImageRadio.isSelected());
         colorOptionsPanel.setVisible(customColorRadio.isSelected());
     }
-
+    
     private JPanel createLauncherPanel() {
         JPanel mainPanel = new JPanel(new BorderLayout());
         JPanel contentPanel = new JPanel(new GridBagLayout());
@@ -410,6 +460,7 @@ public class SettingsDialog extends JDialog {
         gbc.gridx = 0;
         gbc.gridy = gridY;
         gbc.gridwidth = 1;
+        gbc.weightx = 0.0;
         gbc.weighty = 0.0;
         contentPanel.add(postLaunchActionLabel, gbc);
 
@@ -778,4 +829,54 @@ public class SettingsDialog extends JDialog {
     public String getBackgroundMode() { return backgroundMode; }
     public Color getCustomBackgroundColor() { return customBackgroundColor; }
     public String getLanguage() { return language; }
+    public String getExecutableSource() { return executableSource; }
+
+    private class LoadingOverlay extends JComponent implements ActionListener {
+        private final Timer timer;
+        private int angle = 0;
+        private boolean visible = false;
+
+        public LoadingOverlay() {
+            timer = new Timer(40, this);
+            setOpaque(false);
+            addMouseListener(new MouseAdapter() {});
+            addMouseMotionListener(new MouseAdapter() {});
+        }
+
+        public void start() {
+            visible = true;
+            setVisible(true);
+            timer.start();
+        }
+
+        public void stop() {
+            visible = false;
+            timer.stop();
+            setVisible(false);
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            if (!visible) return;
+            Graphics2D g2 = (Graphics2D) g;
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            
+            g2.setColor(new Color(0, 0, 0, 128));
+            g2.fillRect(0, 0, getWidth(), getHeight());
+
+            int size = 50;
+            int x = (getWidth() - size) / 2;
+            int y = (getHeight() - size) / 2;
+
+            g2.setColor(Color.WHITE);
+            g2.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.drawArc(x, y, size, size, angle, 270);
+        }
+
+        @Override
+        public void actionPerformed(ActionEvent e) {
+            angle = (angle + 10) % 360;
+            repaint();
+        }
+    }
 }

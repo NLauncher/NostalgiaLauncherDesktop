@@ -58,21 +58,23 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private String customBackgroundPath;
     private String customVersionsSource;
     private boolean useDefaultVersionsSource;
+    
+    private String executableSource;
     private String customLauncherPath;
     private boolean useDefaultLauncher;
+    
     private String postLaunchAction;
     private boolean enableDebugging;
     private String lastPlayedVersionName;
     private double scaleFactor;
     private String themeName;
     private String backgroundMode;
-    private static final String CURRENT_VERSION = "1.4.0";
+    private static final String CURRENT_VERSION = "1.5.0";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
     private static final String DEFAULT_LAUNCHER_URL_WINDOWS = "https://github.com/NLauncher/components/raw/main/ninecraft-windows.zip";
     private static final String DEFAULT_LAUNCHER_URL_LINUX = "https://github.com/NLauncher/components/raw/main/ninecraft-linux.zip";
-
 
     public NostalgiaLauncherDesktop() {
         versionManager = new VersionManager();
@@ -232,8 +234,24 @@ public class NostalgiaLauncherDesktop extends JFrame {
             }
             customVersionsSource = settings.getProperty("customVersionsSource");
             useDefaultVersionsSource = Boolean.parseBoolean(settings.getProperty("useDefaultVersionsSource", "true"));
+            
+            executableSource = settings.getProperty("executableSource");
+            if (executableSource == null) {
+                if (SystemInfo.isLinux) {
+                    executableSource = "COMPILED";
+                } else {
+                    executableSource = "SERVER";
+                }
+            }
+            
             customLauncherPath = settings.getProperty("customLauncherPath");
-            useDefaultLauncher = Boolean.parseBoolean(settings.getProperty("useDefaultLauncher", "true"));
+            if (settings.containsKey("useDefaultLauncher")) {
+                boolean useDefault = Boolean.parseBoolean(settings.getProperty("useDefaultLauncher"));
+                if (!useDefault && customLauncherPath != null && !customLauncherPath.isEmpty()) {
+                    executableSource = "CUSTOM";
+                }
+            }
+            
             postLaunchAction = settings.getProperty("postLaunchAction", "Do Nothing");
             enableDebugging = Boolean.parseBoolean(settings.getProperty("enableDebugging", "false"));
             lastPlayedVersionName = settings.getProperty("lastPlayedVersionName");
@@ -242,7 +260,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         } catch (IOException | NumberFormatException e) {
             backgroundMode = "Default";
             useDefaultVersionsSource = true;
-            useDefaultLauncher = true;
+            executableSource = SystemInfo.isLinux ? "COMPILED" : "SERVER";
             postLaunchAction = "Do Nothing";
             enableDebugging = false;
             scaleFactor = 1.0;
@@ -268,10 +286,13 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 settings.setProperty("customVersionsSource", customVersionsSource);
             }
             settings.setProperty("useDefaultVersionsSource", String.valueOf(useDefaultVersionsSource));
+            
+            settings.setProperty("executableSource", executableSource);
+            
             if (customLauncherPath != null) {
                 settings.setProperty("customLauncherPath", customLauncherPath);
             }
-            settings.setProperty("useDefaultLauncher", String.valueOf(useDefaultLauncher));
+            
             settings.setProperty("postLaunchAction", postLaunchAction);
             settings.setProperty("enableDebugging", String.valueOf(enableDebugging));
             if (lastPlayedVersionName != null) {
@@ -401,15 +422,15 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private void showSettingsDialog() {
         final boolean wasMaximized = (getExtendedState() & JFrame.MAXIMIZED_BOTH) != 0;
         SettingsDialog dialog = new SettingsDialog(this,
-            customBackgroundPath, customVersionsSource, useDefaultVersionsSource,
-            customLauncherPath, useDefaultLauncher, postLaunchAction, enableDebugging, scaleFactor, themeName, CURRENT_VERSION, backgroundMode, customBackgroundColor, localeManager);
+            customBackgroundPath, customVersionsSource, useDefaultVersionsSource, executableSource,
+            customLauncherPath, postLaunchAction, enableDebugging, scaleFactor, themeName, CURRENT_VERSION, backgroundMode, customBackgroundColor, localeManager);
         dialog.setVisible(true);
         if (dialog.isSaved()) {
             customBackgroundPath = dialog.getCustomBackgroundPath();
             customVersionsSource = dialog.getCustomVersionsSource();
             useDefaultVersionsSource = dialog.isUseDefaultVersionsSource();
+            executableSource = dialog.getExecutableSource();
             customLauncherPath = dialog.getCustomLauncherPath();
-            useDefaultLauncher = dialog.isUseDefaultLauncher();
             postLaunchAction = dialog.getPostLaunchAction();
             enableDebugging = dialog.isEnableDebugging();
             scaleFactor = dialog.getScaleFactor();
@@ -897,20 +918,49 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     gameDir.mkdirs();
                 }
 
-                if (useDefaultLauncher) {
-                    try {
-                        downloadLauncherComponents(progress -> {
-                            int progressValue = (int)(progress * 15);
-                            publish(progressValue);
+                if ("COMPILED".equals(executableSource)) {
+                    String arch = System.getProperty("os.arch").toLowerCase();
+                    String buildFolder = (arch.contains("arm") || arch.contains("aarch64")) ? "build-arm" : "build-i686";
+                    File sourceDir = new File(gameDir, "Ninecraft_source");
+                    File buildDir = new File(sourceDir, buildFolder);
+                    File binDir = new File(buildDir, "ninecraft");
+                    File executable = new File(binDir, "ninecraft");
+
+                    if (!executable.exists()) {
+                        boolean[] success = {false};
+                        SwingUtilities.invokeAndWait(() -> {
+                            NinecraftCompilationDialog dialog = new NinecraftCompilationDialog(NostalgiaLauncherDesktop.this, localeManager);
+                            
+                            new Thread(() -> {
+                                boolean result = NinecraftCompiler.compile(gameDir, dialog, localeManager);
+                                dialog.compilationFinished(result);
+                                success[0] = result;
+                            }).start();
+                            
+                            dialog.setVisible(true); 
                         });
-                    } catch (IOException e) {
-                        String osName = System.getProperty("os.name").toLowerCase();
-                        boolean isWindows = osName.contains("win");
-                        String executableName = isWindows ? "ninecraft.exe" : "ninecraft";
-                        File executable = new File(gameDir, executableName);
-                        if (!executable.exists()) {
-                             throw e;
+                        
+                        if (!success[0]) {
+                            throw new IOException(localeManager.get("error.compilationFailedLog"));
                         }
+                        
+                        File legacyExe = new File(gameDir, "ninecraft");
+                        if (!executable.exists() && legacyExe.exists()) {
+                           if (!binDir.exists()) binDir.mkdirs();
+                           legacyExe.renameTo(executable);
+                        }
+                    }
+                    customLauncherPath = executable.getAbsolutePath();
+
+                } else if ("SERVER".equals(executableSource)) {
+                    downloadLauncherComponents(progress -> {
+                        int progressValue = (int)(progress * 15);
+                        publish(progressValue);
+                    });
+                } else if ("CUSTOM".equals(executableSource)) {
+                    File customExe = new File(customLauncherPath);
+                    if (!customExe.exists()) {
+                        throw new IOException(localeManager.get("error.invalidFilePath") + ": " + customLauncherPath);
                     }
                 }
 
@@ -941,7 +991,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 progressBar.setString(localeManager.get("progress.launching"));
                 publish(95);
                 
-                String launcherPath = useDefaultLauncher ? null : customLauncherPath;
+                String launcherPath = null;
+                if ("CUSTOM".equals(executableSource) || "COMPILED".equals(executableSource)) {
+                     launcherPath = customLauncherPath; 
+                }
+                
                 Process gameProcess = gameLauncher.launchGame(gameDir, launcherPath, enableDebugging);
                 
                 SwingUtilities.invokeLater(() -> {
@@ -1020,11 +1074,12 @@ public class NostalgiaLauncherDesktop extends JFrame {
         String executableName = isWindows ? "ninecraft.exe" : "ninecraft";
         File executable = new File(gameDir, executableName);
         
-        File dllFile = new File(gameDir, "D3DCompiler_43.dll");
-
-        if (executable.exists() && (!isWindows || dllFile.exists())) {
-            callback.onProgress(1.0);
-            return;
+        if (executable.exists()) {
+            if (executable.isDirectory()) {
+                deleteRecursive(executable);
+            } else {
+                executable.delete();
+            }
         }
         
         statusLabel.setText(localeManager.get("status.loadingComponents"));
@@ -1062,12 +1117,20 @@ public class NostalgiaLauncherDesktop extends JFrame {
                                 continue;
                             }
                             File newFile = new File(gameDir, entry.getName());
+                            File parent = newFile.getParentFile();
+                            if (parent != null && !parent.exists()) {
+                                parent.mkdirs();
+                            }
+                            
                             try (FileOutputStream fos = new FileOutputStream(newFile)) {
                                 byte[] buffer = new byte[1024];
                                 int len;
                                 while ((len = zis.read(buffer)) > 0) {
                                     fos.write(buffer, 0, len);
                                 }
+                            }
+                            if (!isWindows && entry.getName().equals("ninecraft")) {
+                                newFile.setExecutable(true);
                             }
                         }
                     } finally {
@@ -1076,6 +1139,18 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 }
             }
         }
+    }
+    
+    private void deleteRecursive(File file) {
+        if (file.isDirectory()) {
+            File[] content = file.listFiles();
+            if (content != null) {
+                for (File child : content) {
+                    deleteRecursive(child);
+                }
+            }
+        }
+        file.delete();
     }
 
     public static void main(String[] args) {
