@@ -48,6 +48,18 @@ public class LocaleManager {
             e.printStackTrace();
         }
     }
+    
+    public void loadCustomLanguage(String path) {
+        this.currentLanguage = "custom";
+        try (InputStream inputStream = new java.io.FileInputStream(path)) {
+            Gson gson = new Gson();
+            Type type = new TypeToken<Map<String, String>>() {}.getType();
+            translations = gson.fromJson(new InputStreamReader(inputStream, StandardCharsets.UTF_8), type);
+        } catch (Exception e) {
+            e.printStackTrace();
+            loadLanguage("en");
+        }
+    }
 
     public String get(String key) {
         return translations.getOrDefault(key, key);
@@ -57,11 +69,20 @@ public class LocaleManager {
         return String.format(get(key), args);
     }
 
+    public boolean has(String key) {
+        return translations != null && translations.containsKey(key);
+    }
+
     public String getCurrentLanguage() {
         return currentLanguage;
     }
     
     public void init(Properties settings) {
-        loadLanguage(settings.getProperty("language", "en"));
+        String lang = settings.getProperty("language", "en");
+        if ("custom".equals(lang)) {
+            loadCustomLanguage(settings.getProperty("customTranslationPath"));
+        } else {
+            loadLanguage(lang);
+        }
     }
 }

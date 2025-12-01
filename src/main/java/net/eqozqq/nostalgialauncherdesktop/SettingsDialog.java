@@ -49,6 +49,10 @@ public class SettingsDialog extends JDialog {
     private JPanel imageOptionsPanel;
     private JPanel colorOptionsPanel;
 
+    private JTextField customTranslationPathField;
+    private JButton browseTranslationButton;
+    private JPanel customTranslationPanel;
+
     private String customBackgroundPath;
     private String customVersionsSource;
     private boolean useDefaultVersionsSource;
@@ -65,6 +69,7 @@ public class SettingsDialog extends JDialog {
     private String backgroundMode;
     private Color customBackgroundColor;
     private String language;
+    private String customTranslationPath;
     private boolean saved = false;
     private LocaleManager localeManager;
     private LoadingOverlay loadingOverlay;
@@ -75,13 +80,13 @@ public class SettingsDialog extends JDialog {
 
     private static final String LAST_VERSION = "https://raw.githubusercontent.com/NLauncher/components/refs/heads/main/lastversion.txt";
 
-    public SettingsDialog(JFrame parent, String currentBackgroundPath, String currentVersionsSource, boolean useDefaultVs, String currentExecutableSource, String currentCustomLauncherPath, String currentPostLaunchAction, boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion, String backgroundMode, Color customBackgroundColor, LocaleManager localeManager) {
+    public SettingsDialog(JFrame parent, String currentBackgroundPath, String currentVersionsSource, boolean useDefaultVs, String currentExecutableSource, String currentCustomLauncherPath, String currentPostLaunchAction, boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion, String backgroundMode, Color customBackgroundColor, String currentCustomTranslationPath, LocaleManager localeManager) {
         super(parent, localeManager.get("dialog.settings.title"), true);
         this.localeManager = localeManager;
         
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setResizable(false);
-        setSize(600, 600);
+        setSize(600, 650);
         setLocationRelativeTo(parent);
         setLayout(new BorderLayout(10, 10));
 
@@ -101,16 +106,19 @@ public class SettingsDialog extends JDialog {
         this.backgroundMode = backgroundMode;
         this.customBackgroundColor = customBackgroundColor;
         this.language = localeManager.getCurrentLanguage();
+        this.customTranslationPath = currentCustomTranslationPath;
         
         loadingOverlay = new LoadingOverlay();
         setGlassPane(loadingOverlay);
 
+        languageMap.put("Deutsch", "de");
         languageMap.put("English", "en");
         languageMap.put("Русский", "ru");
         languageMap.put("Беларуская", "be");
         languageMap.put("Українська", "uk");
         languageMap.put("Português", "pt");
         languageMap.put("简体中文", "zh_CN");
+        languageMap.put(localeManager.has("combo.language.custom") ? localeManager.get("combo.language.custom") : "Use custom translation", "custom");
 
         postActionMap.put("Do Nothing", localeManager.get("combo.postLaunch.doNothing"));
         postActionMap.put("Minimize Launcher", localeManager.get("combo.postLaunch.minimize"));
@@ -189,6 +197,10 @@ public class SettingsDialog extends JDialog {
 
         this.scaleFactor = (double) scaleSlider.getValue() / 100.0;
         this.language = languageMap.get((String)languageComboBox.getSelectedItem());
+        
+        if ("custom".equals(this.language)) {
+            this.customTranslationPath = customTranslationPathField.getText();
+        }
 
         if (!useDefaultVersionsSource) {
             if (urlRadioButton.isSelected()) {
@@ -213,6 +225,14 @@ public class SettingsDialog extends JDialog {
                     JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
                     return;
             }
+        }
+        
+        if ("custom".equals(this.language)) {
+             File file = new File(customTranslationPathField.getText());
+             if (!file.exists() || !file.isFile()) {
+                 JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                 return;
+             }
         }
     }
 
@@ -501,6 +521,49 @@ public class SettingsDialog extends JDialog {
         contentPanel.add(languageComboBox, gbc);
 
         gridY++;
+        customTranslationPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints customGbc = new GridBagConstraints();
+        customGbc.insets = new Insets(0, 0, 0, 0);
+        
+        customTranslationPathField = new JTextField(15);
+        customTranslationPathField.setText(customTranslationPath != null ? customTranslationPath : "");
+        customGbc.gridx = 0;
+        customGbc.gridy = 0;
+        customGbc.weightx = 1.0;
+        customGbc.fill = GridBagConstraints.HORIZONTAL;
+        customGbc.insets = new Insets(0, 0, 0, 5);
+        customTranslationPanel.add(customTranslationPathField, customGbc);
+        
+        browseTranslationButton = new JButton(localeManager.get("button.browse"));
+        browseTranslationButton.addActionListener(e -> {
+            JFileChooser fileChooser = new JFileChooser();
+            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("JSON Files", "json"));
+            int option = fileChooser.showOpenDialog(this);
+            if (option == JFileChooser.APPROVE_OPTION) {
+                File file = fileChooser.getSelectedFile();
+                customTranslationPathField.setText(file.getAbsolutePath());
+            }
+        });
+        customGbc.gridx = 1;
+        customGbc.weightx = 0;
+        customTranslationPanel.add(browseTranslationButton, customGbc);
+        
+        gbc.gridx = 1;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 2;
+        contentPanel.add(customTranslationPanel, gbc);
+
+        boolean isCustomLanguage = "custom".equals(languageMap.get((String)languageComboBox.getSelectedItem()));
+        customTranslationPanel.setVisible(isCustomLanguage);
+
+        languageComboBox.addActionListener(e -> {
+            String selected = (String) languageComboBox.getSelectedItem();
+            String code = languageMap.get(selected);
+            boolean isCustom = "custom".equals(code);
+            customTranslationPanel.setVisible(isCustom);
+        });
+
+        gridY++;
         JLabel themeLabel = new JLabel(localeManager.get("label.theme"));
         gbc.gridx = 0;
         gbc.gridy = gridY;
@@ -662,17 +725,12 @@ public class SettingsDialog extends JDialog {
         gbc.anchor = GridBagConstraints.NORTHWEST;
         int gridY = 0;
 
-        JLabel headline1 = new JLabel(localeManager.get("about.headline1"));
+        JLabel headline1 = new JLabel(localeManager.get("about.headline1") + " " + localeManager.get("about.headline2"));
         headline1.setFont(getFont(Font.BOLD, 32f));
         gbc.gridx = 0;
         gbc.gridy = gridY++;
         gbc.gridwidth = 3;
         contentPanel.add(headline1, gbc);
-
-        JLabel headline2 = new JLabel(localeManager.get("about.headline2"));
-        headline2.setFont(getFont(Font.PLAIN, 18f));
-        gbc.gridy = gridY++;
-        contentPanel.add(headline2, gbc);
 
         gbc.gridy = gridY++;
         gbc.gridx = 0;
@@ -702,10 +760,15 @@ public class SettingsDialog extends JDialog {
         gbc.gridy = gridY++;
         contentPanel.add(link4, gbc);
 
-        JLabel translationCredit = new JLabel("Belarusian translation: Djabał Pažyralnik Kaleniaŭ");
-        translationCredit.setFont(getFont(Font.PLAIN, 14f));
+        JLabel beTranslationCredit = new JLabel("Belarusian translation: Djabał Pažyralnik Kaleniaŭ");
+        beTranslationCredit.setFont(getFont(Font.PLAIN, 14f));
         gbc.gridy = gridY++;
-        contentPanel.add(translationCredit, gbc);
+        contentPanel.add(beTranslationCredit, gbc);
+
+        JLabel deTranslationCredit = new JLabel("German translation: Raphipod");
+        deTranslationCredit.setFont(getFont(Font.PLAIN, 14f));
+        gbc.gridy = gridY++;
+        contentPanel.add(deTranslationCredit, gbc);
 
         gbc.gridy = gridY++;
         gbc.gridx = 0;
@@ -829,6 +892,7 @@ public class SettingsDialog extends JDialog {
     public String getBackgroundMode() { return backgroundMode; }
     public Color getCustomBackgroundColor() { return customBackgroundColor; }
     public String getLanguage() { return language; }
+    public String getCustomTranslationPath() { return customTranslationPath; }
     public String getExecutableSource() { return executableSource; }
 
     private class LoadingOverlay extends JComponent implements ActionListener {

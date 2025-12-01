@@ -221,5 +221,8 @@
   "compiler.log.manualRun": "Будь ласка, запустіть команду вище вручну у вашому терміналі.",
   "compiler.error.launchInstaller": "Помилка запуску інсталятора:",
   "compiler.error.commandFailed": "Команда завершилася з кодом повернення:",
-  "compiler.error.executeCommand": "Помилка виконання команди:"
+  "compiler.error.executeCommand": "Помилка виконання команди:",
+  "dialog.compilation.source.original": "Використовувати оригінальний репозиторій Ninecraft",
+  "dialog.compilation.source.custom": "Використовувати інший репозиторій",
+  "button.startCompilation": "Розпочати компіляцію"
 }

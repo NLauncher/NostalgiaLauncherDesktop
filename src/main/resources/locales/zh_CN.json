@@ -221,5 +221,8 @@
   "compiler.log.manualRun": "请在您的终端中手动运行上述命令。",
   "compiler.error.launchInstaller": "启动安装程序时出错：",
   "compiler.error.commandFailed": "命令失败，退出代码：",
-  "compiler.error.executeCommand": "执行命令时出错："
+  "compiler.error.executeCommand": "执行命令时出错：",
+  "dialog.compilation.source.original": "使用原始 Ninecraft 仓库",
+  "dialog.compilation.source.custom": "使用其他仓库",
+  "button.startCompilation": "开始编译"
 }
