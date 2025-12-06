@@ -13,7 +13,6 @@
   "link.learnMore": "Saiba mais",
   "fileChooser.apkFiles": "Arquivos APK",
   "fileChooser.archives": "Arquivos",
-
   "launcher.title": "NostalgiaLauncher Desktop",
   "launcher.logo": "NLauncher Desktop",
   "launcher.subtitle": "Launcher para Minecraft Pocket Edition Alpha",
@@ -32,6 +31,16 @@
   "label.instance": "Instância",
   "button.instances": "Instâncias",
   "tooltip.instances": "Gerenciar instâncias",
+  "nav.home": "Início",
+  "nav.worlds": "Gerenciador de Mundos",
+  "nav.textures": "Gerenciador de Texturas",
+  "nav.instances": "Instâncias",
+  "nav.settings": "Configurações",
+  "nav.discord": "Discord",
+  "nav.website": "Website",
+  "label.instance.info": "Clique duplo para selecionar, clique direito para opções",
+  "menu.select": "Selecionar",
+  "button.back": "Voltar",
   "about.version": "NostalgiaLauncher Desktop v%s por eqozqq",
   "about.disclaimer": "Este programa não é afiliado à Mojang, Microsoft ou qualquer outra entidade",
   "about.headline1": "NostalgiaLauncher",
@@ -42,7 +51,6 @@
   "about.update.upToDate": "Você tem a versão mais recente!",
   "about.update.available": "Nova versão disponível!",
   "about.update.error": "Falha ao verificar atualizações",
-
   "status.ready": "Pronto",
   "status.error.saveNickname": "Falha ao salvar apelido",
   "status.loadingVersions": "Carregando versões...",
@@ -57,7 +65,6 @@
   "status.launched": "Jogo iniciado com sucesso",
   "status.error.launchFailed": "Falha no lançamento",
   "status.loadingComponents": "Carregando componentes...",
-
   "progress.initializing": "Inicializando...",
   "progress.downloading": "Baixando...",
   "progress.extracting": "Extraindo...",
@@ -67,7 +74,6 @@
   "progress.loadingComponents": "Carregando componentes...",
   "progress.downloadingVersion": "Baixando %s",
   "progress.extractingTextures": "Extraindo texturas...",
-
   "error.loadVersions": "Falha ao carregar versões: %s",
   "error.noVersionSelected.message": "Por favor, selecione uma versão para iniciar.",
   "error.noVersionSelected.title": "Nenhuma versão selecionada",
@@ -76,7 +82,6 @@
   "error.executableNotFound": "Executável do jogo não encontrado: %s",
   "error.launchGameFailed": "Falha ao iniciar o jogo: %s",
   "error.compilationFailedLog": "A compilação falhou. Verifique os logs.",
-
   "dialog.addCustomVersion.title": "Adicionar versão personalizada",
   "label.versionName": "Nome da versão:",
   "label.source": "Fonte:",
@@ -87,7 +92,6 @@
   "error.filePathEmpty": "O caminho do arquivo não pode ser vazio.",
   "error.invalidFilePath": "Caminho de arquivo inválido.",
   "version.add.error.save": "Falha ao salvar versão: %s",
-
   "dialog.settings.title": "Configurações",
   "tab.game": "Jogo",
   "tab.launcher": "Launcher",
@@ -118,7 +122,6 @@
   "radio.executable.compiled": "Usar seu próprio executável compilado",
   "radio.executable.server": "Usar executável do servidor",
   "radio.executable.custom": "Executável personalizado para iniciar versões",
-
   "dialog.worldsManager.title": "Gerenciador de mundos",
   "label.lastPlayed": "Jogado por último:",
   "label.worldName": "Nome do mundo:",
@@ -154,7 +157,6 @@
   "dialog.deleteWorld.message": "Tem certeza de que deseja excluir o mundo '%s' permanentemente?\nEsta ação não pode ser desfeita.",
   "dialog.deleteWorld.title": "Confirmar exclusão",
   "error.deleteWorldFailed": "Falha ao excluir mundo: %s",
-
   "dialog.texturesManager.title": "Gerenciador de texturas",
   "dialog.instances.title": "Instâncias",
   "button.instance.add": "Adicionar instância",
@@ -185,7 +187,6 @@
   "dialog.confirmRestore.title": "Confirmar restauração",
   "info.restoreSuccess": "Texturas padrão restauradas.",
   "error.restoreFailed": "Falha ao restaurar texturas:\n%s",
-  
   "versionManager.error.fileNotFound": "Arquivo não encontrado ou não é um arquivo: %s",
   "versionManager.error.loadVersionsGeneric": "Falha ao carregar versões: %s",
   "versionManager.error.createCacheDirFailed": "Falha ao criar o diretório de cache: %s",
@@ -196,7 +197,6 @@
   "versionManager.error.createVersionsDirFailed": "Falha ao criar o diretório de versões: %s",
   "versionManager.error.createTargetDirFailed": "Falha ao criar o diretório de destino: %s",
   "versionManager.error.versionDirNotFound": "Diretório da versão não encontrado: %s",
-
   "dialog.compilation.title": "Compilando Ninecraft",
   "dialog.compilation.status.preparing": "Preparando para compilar...",
   "dialog.compilation.status.success": "Compilação bem-sucedida!",
@@ -224,5 +224,10 @@
   "compiler.error.executeCommand": "Erro ao executar o comando:",
   "dialog.compilation.source.original": "Usar repositório original do Ninecraft",
   "dialog.compilation.source.custom": "Usar outro repositório",
-  "button.startCompilation": "Iniciar Compilação"
+  "button.startCompilation": "Iniciar Compilação",
+  "combo.language.custom": "Usar tradução personalizada",
+  "info.x86ApkOnly": "Nota: Somente arquivos APK de arquitetura x86 são suportados.",
+  "dialog.errorDetails.title": "Detalhes do erro",
+  "dialog.errorDetails.systemInfo": "Informações do sistema",
+  "button.copyError": "Copiar para área de transferência"
 }

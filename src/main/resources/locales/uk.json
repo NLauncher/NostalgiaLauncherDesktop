@@ -13,7 +13,6 @@
   "link.learnMore": "Дізнатися більше",
   "fileChooser.apkFiles": "Файли APK",
   "fileChooser.archives": "Архіви",
-
   "launcher.title": "NostalgiaLauncher Desktop",
   "launcher.logo": "NLauncher Desktop",
   "launcher.subtitle": "Minecraft Pocket Edition Alpha лаунчер",
@@ -32,6 +31,16 @@
   "label.instance": "Інстанс",
   "button.instances": "Інстанси",
   "tooltip.instances": "Керування інстансами",
+  "nav.home": "Головна",
+  "nav.worlds": "Менеджер світів",
+  "nav.textures": "Менеджер текстур",
+  "nav.instances": "Інстанси",
+  "nav.settings": "Налаштування",
+  "nav.discord": "Discord",
+  "nav.website": "Веб-сайт",
+  "label.instance.info": "Подвійний клік для вибору, правий клік для опцій",
+  "menu.select": "Вибрати",
+  "button.back": "Назад",
   "about.version": "NostalgiaLauncher Desktop v%s від eqozqq",
   "about.disclaimer": "Ця програма не пов'язана з Mojang, Microsoft або будь-якою іншою організацією",
   "about.headline1": "NostalgiaLauncher",
@@ -42,7 +51,6 @@
   "about.update.upToDate": "У вас остання версія",
   "about.update.available": "Доступне нове оновлення",
   "about.update.error": "Помилка перевірки оновлень",
-
   "status.ready": "Готово",
   "status.error.saveNickname": "Не вдалося зберегти нікнейм",
   "status.loadingVersions": "Завантаження версій...",
@@ -57,7 +65,6 @@
   "status.launched": "Успішно запущено",
   "status.error.launchFailed": "Помилка запуску",
   "status.loadingComponents": "Завантаження компонентів лаунчера...",
-
   "progress.initializing": "Ініціалізація...",
   "progress.downloading": "Завантаження...",
   "progress.extracting": "Видобування...",
@@ -67,7 +74,6 @@
   "progress.loadingComponents": "Завантаження компонентів...",
   "progress.downloadingVersion": "Завантаження %s",
   "progress.extractingTextures": "Видобування текстур...",
-
   "error.loadVersions": "Не вдалося завантажити версії: %s",
   "error.noVersionSelected.message": "Будь ласка, виберіть версію для запуску.",
   "error.noVersionSelected.title": "Версію не вибрано",
@@ -76,7 +82,6 @@
   "error.executableNotFound": "Виконуваний файл гри не знайдено: %s",
   "error.launchGameFailed": "Не вдалося запустити гру: %s",
   "error.compilationFailedLog": "Компіляція не вдалася. Перевірте логи.",
-
   "dialog.addCustomVersion.title": "Додати свою версію",
   "label.versionName": "Назва версії:",
   "label.source": "Джерело:",
@@ -87,7 +92,6 @@
   "error.filePathEmpty": "Шлях до файлу не може бути порожнім.",
   "error.invalidFilePath": "Невірний шлях до файлу.",
   "version.add.error.save": "Не вдалося зберегти версію: %s",
-
   "dialog.settings.title": "Налаштування",
   "tab.game": "Гра",
   "tab.launcher": "Лаунчер",
@@ -118,7 +122,6 @@
   "radio.executable.compiled": "Використовувати власний скомпільований файл",
   "radio.executable.server": "Використовувати файл із сервера",
   "radio.executable.custom": "Користувацький файл для запуску версій",
-
   "dialog.worldsManager.title": "Менеджер світів",
   "label.lastPlayed": "Останній запуск:",
   "label.worldName": "Назва світу:",
@@ -154,7 +157,6 @@
   "dialog.deleteWorld.message": "Ви впевнені, що хочете назавжди видалити світ '%s'?\nЦю дію не можна скасувати.",
   "dialog.deleteWorld.title": "Підтвердіть видалення",
   "error.deleteWorldFailed": "Не вдалося видалити світ: %s",
-  
   "dialog.texturesManager.title": "Менеджер текстур",
   "dialog.instances.title": "Інстанси",
   "button.instance.add": "Додати інстанс",
@@ -185,7 +187,6 @@
   "dialog.confirmRestore.title": "Підтвердіть відновлення",
   "info.restoreSuccess": "Текстури за замовчуванням відновлено.",
   "error.restoreFailed": "Не вдалося відновити текстури:\n%s",
-  
   "versionManager.error.fileNotFound": "Файл не знайдено або не є файлом: %s",
   "versionManager.error.loadVersionsGeneric": "Не вдалося завантажити версії: %s",
   "versionManager.error.createCacheDirFailed": "Не вдалося створити теку кешу: %s",
@@ -196,7 +197,6 @@
   "versionManager.error.createVersionsDirFailed": "Не вдалося створити теку версій: %s",
   "versionManager.error.createTargetDirFailed": "Не вдалося створити цільову теку: %s",
   "versionManager.error.versionDirNotFound": "Тека версії не існує: %s",
-
   "dialog.compilation.title": "Компіляція Ninecraft",
   "dialog.compilation.status.preparing": "Підготовка до компіляції...",
   "dialog.compilation.status.success": "Компіляція успішна!",
@@ -224,5 +224,10 @@
   "compiler.error.executeCommand": "Помилка виконання команди:",
   "dialog.compilation.source.original": "Використовувати оригінальний репозиторій Ninecraft",
   "dialog.compilation.source.custom": "Використовувати інший репозиторій",
-  "button.startCompilation": "Розпочати компіляцію"
+  "button.startCompilation": "Розпочати компіляцію",
+  "combo.language.custom": "Використовувати власний переклад",
+  "info.x86ApkOnly": "Примітка: Підтримуються лише APK-файли архітектури x86.",
+  "dialog.errorDetails.title": "Деталі помилки",
+  "dialog.errorDetails.systemInfo": "Системна інформація",
+  "button.copyError": "Копіювати в буфер обміну"
 }

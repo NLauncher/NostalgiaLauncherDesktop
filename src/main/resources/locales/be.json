@@ -13,7 +13,6 @@
   "link.learnMore": "Даведацца больш",
   "fileChooser.apkFiles": "Файлы APK",
   "fileChooser.archives": "Архівы",
-
   "launcher.title": "NostalgiaLauncher Desktop",
   "launcher.logo": "NLauncher Desktop",
   "launcher.subtitle": "Minecraft Pocket Edition Alpha лаўнчар",
@@ -32,6 +31,16 @@
   "label.instance": "Інстанс",
   "button.instances": "Інстансы",
   "tooltip.instances": "Кіраваньне інстансамі",
+  "nav.home": "Галоўная",
+  "nav.worlds": "Мэнэджэр сьветаў",
+  "nav.textures": "Мэнэджэр тэкстур",
+  "nav.instances": "Інстансы",
+  "nav.settings": "Налады",
+  "nav.discord": "Discord",
+  "nav.website": "Вэб-сайт",
+  "label.instance.info": "Падвойны клік для выбару, правы клік для опцый",
+  "menu.select": "Абраць",
+  "button.back": "Назад",
   "about.version": "NostalgiaLauncher Desktop v%s ад eqozqq",
   "about.disclaimer": "Гэтая праграма не зьвязаная з Mojang, Microsoft або любой іншай арганізацыяй",
   "about.headline1": "NostalgiaLauncher",
@@ -42,7 +51,6 @@
   "about.update.upToDate": "У вас самая новая вэрсія!",
   "about.update.available": "Даступна новая вэрсія!",
   "about.update.error": "Не атрымалася праверыць абнаўленьні",
-
   "status.ready": "Гатовы",
   "status.error.saveNickname": "Не атрымалася захаваць нікнэйм",
   "status.loadingVersions": "Загрузка вэрсіяў...",
@@ -57,7 +65,6 @@
   "status.launched": "Пасьпяхова запушчана",
   "status.error.launchFailed": "Памылка запуску",
   "status.loadingComponents": "Загрузка кампанентаў...",
-
   "progress.initializing": "Ініцыялізацыя...",
   "progress.downloading": "Спампоўка...",
   "progress.extracting": "Распакаваньне...",
@@ -67,7 +74,6 @@
   "progress.loadingComponents": "Загрузка кампанентаў...",
   "progress.downloadingVersion": "Спампоўка %s",
   "progress.extractingTextures": "Распакаваньне тэкстур...",
-
   "error.loadVersions": "Не атрымалася загрузіць вэрсіі: %s",
   "error.noVersionSelected.message": "Калі ласка, абярыце вэрсію для запуску.",
   "error.noVersionSelected.title": "Вэрсія ня выбрана",
@@ -76,7 +82,6 @@
   "error.executableNotFound": "Выканальны файл гульні ня знойдзены: %s",
   "error.launchGameFailed": "Не атрымалася запусьціць гульню: %s",
   "error.compilationFailedLog": "Кампіляцыя не ўдалася. Праверце логі.",
-
   "dialog.addCustomVersion.title": "Дадаць сваю вэрсію",
   "label.versionName": "Назва вэрсіі:",
   "label.source": "Крыніца:",
@@ -87,7 +92,6 @@
   "error.filePathEmpty": "Шлях да файла ня можа быць пустым.",
   "error.invalidFilePath": "Няправільны шлях да файла.",
   "version.add.error.save": "Не атрымалася захаваць вэрсію: %s",
-
   "dialog.settings.title": "Налады",
   "tab.game": "Гульня",
   "tab.launcher": "Лаўнчар",
@@ -118,7 +122,6 @@
   "radio.executable.compiled": "Выкарыстоўваць уласны скампіляваны файл",
   "radio.executable.server": "Выкарыстоўваць файл з сэрвэра",
   "radio.executable.custom": "Карыстальніцкі файл для запуску вэрсіяў",
-
   "dialog.worldsManager.title": "Мэнэджэр сьветаў",
   "label.lastPlayed": "Апошні запуск:",
   "label.worldName": "Назва сьвету:",
@@ -154,7 +157,6 @@
   "dialog.deleteWorld.message": "Вы ўпэўнены, што хочаце назаўжды выдаліць сьвет '%s'?\nГэта дзеяньне незваротна.",
   "dialog.deleteWorld.title": "Пацьвердзіце выдаленьне",
   "error.deleteWorldFailed": "Не атрымалася выдаліць сьвет: %s",
-
   "dialog.texturesManager.title": "Мэнэджэр тэкстур",
   "dialog.instances.title": "Інстансы",
   "button.instance.add": "Дадаць інстанс",
@@ -185,7 +187,6 @@
   "dialog.confirmRestore.title": "Пацьвердзіце аднаўленьне",
   "info.restoreSuccess": "Тэкстуры па змаўчаньні адноўлены.",
   "error.restoreFailed": "Не атрымалася аднавіць тэкстуры:\n%s",
-
   "versionManager.error.fileNotFound": "Файл ня знойдзены або не зьяўляецца файлам: %s",
   "versionManager.error.loadVersionsGeneric": "Не атрымалася загрузіць вэрсіі: %s",
   "versionManager.error.createCacheDirFailed": "Не атрымалася стварыць тэчку кэша: %s",
@@ -196,7 +197,6 @@
   "versionManager.error.createVersionsDirFailed": "Не атрымалася стварыць тэчку вэрсіяў: %s",
   "versionManager.error.createTargetDirFailed": "Не атрымалася стварыць мэтавую тэчку: %s",
   "versionManager.error.versionDirNotFound": "Тэчка вэрсіі ня знойдзена: %s",
-
   "dialog.compilation.title": "Кампіляцыя Ninecraft",
   "dialog.compilation.status.preparing": "Падрыхтоўка да кампіляцыі...",
   "dialog.compilation.status.success": "Кампіляцыя пасьпяховая!",
@@ -224,5 +224,10 @@
   "compiler.error.executeCommand": "Памылка выкананьня каманды:",
   "dialog.compilation.source.original": "Выкарыстоўваць арыгінальны рэпазітар Ninecraft",
   "dialog.compilation.source.custom": "Выкарыстоўваць іншы рэпазітар",
-  "button.startCompilation": "Пачаць кампіляцыю"
+  "button.startCompilation": "Пачаць кампіляцыю",
+  "combo.language.custom": "Выкарыстоўваць уласны пераклад",
+  "info.x86ApkOnly": "Заўвага: Падтрымліваюцца толькі APK-файлы архітэктуры x86.",
+  "dialog.errorDetails.title": "Падрабязнасьці памылкі",
+  "dialog.errorDetails.systemInfo": "Сістэмная інфармацыя",
+  "button.copyError": "Капіяваць у буфер абмену"
 }

@@ -1,7 +1,15 @@
 package net.eqozqq.nostalgialauncherdesktop.Instances;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class InstanceManager {
     private static final String DEFAULT_INSTANCE = "Default Instance";
@@ -46,6 +54,62 @@ public class InstanceManager {
         if (settings != null) {
             settings.setProperty("selectedInstance", activeInstance);
         }
+    }
+
+    public List<String> getInstances() {
+        List<String> instances = new ArrayList<>();
+        instances.add(DEFAULT_INSTANCE);
+        File root = getInstancesRoot();
+        File[] files = root.listFiles();
+        if (files != null) {
+            Arrays.stream(files)
+                .filter(File::isDirectory)
+                .map(File::getName)
+                .filter(name -> !name.equals(DEFAULT_INSTANCE))
+                .forEach(instances::add);
+        }
+        return instances;
+    }
+
+    public void createInstance(String name) {
+        if (name == null || name.trim().isEmpty() || DEFAULT_INSTANCE.equals(name.trim())) {
+            throw new IllegalArgumentException("Invalid instance name.");
+        }
+        File newInstanceDir = new File(INSTANCES_DIR, name.trim());
+        if (newInstanceDir.exists()) {
+            throw new IllegalArgumentException("Instance already exists: " + name);
+        }
+        if (!newInstanceDir.mkdirs()) {
+             throw new RuntimeException("Failed to create instance directory: " + name);
+        }
+    }
+
+    public void deleteInstance(String name) {
+        if (name == null || name.trim().isEmpty() || DEFAULT_INSTANCE.equals(name.trim())) {
+            throw new IllegalArgumentException("Cannot delete the default instance.");
+        }
+        File instanceDir = new File(INSTANCES_DIR, name.trim());
+        if (instanceDir.exists() && instanceDir.isDirectory()) {
+            try {
+                deleteRecursive(instanceDir.toPath());
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to delete instance: " + name, e);
+            }
+            if (activeInstance.equals(name.trim())) {
+                setActiveInstance(DEFAULT_INSTANCE);
+            }
+        }
+    }
+    
+    private static void deleteRecursive(Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            try (Stream<Path> entries = Files.list(path)) {
+                for (Path entry : entries.collect(Collectors.toList())) {
+                    deleteRecursive(entry);
+                }
+            }
+        }
+        Files.delete(path);
     }
 
     public boolean isDefault() {

@@ -13,7 +13,6 @@
   "link.learnMore": "Узнать больше",
   "fileChooser.apkFiles": "Файлы APK",
   "fileChooser.archives": "Архивы",
-
   "launcher.title": "NostalgiaLauncher Desktop",
   "launcher.logo": "NLauncher Desktop",
   "launcher.subtitle": "Minecraft Pocket Edition Alpha лаунчер",
@@ -32,6 +31,16 @@
   "label.instance": "Инстанс",
   "button.instances": "Инстансы",
   "tooltip.instances": "Управление инстансами",
+  "nav.home": "Главная",
+  "nav.worlds": "Менеджер миров",
+  "nav.textures": "Менеджер текстур",
+  "nav.instances": "Инстансы",
+  "nav.settings": "Настройки",
+  "nav.discord": "Discord",
+  "nav.website": "Веб-сайт",
+  "label.instance.info": "Двойной клик для выбора, правый клик для опций",
+  "menu.select": "Выбрать",
+  "button.back": "Назад",
   "about.version": "NostalgiaLauncher Desktop v%s от eqozqq",
   "about.disclaimer": "Эта программа не связана с Mojang, Microsoft или любой другой организацией",
   "about.headline1": "NostalgiaLauncher",
@@ -42,7 +51,6 @@
   "about.update.upToDate": "У вас самая новая версия!",
   "about.update.available": "Доступна новая версия!",
   "about.update.error": "Не удалось проверить обновления",
-
   "status.ready": "Готов",
   "status.error.saveNickname": "Не удалось сохранить никнейм",
   "status.loadingVersions": "Загрузка версий...",
@@ -57,7 +65,6 @@
   "status.launched": "Успешно запущено",
   "status.error.launchFailed": "Ошибка запуска",
   "status.loadingComponents": "Загрузка компонентов...",
-
   "progress.initializing": "Инициализация...",
   "progress.downloading": "Скачивание...",
   "progress.extracting": "Распаковка...",
@@ -67,7 +74,6 @@
   "progress.loadingComponents": "Загрузка компонентов...",
   "progress.downloadingVersion": "Скачивание %s",
   "progress.extractingTextures": "Распаковка текстур...",
-
   "error.loadVersions": "Не удалось загрузить версии: %s",
   "error.noVersionSelected.message": "Пожалуйста, выберите версию для запуска.",
   "error.noVersionSelected.title": "Версия не выбрана",
@@ -76,7 +82,6 @@
   "error.executableNotFound": "Исполняемый файл игры не найден: %s",
   "error.launchGameFailed": "Не удалось запустить игру: %s",
   "error.compilationFailedLog": "Компиляция не удалась. Проверьте логи.",
-
   "dialog.addCustomVersion.title": "Добавить свою версию",
   "label.versionName": "Название версии:",
   "label.source": "Источник:",
@@ -87,7 +92,6 @@
   "error.filePathEmpty": "Путь к файлу не может быть пустым.",
   "error.invalidFilePath": "Неверный путь к файлу.",
   "version.add.error.save": "Не удалось сохранить версию: %s",
-
   "dialog.settings.title": "Настройки",
   "tab.game": "Игра",
   "tab.launcher": "Лаунчер",
@@ -118,7 +122,6 @@
   "radio.executable.compiled": "Использовать собственный скомпилированный файл",
   "radio.executable.server": "Использовать файл с сервера",
   "radio.executable.custom": "Пользовательский файл для запуска версий",
-
   "dialog.worldsManager.title": "Менеджер миров",
   "label.lastPlayed": "Последний запуск:",
   "label.worldName": "Название мира:",
@@ -154,7 +157,6 @@
   "dialog.deleteWorld.message": "Вы уверены, что хотите навсегда удалить мир '%s'?\nЭто действие нельзя отменить.",
   "dialog.deleteWorld.title": "Подтвердите удаление",
   "error.deleteWorldFailed": "Не удалось удалить мир: %s",
-
   "dialog.texturesManager.title": "Менеджер текстур",
   "dialog.instances.title": "Инстансы",
   "button.instance.add": "Добавить инстанс",
@@ -185,7 +187,6 @@
   "dialog.confirmRestore.title": "Подтвердите восстановление",
   "info.restoreSuccess": "Текстуры по умолчанию восстановлены.",
   "error.restoreFailed": "Не удалось восстановить текстуры:\n%s",
-  
   "versionManager.error.fileNotFound": "Файл не найден или не является файлом: %s",
   "versionManager.error.loadVersionsGeneric": "Не удалось загрузить версии: %s",
   "versionManager.error.createCacheDirFailed": "Не удалось создать папку кэша: %s",
@@ -196,7 +197,6 @@
   "versionManager.error.createVersionsDirFailed": "Не удалось создать папку версий: %s",
   "versionManager.error.createTargetDirFailed": "Не удалось создать целевую папку: %s",
   "versionManager.error.versionDirNotFound": "Папка версии не найдена: %s",
-
   "dialog.compilation.title": "Компиляция Ninecraft",
   "dialog.compilation.status.preparing": "Подготовка к компиляции...",
   "dialog.compilation.status.success": "Компиляция успешна!",
@@ -224,5 +224,18 @@
   "compiler.error.executeCommand": "Ошибка выполнения команды:",
   "dialog.compilation.source.original": "Использовать оригинальный репозиторий Ninecraft",
   "dialog.compilation.source.custom": "Использовать другой репозиторий",
-  "button.startCompilation": "Начать компиляцию"
+  "button.startCompilation": "Начать компиляцию",
+  "combo.language.custom": "Использовать собственный перевод",
+  "info.x86ApkOnly": "Примечание: Поддерживаются только APK-файлы архитектуры x86.",
+  "dialog.errorDetails.title": "Подробности ошибки",
+  "dialog.errorDetails.systemInfo": "Системная информация",
+  "button.copyError": "Копировать в буфер обмена",
+  "home.instanceInfo": "Активный инстанс",
+  "home.tips": "Быстрые подсказки",
+  "label.instance.name": "Имя:",
+  "label.instance.path": "Путь:",
+  "tip.worlds": "• Управляйте мирами во вкладке Миры",
+  "tip.textures": "• Устанавливайте текстуры во вкладке Текстуры",
+  "tip.instances": "• Создавайте инстансы для разных конфигов",
+  "tip.settings": "• Настраивайте лаунчер в Настройках"
 }

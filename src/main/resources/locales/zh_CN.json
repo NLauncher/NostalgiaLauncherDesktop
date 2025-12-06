@@ -13,7 +13,6 @@
   "link.learnMore": "了解更多",
   "fileChooser.apkFiles": "APK 文件",
   "fileChooser.archives": "压缩包",
-
   "launcher.title": "NostalgiaLauncher 桌面版",
   "launcher.logo": "NLauncher 桌面版",
   "launcher.subtitle": "Minecraft 袖珍版 Alpha 启动器",
@@ -32,9 +31,18 @@
   "label.instance": "实例",
   "button.instances": "实例",
   "tooltip.instances": "管理实例",
+  "nav.home": "主页",
+  "nav.worlds": "世界管理器",
+  "nav.textures": "材质管理器",
+  "nav.instances": "实例",
+  "nav.settings": "设置",
+  "nav.discord": "Discord",
+  "nav.website": "网站",
+  "label.instance.info": "双击选择，右键查看选项",
+  "menu.select": "选择",
+  "button.back": "返回",
   "about.version": "NostalgiaLauncher 桌面版 v%s by eqozqq",
   "about.disclaimer": "本程序与 Mojang、微软或任何其他实体无关",
-
   "status.ready": "准备就绪",
   "status.error.saveNickname": "保存昵称失败",
   "status.loadingVersions": "正在加载版本...",
@@ -49,7 +57,6 @@
   "status.launched": "成功启动",
   "status.error.launchFailed": "启动失败",
   "status.loadingComponents": "正在加载启动器组件...",
-
   "progress.initializing": "正在初始化...",
   "progress.downloading": "正在下载...",
   "progress.extracting": "正在提取...",
@@ -59,7 +66,6 @@
   "progress.loadingComponents": "正在加载组件...",
   "progress.downloadingVersion": "正在下载 %s",
   "progress.extractingTextures": "正在提取材质...",
-
   "error.loadVersions": "加载版本失败：%s",
   "error.noVersionSelected.message": "请选择一个要启动的版本。",
   "error.noVersionSelected.title": "未选择版本",
@@ -68,7 +74,6 @@
   "error.executableNotFound": "未找到游戏可执行文件：%s",
   "error.launchGameFailed": "启动游戏失败：%s",
   "error.compilationFailedLog": "编译失败。请检查日志。",
-
   "dialog.addCustomVersion.title": "添加自定义版本",
   "label.versionName": "版本名称：",
   "label.source": "来源：",
@@ -79,7 +84,6 @@
   "error.filePathEmpty": "文件路径不能为空。",
   "error.invalidFilePath": "文件路径无效。",
   "version.add.error.save": "保存版本失败：%s",
-
   "dialog.settings.title": "设置",
   "tab.game": "游戏",
   "tab.launcher": "启动器",
@@ -118,7 +122,6 @@
   "radio.executable.compiled": "使用自行编译的可执行文件",
   "radio.executable.server": "使用服务器上的可执行文件",
   "radio.executable.custom": "自定义启动版本的可执行文件",
-
   "dialog.worldsManager.title": "世界管理器",
   "label.lastPlayed": "上次游玩：",
   "label.worldName": "世界名称：",
@@ -154,7 +157,6 @@
   "dialog.deleteWorld.message": "您确定要永久删除世界“%s”吗？\n此操作无法撤销。",
   "dialog.deleteWorld.title": "确认删除",
   "error.deleteWorldFailed": "删除世界失败：%s",
-  
   "dialog.texturesManager.title": "材质管理器",
   "dialog.instances.title": "实例",
   "button.instance.add": "添加实例",
@@ -185,7 +187,6 @@
   "dialog.confirmRestore.title": "确认恢复",
   "info.restoreSuccess": "默认材质已恢复。",
   "error.restoreFailed": "恢复材质失败：\n%s",
-  
   "versionManager.error.fileNotFound": "文件未找到或不是文件：%s",
   "versionManager.error.loadVersionsGeneric": "加载版本失败：%s",
   "versionManager.error.createCacheDirFailed": "创建缓存目录失败：%s",
@@ -196,7 +197,6 @@
   "versionManager.error.createVersionsDirFailed": "创建版本目录失败：%s",
   "versionManager.error.createTargetDirFailed": "创建目标目录失败：%s",
   "versionManager.error.versionDirNotFound": "版本目录不存在：%s",
-
   "dialog.compilation.title": "编译 Ninecraft",
   "dialog.compilation.status.preparing": "准备编译...",
   "dialog.compilation.status.success": "编译成功！",
@@ -224,5 +224,10 @@
   "compiler.error.executeCommand": "执行命令时出错：",
   "dialog.compilation.source.original": "使用原始 Ninecraft 仓库",
   "dialog.compilation.source.custom": "使用其他仓库",
-  "button.startCompilation": "开始编译"
+  "button.startCompilation": "开始编译",
+  "combo.language.custom": "使用自定义翻译",
+  "info.x86ApkOnly": "注意：仅支持 x86 架构的 APK 文件。",
+  "dialog.errorDetails.title": "错误详情",
+  "dialog.errorDetails.systemInfo": "系统信息",
+  "button.copyError": "复制到剪贴板"
 }

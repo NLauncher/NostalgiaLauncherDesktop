@@ -13,7 +13,6 @@
   "link.learnMore": "Mehr über",
   "fileChooser.apkFiles": "APK-Dateien",
   "fileChooser.archives": "Archive",
-
   "launcher.title": "NostalgiaLauncher Desktop",
   "launcher.logo": "NLauncher Desktop",
   "launcher.subtitle": "Minecraft Pocket Edition Alpha Launcher",
@@ -42,7 +41,6 @@
   "about.update.upToDate": "Du hast die neueste Version!",
   "about.update.available": "Neue Version verfügbar!",
   "about.update.error": "Konnte nicht nach neuen Updates suchen",
-
   "status.ready": "Fertig",
   "status.error.saveNickname": "Konnte den Nickname nicht speichern",
   "status.loadingVersions": "Lade Versionen...",
@@ -57,7 +55,6 @@
   "status.launched": "Spiel erfolgreich gestartet",
   "status.error.launchFailed": "Start fehlgeschlagen",
   "status.loadingComponents": "Komponenten laden...",
-
   "progress.initializing": "Initialisiere...",
   "progress.downloading": "Lade herunter...",
   "progress.extracting": "Extrahiere...",
@@ -67,7 +64,6 @@
   "progress.loadingComponents": "Lade Komponenten...",
   "progress.downloadingVersion": "Lade %s herunter",
   "progress.extractingTextures": "Texturen extrahieren...",
-
   "error.loadVersions": "Konnte die Versionen nicht laden: %s",
   "error.noVersionSelected.message": "Wähle bitte eine Version zum Starten aus.",
   "error.noVersionSelected.title": "Keine Version ausgewählt",
@@ -76,7 +72,6 @@
   "error.executableNotFound": "Spieldatei nicht gefunden: %s",
   "error.launchGameFailed": "Konnte das Spiel nicht starten: %s",
   "error.compilationFailedLog": "Kompilierung fehlgeschlagen. Bitte Logs überprüfen.",
-
   "dialog.addCustomVersion.title": "Füge benutzerdefinierte Version hinzu",
   "label.versionName": "Versionsname:",
   "label.source": "Quelle:",
@@ -87,7 +82,6 @@
   "error.filePathEmpty": "Dateipfad darf nicht leer sein.",
   "error.invalidFilePath": "Ungültiger Dateipfad.",
   "version.add.error.save": "Konnte Version nicht speichern: %s",
-
   "dialog.settings.title": "Einstellungen",
   "tab.game": "Spiel",
   "tab.launcher": "Launcher",
@@ -118,7 +112,6 @@
   "radio.executable.compiled": "Nutze deine eigene ausführbare Datei",
   "radio.executable.server": "Nutze ausführbare Datei von einem Server",
   "radio.executable.custom": "Benutzerdefinierte ausführbare Datei zum Starten von Versionen",
-
   "dialog.worldsManager.title": "Welten-Manager",
   "label.lastPlayed": "Zuletzt gespielt:",
   "label.worldName": "Welt-Name:",
@@ -154,7 +147,6 @@
   "dialog.deleteWorld.message": "Bist du sicher, dass du die Welt '%s' unwiderruflich löschen möchtest?\nDiese Aktion kann nicht rückgängig gemacht werden.",
   "dialog.deleteWorld.title": "Löschen bestätigen",
   "error.deleteWorldFailed": "Konnte Welt nicht löschen: %s",
-
   "dialog.texturesManager.title": "Texturen-Manager",
   "dialog.instances.title": "Instanzen",
   "button.instance.add": "Instanz hinzufügen",
@@ -185,7 +177,6 @@
   "dialog.confirmRestore.title": "Wiederherstellung bestätigen",
   "info.restoreSuccess": "Standard-Texturen wurden wiederhergestellt.",
   "error.restoreFailed": "Konnte Texturen nicht wiederherstellen:\n%s",
-  
   "versionManager.error.fileNotFound": "Datei nicht gefunden oder ist keine Datei: %s",
   "versionManager.error.loadVersionsGeneric": "Konnte Versionen nicht laden: %s",
   "versionManager.error.createCacheDirFailed": "Konnte Cache-Verzeichnis nicht erstellen: %s",
@@ -196,7 +187,6 @@
   "versionManager.error.createVersionsDirFailed": "Konnte Versionsverzeichnis nicht erstellen: %s",
   "versionManager.error.createTargetDirFailed": "Konnte Zielverzeichnis nicht erstellen: %s",
   "versionManager.error.versionDirNotFound": "Das Versionsverzeichnis konnte nicht gefunden werden: %s",
-
   "dialog.compilation.title": "Kompiliere Ninecraft",
   "dialog.compilation.status.preparing": "Vorbereitung zum Kompilieren...",
   "dialog.compilation.status.success": "Kompilieren erfolgreich!",
@@ -224,5 +214,20 @@
   "compiler.error.executeCommand": "Fehler beim Ausführen des Befehls:",
   "dialog.compilation.source.original": "Originales Ninecraft-Repository verwenden",
   "dialog.compilation.source.custom": "Anderes Repository verwenden",
-  "button.startCompilation": "Kompilierung starten"
+  "button.startCompilation": "Kompilierung starten",
+  "nav.home": "Startseite",
+  "nav.worlds": "Welten-Manager",
+  "nav.textures": "Texturen-Manager",
+  "nav.instances": "Instanzen",
+  "nav.settings": "Einstellungen",
+  "nav.discord": "Discord",
+  "nav.website": "Webseite",
+  "label.instance.info": "Doppelklick zum Auswählen, Rechtsklick für Optionen",
+  "menu.select": "Auswählen",
+  "button.back": "Zurück",
+  "combo.language.custom": "Eigene Übersetzung verwenden",
+  "info.x86ApkOnly": "Hinweis: Nur APK-Dateien mit x86-Architektur werden unterstützt.",
+  "dialog.errorDetails.title": "Fehlerdetails",
+  "dialog.errorDetails.systemInfo": "Systeminformationen",
+  "button.copyError": "In Zwischenablage kopieren"
 }
