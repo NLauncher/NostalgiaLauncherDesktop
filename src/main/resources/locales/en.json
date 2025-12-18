@@ -229,13 +229,5 @@
   "info.x86ApkOnly": "Note: Only x86 architecture APK files are supported.",
   "dialog.errorDetails.title": "Error Details",
   "dialog.errorDetails.systemInfo": "System Information",
-  "button.copyError": "Copy to Clipboard",
-  "home.instanceInfo": "Active Instance",
-  "home.tips": "Quick Tips",
-  "label.instance.name": "Name:",
-  "label.instance.path": "Path:",
-  "tip.worlds": "• Use Worlds tab to manage your saves",
-  "tip.textures": "• Install custom texture packs in Textures",
-  "tip.instances": "• Create instances for different configs",
-  "tip.settings": "• Customize launcher in Settings"
+  "button.copyError": "Copy to Clipboard"
 }

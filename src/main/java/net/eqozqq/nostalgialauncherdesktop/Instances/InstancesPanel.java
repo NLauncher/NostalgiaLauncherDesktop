@@ -7,7 +7,6 @@ import java.io.InputStream;
 import java.util.List;
 
 import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
-import net.eqozqq.nostalgialauncherdesktop.StyledDialog;
 
 public class InstancesPanel extends JPanel {
     private final LocaleManager localeManager;
@@ -105,7 +104,6 @@ public class InstancesPanel extends JPanel {
                 return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
             }
         } catch (Exception e) {
-            e.printStackTrace();
         }
         return new Font("SansSerif", style, (int) size);
     }
@@ -144,17 +142,19 @@ public class InstancesPanel extends JPanel {
     }
 
     private void createInstance() {
-        String name = StyledDialog.showInput(this, localeManager.get("dialog.instance.addPrompt"),
-                localeManager.get("dialog.instances.title"), JOptionPane.PLAIN_MESSAGE);
+        String name = JOptionPane.showInputDialog(this, 
+                localeManager.get("dialog.instance.addPrompt"),
+                localeManager.get("dialog.instances.title"), 
+                JOptionPane.PLAIN_MESSAGE);
+        
         if (name != null && !name.trim().isEmpty()) {
             try {
                 InstanceManager.getInstance().createInstance(name.trim());
                 reload();
-            } catch (IllegalArgumentException e) {
-                StyledDialog.showMessage(this, e.getMessage(), localeManager.get("dialog.error.title"),
-                        JOptionPane.ERROR_MESSAGE);
-            } catch (RuntimeException e) {
-                StyledDialog.showMessage(this, e.getMessage(), localeManager.get("dialog.error.title"),
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, 
+                        e.getMessage(), 
+                        localeManager.get("dialog.error.title"),
                         JOptionPane.ERROR_MESSAGE);
             }
         }
@@ -162,8 +162,7 @@ public class InstancesPanel extends JPanel {
 
     private void selectInstance() {
         String selected = instancesList.getSelectedValue();
-        if (selected == null)
-            return;
+        if (selected == null) return;
 
         String cleanName = selected.replace(" (Active)", "");
         if (cleanName.equals(InstanceManager.getInstance().getActiveInstance())) {
@@ -179,18 +178,22 @@ public class InstancesPanel extends JPanel {
 
     private void deleteInstance() {
         String selected = instancesList.getSelectedValue();
-        if (selected == null)
-            return;
+        if (selected == null) return;
 
         String cleanName = selected.replace(" (Active)", "");
         if (cleanName.equals(InstanceManager.getDefaultInstanceName())) {
-            StyledDialog.showMessage(this, localeManager.get("error.instance.reservedName"),
-                    localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, 
+                    localeManager.get("error.instance.reservedName"),
+                    localeManager.get("dialog.error.title"), 
+                    JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        int confirm = StyledDialog.showConfirm(this, localeManager.get("dialog.instance.deleteWarning"),
-                localeManager.get("dialog.warning.title"), JOptionPane.YES_NO_OPTION);
+        int confirm = JOptionPane.showConfirmDialog(this, 
+                localeManager.get("dialog.instance.deleteWarning"),
+                localeManager.get("dialog.warning.title"), 
+                JOptionPane.YES_NO_OPTION);
+        
         if (confirm == JOptionPane.YES_OPTION) {
             try {
                 InstanceManager.getInstance().deleteInstance(cleanName);
@@ -198,11 +201,10 @@ public class InstancesPanel extends JPanel {
                 if (onInstanceChanged != null) {
                     onInstanceChanged.run();
                 }
-            } catch (IllegalArgumentException e) {
-                StyledDialog.showMessage(this, e.getMessage(), localeManager.get("dialog.error.title"),
-                        JOptionPane.ERROR_MESSAGE);
-            } catch (RuntimeException e) {
-                StyledDialog.showMessage(this, e.getMessage(), localeManager.get("dialog.error.title"),
+            } catch (Exception e) {
+                JOptionPane.showMessageDialog(this, 
+                        e.getMessage(), 
+                        localeManager.get("dialog.error.title"),
                         JOptionPane.ERROR_MESSAGE);
             }
         }

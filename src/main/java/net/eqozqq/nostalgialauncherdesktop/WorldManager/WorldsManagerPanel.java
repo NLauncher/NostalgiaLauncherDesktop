@@ -21,7 +21,6 @@ import java.util.Date;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
-import net.eqozqq.nostalgialauncherdesktop.StyledDialog;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 import org.apache.commons.io.FileUtils;
 import org.spout.nbt.CompoundTag;
@@ -198,7 +197,7 @@ public class WorldsManagerPanel extends JPanel {
         copySeedButton.addActionListener(e -> {
             StringSelection stringSelection = new StringSelection(seedField.getText());
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSelection, null);
-            StyledDialog.showMessage(this, localeManager.get("info.seedCopied.message"),
+            JOptionPane.showMessageDialog(this, localeManager.get("info.seedCopied.message"),
                     localeManager.get("dialog.success.title"), JOptionPane.INFORMATION_MESSAGE);
         });
         panel.add(copySeedButton, gbc);
@@ -331,7 +330,7 @@ public class WorldsManagerPanel extends JPanel {
         } catch (Exception e) {
             e.printStackTrace();
             infoPanel.setVisible(false);
-            StyledDialog.showMessage(this, localeManager.get("error.readWorldData"),
+            JOptionPane.showMessageDialog(this, localeManager.get("error.readWorldData"),
                     localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
         }
     }
@@ -379,14 +378,14 @@ public class WorldsManagerPanel extends JPanel {
             writeLevelDat(rootTag, levelDat);
 
             populateInfoPanel();
-            StyledDialog.showMessage(this, localeManager.get("info.worldSaved"),
+            JOptionPane.showMessageDialog(this, localeManager.get("info.worldSaved"),
                     localeManager.get("dialog.success.title"), JOptionPane.INFORMATION_MESSAGE);
 
         } catch (NumberFormatException ex) {
-            StyledDialog.showMessage(this, localeManager.get("error.invalidNumberFormat"),
+            JOptionPane.showMessageDialog(this, localeManager.get("error.invalidNumberFormat"),
                     localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
         } catch (IOException ex) {
-            StyledDialog.showMessage(this, localeManager.get("error.saveWorldData", ex.getMessage()),
+            JOptionPane.showMessageDialog(this, localeManager.get("error.saveWorldData", ex.getMessage()),
                     localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
@@ -430,19 +429,25 @@ public class WorldsManagerPanel extends JPanel {
         if (selectedWorld == null)
             return;
 
-        String newName = StyledDialog.showInput(this, localeManager.get("dialog.renameFolder.message"),
-                localeManager.get("dialog.renameFolder.title"), JOptionPane.QUESTION_MESSAGE, selectedWorld.getName());
+        String newName = (String) JOptionPane.showInputDialog(this, 
+                localeManager.get("dialog.renameFolder.message"),
+                localeManager.get("dialog.renameFolder.title"), 
+                JOptionPane.QUESTION_MESSAGE, 
+                null, 
+                null, 
+                selectedWorld.getName());
+        
         if (newName != null && !newName.trim().isEmpty() && !newName.equals(selectedWorld.getName())) {
             File newFile = new File(selectedWorld.getParent(), newName.trim());
             if (newFile.exists()) {
-                StyledDialog.showMessage(this, localeManager.get("error.folderExists"),
+                JOptionPane.showMessageDialog(this, localeManager.get("error.folderExists"),
                         localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
                 return;
             }
             if (selectedWorld.renameTo(newFile)) {
                 loadWorlds();
             } else {
-                StyledDialog.showMessage(this, localeManager.get("error.renameFolderFailed"),
+                JOptionPane.showMessageDialog(this, localeManager.get("error.renameFolderFailed"),
                         localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
             }
         }
@@ -489,10 +494,10 @@ public class WorldsManagerPanel extends JPanel {
 
         try {
             zipDirectory(selectedWorld, zipFile);
-            StyledDialog.showMessage(this, localeManager.get("info.backupSuccess", zipFile.getAbsolutePath()),
+            JOptionPane.showMessageDialog(this, localeManager.get("info.backupSuccess", zipFile.getAbsolutePath()),
                     localeManager.get("dialog.success.title"), JOptionPane.INFORMATION_MESSAGE);
         } catch (IOException ex) {
-            StyledDialog.showMessage(this, localeManager.get("error.backupFailed", ex.getMessage()),
+            JOptionPane.showMessageDialog(this, localeManager.get("error.backupFailed", ex.getMessage()),
                     localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
@@ -503,7 +508,7 @@ public class WorldsManagerPanel extends JPanel {
         if (selectedWorld == null)
             return;
 
-        int response = StyledDialog.showConfirm(this,
+        int response = JOptionPane.showConfirmDialog(this,
                 localeManager.get("dialog.deleteWorld.message", selectedWorld.getName()),
                 localeManager.get("dialog.deleteWorld.title"),
                 JOptionPane.YES_NO_OPTION,
@@ -514,7 +519,7 @@ public class WorldsManagerPanel extends JPanel {
                 FileUtils.deleteDirectory(selectedWorld);
                 loadWorlds();
             } catch (IOException ex) {
-                StyledDialog.showMessage(this, localeManager.get("error.deleteWorldFailed", ex.getMessage()),
+                JOptionPane.showMessageDialog(this, localeManager.get("error.deleteWorldFailed", ex.getMessage()),
                         localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
             }
         }

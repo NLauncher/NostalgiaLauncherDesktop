@@ -229,13 +229,5 @@
   "info.x86ApkOnly": "Примечание: Поддерживаются только APK-файлы архитектуры x86.",
   "dialog.errorDetails.title": "Подробности ошибки",
   "dialog.errorDetails.systemInfo": "Системная информация",
-  "button.copyError": "Копировать в буфер обмена",
-  "home.instanceInfo": "Активный инстанс",
-  "home.tips": "Быстрые подсказки",
-  "label.instance.name": "Имя:",
-  "label.instance.path": "Путь:",
-  "tip.worlds": "• Управляйте мирами во вкладке Миры",
-  "tip.textures": "• Устанавливайте текстуры во вкладке Текстуры",
-  "tip.instances": "• Создавайте инстансы для разных конфигов",
-  "tip.settings": "• Настраивайте лаунчер в Настройках"
+  "button.copyError": "Копировать в буфер обмена"
 }

@@ -80,7 +80,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private String themeName;
     private String backgroundMode;
     private String customTranslationPath;
-    private static final String CURRENT_VERSION = "1.7.0";
+    private static final String CURRENT_VERSION = "1.7.1";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
@@ -339,8 +339,6 @@ public class NostalgiaLauncherDesktop extends JFrame {
             FlatLaf.setUseNativeWindowDecorations(false);
             UIManager.put("TitlePane.useWindowDecorations", Boolean.FALSE);
             UIManager.setLookAndFeel(newTheme);
-            StyledDialog.setDarkMode(isDark);
-            StyledDialog.installDefaults();
             SwingUtilities.updateComponentTreeUI(this);
         } catch (UnsupportedLookAndFeelException e) {
             e.printStackTrace();

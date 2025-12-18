@@ -9,7 +9,6 @@ import java.util.Arrays;
 import java.util.List;
 
 import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
-import net.eqozqq.nostalgialauncherdesktop.StyledDialog;
 import net.eqozqq.nostalgialauncherdesktop.Version;
 import net.eqozqq.nostalgialauncherdesktop.VersionManager;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
@@ -112,8 +111,10 @@ public class TexturesManagerPanel extends JPanel {
             if (selectedVersion != null) {
                 cardLayout.show(contentPanel, "TEXTURE_PANEL");
             } else {
-                StyledDialog.showMessage(this, localeManager.get("error.noVersionSelected.textures"),
-                        localeManager.get("error.noVersionSelected.title"), JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, 
+                        localeManager.get("error.noVersionSelected.textures"),
+                        localeManager.get("error.noVersionSelected.title"), 
+                        JOptionPane.WARNING_MESSAGE);
             }
         });
 
@@ -202,19 +203,26 @@ public class TexturesManagerPanel extends JPanel {
     private void unpackTextures() {
         String path = archivePathField.getText();
         if (path.isEmpty()) {
-            StyledDialog.showMessage(this, localeManager.get("error.noArchiveSelected.message"),
-                    localeManager.get("error.noArchiveSelected.title"), JOptionPane.WARNING_MESSAGE);
+            JOptionPane.showMessageDialog(this, 
+                    localeManager.get("error.noArchiveSelected.message"),
+                    localeManager.get("error.noArchiveSelected.title"), 
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
         try {
             File archiveFile = new File(path);
             File versionDir = new File(InstanceManager.getInstance().resolvePath("versions/" + selectedVersion));
             ArchiveExtractor.extract(archiveFile, versionDir);
-            StyledDialog.showMessage(this, localeManager.get("info.texturesInstalled"),
-                    localeManager.get("dialog.success.title"), JOptionPane.INFORMATION_MESSAGE);
+            
+            JOptionPane.showMessageDialog(this, 
+                    localeManager.get("info.texturesInstalled"),
+                    localeManager.get("dialog.success.title"), 
+                    JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
-            StyledDialog.showMessage(this, localeManager.get("error.installTexturesFailed", ex.getMessage()),
-                    localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, 
+                    localeManager.get("error.installTexturesFailed", ex.getMessage()),
+                    localeManager.get("dialog.error.title"), 
+                    JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
     }
@@ -233,13 +241,18 @@ public class TexturesManagerPanel extends JPanel {
                     .orElse(null);
 
             if (targetVersion == null || targetVersion.getUrl().startsWith("file:")) {
-                StyledDialog.showMessage(this, localeManager.get("error.restoreOfficialOnly"),
-                        localeManager.get("error.cannotRestore.title"), JOptionPane.WARNING_MESSAGE);
+                JOptionPane.showMessageDialog(this, 
+                        localeManager.get("error.restoreOfficialOnly"),
+                        localeManager.get("error.cannotRestore.title"), 
+                        JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
-            int choice = StyledDialog.showConfirm(this, localeManager.get("dialog.confirmRestore.message"),
-                    localeManager.get("dialog.confirmRestore.title"), JOptionPane.YES_NO_OPTION);
+            int choice = JOptionPane.showConfirmDialog(this, 
+                    localeManager.get("dialog.confirmRestore.message"),
+                    localeManager.get("dialog.confirmRestore.title"), 
+                    JOptionPane.YES_NO_OPTION);
+            
             if (choice != JOptionPane.YES_OPTION)
                 return;
 
@@ -274,13 +287,15 @@ public class TexturesManagerPanel extends JPanel {
                     progressMonitor.close();
                     try {
                         get();
-                        StyledDialog.showMessage(TexturesManagerPanel.this,
-                                localeManager.get("info.restoreSuccess"), localeManager.get("dialog.success.title"),
+                        JOptionPane.showMessageDialog(TexturesManagerPanel.this,
+                                localeManager.get("info.restoreSuccess"), 
+                                localeManager.get("dialog.success.title"),
                                 JOptionPane.INFORMATION_MESSAGE);
                     } catch (Exception ex) {
-                        StyledDialog.showMessage(TexturesManagerPanel.this,
+                        JOptionPane.showMessageDialog(TexturesManagerPanel.this,
                                 localeManager.get("error.restoreFailed", ex.getMessage()),
-                                localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                                localeManager.get("dialog.error.title"), 
+                                JOptionPane.ERROR_MESSAGE);
                         ex.printStackTrace();
                     }
                 }
@@ -288,8 +303,10 @@ public class TexturesManagerPanel extends JPanel {
             worker.execute();
 
         } catch (Exception ex) {
-            StyledDialog.showMessage(this, localeManager.get("error.restoreFailed", ex.getMessage()),
-                    localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, 
+                    localeManager.get("error.restoreFailed", ex.getMessage()),
+                    localeManager.get("dialog.error.title"), 
+                    JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
     }

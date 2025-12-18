@@ -7,7 +7,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 
 public class ErrorDialog {
-    private static final String APP_VERSION = "1.7.0";
+    private static final String APP_VERSION = "1.7.1";
 
     public static void showError(Component parent, String title, String message, Throwable exception,
             LocaleManager localeManager) {

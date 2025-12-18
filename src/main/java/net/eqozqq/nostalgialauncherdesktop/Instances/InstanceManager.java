@@ -75,7 +75,8 @@ public class InstanceManager {
         if (name == null || name.trim().isEmpty() || DEFAULT_INSTANCE.equals(name.trim())) {
             throw new IllegalArgumentException("Invalid instance name.");
         }
-        File newInstanceDir = new File(INSTANCES_DIR, name.trim());
+        File root = getInstancesRoot();
+        File newInstanceDir = new File(root, name.trim());
         if (newInstanceDir.exists()) {
             throw new IllegalArgumentException("Instance already exists: " + name);
         }
