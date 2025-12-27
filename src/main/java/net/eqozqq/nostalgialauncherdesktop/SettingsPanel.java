@@ -126,6 +126,7 @@ public class SettingsPanel extends JPanel {
         languageMap.put("Русский", "ru");
         languageMap.put("Беларуская", "be");
         languageMap.put("Українська", "uk");
+        languageMap.put("Polski", "pl");
         languageMap.put("Português", "pt");
         languageMap.put("简体中文", "zh_CN");
         languageMap.put(localeManager.has("combo.language.custom") ? localeManager.get("combo.language.custom")
@@ -901,6 +902,11 @@ public class SettingsPanel extends JPanel {
         deTranslationCredit.setFont(getCustomFont(Font.PLAIN, 14f));
         gbc.gridy = gridY++;
         card.add(deTranslationCredit, gbc);
+
+        JLabel plTranslationCredit = new JLabel("Polish translation: PRO100KatYT");
+        plTranslationCredit.setFont(getCustomFont(Font.PLAIN, 14f));
+        gbc.gridy = gridY++;
+        card.add(plTranslationCredit, gbc);
 
         gbc.gridy = gridY++;
         gbc.gridx = 0;
