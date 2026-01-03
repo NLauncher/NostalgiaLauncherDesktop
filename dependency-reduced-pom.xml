@@ -4,7 +4,7 @@
   <groupId>net.eqozqq</groupId>
   <artifactId>NostalgiaLauncherDesktop</artifactId>
   <name>NostalgiaLauncherDesktop</name>
-  <version>1.7.1</version>
+  <version>1.8.0</version>
   <description>Minecraft Pocket Edition Alpha Launcher</description>
   <build>
     <sourceDirectory>src</sourceDirectory>

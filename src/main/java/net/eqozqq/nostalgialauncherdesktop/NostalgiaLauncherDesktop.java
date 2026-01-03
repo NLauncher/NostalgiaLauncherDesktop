@@ -80,7 +80,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private String themeName;
     private String backgroundMode;
     private String customTranslationPath;
-    private static final String CURRENT_VERSION = "1.7.1";
+    
+    private String githubTranslationUrl;
+    private String githubTranslationName;
+    
+    private static final String CURRENT_VERSION = "1.8.0";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
@@ -283,6 +287,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
             scaleFactor = Double.parseDouble(settings.getProperty("scaleFactor", "1.3"));
             themeName = settings.getProperty("themeName", "Dark");
             customTranslationPath = settings.getProperty("customTranslationPath");
+            githubTranslationUrl = settings.getProperty("githubTranslationUrl");
+            githubTranslationName = settings.getProperty("githubTranslationName");
         } catch (IOException | NumberFormatException e) {
             backgroundMode = "Default";
             useDefaultVersionsSource = true;
@@ -322,6 +328,15 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 settings.setProperty("customTranslationPath", customTranslationPath);
             else
                 settings.remove("customTranslationPath");
+            
+            if (githubTranslationUrl != null) {
+                settings.setProperty("githubTranslationUrl", githubTranslationUrl);
+                settings.setProperty("githubTranslationName", githubTranslationName);
+            } else {
+                settings.remove("githubTranslationUrl");
+                settings.remove("githubTranslationName");
+            }
+                
             settings.store(fos, null);
         } catch (IOException e) {
             e.printStackTrace();
@@ -387,13 +402,15 @@ public class NostalgiaLauncherDesktop extends JFrame {
             initializeUI();
             loadVersions();
             loadNickname();
+            cardLayout.show(contentPanel, NavigationPanel.NAV_INSTANCES);
+            navigationPanel.setSelectedNav(NavigationPanel.NAV_INSTANCES);
         });
 
         settingsPanel = new SettingsPanel(
                 customBackgroundPath, customVersionsSource, useDefaultVersionsSource, executableSource,
                 customLauncherPath, postLaunchAction, enableDebugging, scaleFactor, themeName, CURRENT_VERSION,
-                backgroundMode, customBackgroundColor, customTranslationPath, localeManager,
-                this::onSettingsSaved);
+                backgroundMode, customBackgroundColor, customTranslationPath, githubTranslationUrl, githubTranslationName,
+                localeManager, this::onSettingsSaved);
 
         contentPanel.add(homePanel, NavigationPanel.NAV_HOME);
         contentPanel.add(worldsPanel, NavigationPanel.NAV_WORLDS);
@@ -444,6 +461,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
         backgroundMode = updatedSettings.getBackgroundMode();
         customBackgroundColor = updatedSettings.getCustomBackgroundColor();
         customTranslationPath = updatedSettings.getCustomTranslationPath();
+        githubTranslationUrl = updatedSettings.getGithubTranslationUrl();
+        githubTranslationName = updatedSettings.getGithubTranslationName();
+        
         String newLanguage = updatedSettings.getLanguage();
         String newThemeName = updatedSettings.getThemeName();
         final boolean wasMaximized = (getExtendedState() & JFrame.MAXIMIZED_BOTH) != 0;
@@ -451,11 +471,16 @@ public class NostalgiaLauncherDesktop extends JFrame {
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                if (!newLanguage.equals(localeManager.getCurrentLanguage()) || ("custom".equals(newLanguage))) {
-                    if ("custom".equals(newLanguage))
+                if (!newLanguage.equals(localeManager.getCurrentLanguage()) || 
+                    ("custom".equals(newLanguage)) || ("github".equals(newLanguage))) {
+                    
+                    if ("custom".equals(newLanguage)) {
                         localeManager.loadCustomLanguage(customTranslationPath);
-                    else
+                    } else if ("github".equals(newLanguage)) {
+                        localeManager.loadFromUrl(githubTranslationUrl, githubTranslationName);
+                    } else {
                         localeManager.loadLanguage(newLanguage);
+                    }
                 }
                 if (!newThemeName.equals(themeName)) {
                     themeName = newThemeName;

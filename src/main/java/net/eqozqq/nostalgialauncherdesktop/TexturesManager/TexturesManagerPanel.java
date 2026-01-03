@@ -2,6 +2,7 @@ package net.eqozqq.nostalgialauncherdesktop.TexturesManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicScrollBarUI;
 import java.awt.*;
 import java.io.File;
 import java.io.InputStream;
@@ -19,21 +20,19 @@ public class TexturesManagerPanel extends JPanel {
 
     private JList<String> versionList;
     private DefaultListModel<String> listModel;
-    private String selectedVersion;
-
-    private JPanel versionSelectionPanel;
-    private JPanel texturePanel;
-    private CardLayout cardLayout;
-    private JPanel contentPanel;
-
+    private JPanel rightPanel;
+    private JSplitPane splitPane;
+    
+    private JLabel selectedVersionLabel;
     private JTextField archivePathField;
+    private String selectedVersion;
 
     public TexturesManagerPanel(LocaleManager localeManager, String themeName) {
         this.localeManager = localeManager;
         this.isDark = themeName.contains("Dark");
         setLayout(new BorderLayout());
         setOpaque(false);
-        setBorder(new EmptyBorder(20, 40, 20, 40));
+        setBorder(new EmptyBorder(20, 20, 20, 20));
 
         JPanel mainCard = createCardPanel();
         mainCard.setLayout(new BorderLayout(10, 10));
@@ -45,17 +44,56 @@ public class TexturesManagerPanel extends JPanel {
         titleLabel.setBorder(new EmptyBorder(0, 0, 10, 0));
         mainCard.add(titleLabel, BorderLayout.NORTH);
 
-        cardLayout = new CardLayout();
-        contentPanel = new JPanel(cardLayout);
-        contentPanel.setOpaque(false);
+        listModel = new DefaultListModel<>();
+        versionList = new JList<>(listModel);
+        versionList.setCellRenderer(new VersionGridRenderer());
+        versionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        versionList.setLayoutOrientation(JList.HORIZONTAL_WRAP);
+        versionList.setVisibleRowCount(-1);
+        versionList.setOpaque(false);
+        versionList.setBackground(new Color(0, 0, 0, 0));
+        
+        versionList.setFixedCellWidth(290);
+        versionList.setFixedCellHeight(80);
 
-        versionSelectionPanel = createVersionSelectionPanel();
-        texturePanel = createTexturePanel();
+        JScrollPane listScrollPane = new JScrollPane(versionList);
+        listScrollPane.setOpaque(false);
+        listScrollPane.getViewport().setOpaque(false);
+        listScrollPane.setBorder(null);
+        listScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        listScrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        listScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        
+        listScrollPane.setBorder(new EmptyBorder(10, 10, 10, 10));
 
-        contentPanel.add(versionSelectionPanel, "SELECT_VERSION");
-        contentPanel.add(texturePanel, "TEXTURE_PANEL");
+        rightPanel = createRightPanel();
+        rightPanel.setMinimumSize(new Dimension(450, 0));
+        rightPanel.setPreferredSize(new Dimension(450, 0));
 
-        mainCard.add(contentPanel, BorderLayout.CENTER);
+        splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, listScrollPane, rightPanel);
+        splitPane.setOpaque(false);
+        splitPane.setBorder(null);
+        splitPane.setDividerSize(0);
+        splitPane.setResizeWeight(1.0);
+        
+        rightPanel.setVisible(false);
+        splitPane.setDividerLocation(1.0);
+
+        mainCard.add(splitPane, BorderLayout.CENTER);
+
+        versionList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                selectedVersion = versionList.getSelectedValue();
+                if (selectedVersion != null) {
+                    updateRightPanel(selectedVersion);
+                    rightPanel.setVisible(true);
+                    splitPane.setDividerLocation(splitPane.getWidth() - rightPanel.getPreferredSize().width);
+                } else {
+                    rightPanel.setVisible(false);
+                }
+            }
+        });
+
         add(mainCard, BorderLayout.CENTER);
     }
 
@@ -80,72 +118,79 @@ public class TexturesManagerPanel extends JPanel {
         return card;
     }
 
-    private JPanel createVersionSelectionPanel() {
-        JPanel panel = new JPanel(new BorderLayout(10, 10));
-        panel.setOpaque(false);
-
-        JLabel infoLabel = new JLabel(localeManager.get("label.selectVersionForTexture"));
-        infoLabel.setHorizontalAlignment(SwingConstants.CENTER);
-        infoLabel.setFont(getFont(Font.PLAIN, 14f));
-        infoLabel.setForeground(isDark ? new Color(200, 200, 200) : new Color(60, 60, 60));
-        panel.add(infoLabel, BorderLayout.NORTH);
-
-        listModel = new DefaultListModel<>();
-        versionList = new JList<>(listModel);
-        versionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        versionList.setOpaque(false);
-        versionList.setBackground(new Color(0, 0, 0, 0));
-        versionList.setCellRenderer(new TransparentListCellRenderer());
-
-        JScrollPane scrollPane = new JScrollPane(versionList);
-        scrollPane.setOpaque(false);
-        scrollPane.getViewport().setOpaque(false);
-        scrollPane.setBorder(BorderFactory.createLineBorder(isDark ? new Color(60, 60, 60) : new Color(200, 200, 200)));
-        panel.add(scrollPane, BorderLayout.CENTER);
-
-        JButton selectButton = new JButton(localeManager.get("button.select"));
-        selectButton.setFont(getFont(Font.BOLD, 14f));
-        selectButton.setPreferredSize(new Dimension(0, 40));
-        selectButton.addActionListener(e -> {
-            selectedVersion = versionList.getSelectedValue();
-            if (selectedVersion != null) {
-                cardLayout.show(contentPanel, "TEXTURE_PANEL");
-            } else {
-                JOptionPane.showMessageDialog(this, 
-                        localeManager.get("error.noVersionSelected.textures"),
-                        localeManager.get("error.noVersionSelected.title"), 
-                        JOptionPane.WARNING_MESSAGE);
+    private JPanel createRightPanel() {
+        JPanel panel = new JPanel(new GridBagLayout()) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (isDark) {
+                    g2d.setColor(new Color(45, 45, 45, 240)); 
+                } else {
+                    g2d.setColor(new Color(245, 245, 245, 240));
+                }
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+                g2d.dispose();
+                super.paintComponent(g);
             }
-        });
-
-        JPanel buttonPanel = new JPanel(new BorderLayout());
-        buttonPanel.setOpaque(false);
-        buttonPanel.setBorder(new EmptyBorder(10, 0, 0, 0));
-        buttonPanel.add(selectButton, BorderLayout.CENTER);
-        panel.add(buttonPanel, BorderLayout.SOUTH);
-
-        return panel;
-    }
-
-    private JPanel createTexturePanel() {
-        JPanel panel = new JPanel(new GridBagLayout());
+        };
         panel.setOpaque(false);
+        panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.insets = new Insets(6, 6, 6, 6);
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.weightx = 1.0;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        int y = 0;
 
-        JButton backButton = new JButton(localeManager.get("button.back"));
-        backButton.addActionListener(e -> cardLayout.show(contentPanel, "SELECT_VERSION"));
+        JPanel headerPanel = new JPanel(new BorderLayout());
+        headerPanel.setOpaque(false);
+        selectedVersionLabel = new JLabel(""); 
+        selectedVersionLabel.setFont(getFont(Font.BOLD, 18f));
+        selectedVersionLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
+        
+        JButton closeBtn = new JButton("×");
+        closeBtn.setFont(getFont(Font.BOLD, 20f));
+        closeBtn.setBorderPainted(false);
+        closeBtn.setContentAreaFilled(false);
+        closeBtn.setFocusPainted(false);
+        closeBtn.setForeground(isDark ? Color.GRAY : Color.DARK_GRAY);
+        closeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        closeBtn.addActionListener(e -> {
+            versionList.clearSelection();
+            rightPanel.setVisible(false);
+        });
+        
+        headerPanel.add(selectedVersionLabel, BorderLayout.WEST);
+        headerPanel.add(closeBtn, BorderLayout.EAST);
+        
         gbc.gridx = 0;
-        gbc.gridy = 0;
+        gbc.gridy = y;
         gbc.gridwidth = 2;
-        gbc.anchor = GridBagConstraints.WEST;
-        panel.add(backButton, gbc);
+        panel.add(headerPanel, gbc);
+        y++;
 
+        gbc.gridx = 0;
+        gbc.gridy = y;
+        gbc.gridwidth = 2;
+        panel.add(new JSeparator(), gbc);
+        y++;
+
+        gbc.gridx = 0;
+        gbc.gridy = y;
+        gbc.gridwidth = 2;
+        JLabel installLabel = new JLabel(localeManager.get("button.unpackTextures")); 
+        installLabel.setFont(getFont(Font.BOLD, 14f));
+        installLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
+        panel.add(installLabel, gbc);
+        y++;
+
+        gbc.gridx = 0;
+        gbc.gridy = y;
+        gbc.gridwidth = 2;
         JPanel fileSelectionPanel = new JPanel(new BorderLayout(5, 0));
         fileSelectionPanel.setOpaque(false);
-        archivePathField = new JTextField(30);
+        archivePathField = new JTextField();
         archivePathField.setEditable(false);
         JButton browseButton = new JButton(localeManager.get("button.browse"));
         browseButton.addActionListener(e -> {
@@ -159,36 +204,46 @@ public class TexturesManagerPanel extends JPanel {
         });
         fileSelectionPanel.add(archivePathField, BorderLayout.CENTER);
         fileSelectionPanel.add(browseButton, BorderLayout.EAST);
+        panel.add(fileSelectionPanel, gbc);
+        y++;
 
         gbc.gridx = 0;
-        gbc.gridy = 1;
+        gbc.gridy = y;
         gbc.gridwidth = 2;
-        panel.add(fileSelectionPanel, gbc);
-
-        JPanel buttonsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
-        buttonsPanel.setOpaque(false);
         JButton unpackButton = new JButton(localeManager.get("button.unpackTextures"));
-        JButton restoreButton = new JButton(localeManager.get("button.restoreDefaultTextures"));
-
         unpackButton.setFont(getFont(Font.BOLD, 14f));
-        restoreButton.setFont(getFont(Font.BOLD, 14f));
-
-        Dimension buttonSize = new Dimension(200, 40);
-        unpackButton.setPreferredSize(buttonSize);
-        restoreButton.setPreferredSize(buttonSize);
-
         unpackButton.addActionListener(e -> unpackTextures());
+        panel.add(unpackButton, gbc);
+        y++;
+
+        gbc.gridx = 0;
+        gbc.gridy = y;
+        gbc.gridwidth = 2;
+        gbc.insets = new Insets(20, 6, 6, 6);
+        panel.add(new JSeparator(), gbc);
+        gbc.insets = new Insets(6, 6, 6, 6);
+        y++;
+
+        gbc.gridx = 0;
+        gbc.gridy = y;
+        gbc.gridwidth = 2;
+        JLabel restoreLabel = new JLabel(localeManager.get("button.restoreDefaultTextures"));
+        restoreLabel.setFont(getFont(Font.BOLD, 14f));
+        restoreLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
+        panel.add(restoreLabel, gbc);
+        y++;
+
+        gbc.gridx = 0;
+        gbc.gridy = y;
+        gbc.gridwidth = 2;
+        JButton restoreButton = new JButton(localeManager.get("button.restoreDefaultTextures"));
+        restoreButton.setFont(getFont(Font.BOLD, 14f));
         restoreButton.addActionListener(e -> restoreDefaultTextures());
+        panel.add(restoreButton, gbc);
+        y++;
 
-        buttonsPanel.add(unpackButton);
-        buttonsPanel.add(restoreButton);
-
-        gbc.gridy = 2;
-        gbc.fill = GridBagConstraints.NONE;
-        gbc.anchor = GridBagConstraints.CENTER;
-        panel.add(buttonsPanel, gbc);
-
-        gbc.gridy = 3;
+        gbc.gridx = 0;
+        gbc.gridy = y;
         gbc.weighty = 1.0;
         gbc.fill = GridBagConstraints.BOTH;
         panel.add(new JPanel() {
@@ -198,6 +253,11 @@ public class TexturesManagerPanel extends JPanel {
         }, gbc);
 
         return panel;
+    }
+
+    private void updateRightPanel(String version) {
+        selectedVersionLabel.setText(version);
+        archivePathField.setText("");
     }
 
     private void unpackTextures() {
@@ -212,7 +272,7 @@ public class TexturesManagerPanel extends JPanel {
         try {
             File archiveFile = new File(path);
             File versionDir = new File(InstanceManager.getInstance().resolvePath("versions/" + selectedVersion));
-            ArchiveExtractor.extract(archiveFile, versionDir);
+            ArchiveExtractor.install(archiveFile, versionDir);
             
             JOptionPane.showMessageDialog(this, 
                     localeManager.get("info.texturesInstalled"),
@@ -315,8 +375,7 @@ public class TexturesManagerPanel extends JPanel {
         listModel.clear();
         loadInstalledVersions();
         selectedVersion = null;
-        archivePathField.setText("");
-        cardLayout.show(contentPanel, "SELECT_VERSION");
+        rightPanel.setVisible(false);
     }
 
     private void loadInstalledVersions() {
@@ -345,19 +404,109 @@ public class TexturesManagerPanel extends JPanel {
         return new Font("SansSerif", style, (int) size);
     }
 
-    private class TransparentListCellRenderer extends DefaultListCellRenderer {
+    private class VersionGridRenderer extends JPanel implements ListCellRenderer<String> {
+        private JLabel nameLabel;
+        private boolean isSelected;
+        private final int GAP = 8; 
+
+        public VersionGridRenderer() {
+            setLayout(new GridBagLayout());
+            setOpaque(false);
+            setBorder(BorderFactory.createEmptyBorder(10 + GAP, 15 + GAP, 10 + GAP, 15 + GAP));
+
+            nameLabel = new JLabel();
+            nameLabel.setFont(TexturesManagerPanel.this.getFont(Font.BOLD, 16f));
+            
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.gridx = 0;
+            gbc.gridy = 0;
+            gbc.weightx = 1.0;
+            gbc.weighty = 1.0;
+            gbc.fill = GridBagConstraints.BOTH;
+            gbc.anchor = GridBagConstraints.CENTER;
+            add(nameLabel, gbc);
+        }
+
         @Override
-        public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
-                boolean cellHasFocus) {
-            super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-            setOpaque(isSelected);
+        public Component getListCellRendererComponent(JList<? extends String> list, String value, int index,
+                boolean isSelected, boolean cellHasFocus) {
+            this.isSelected = isSelected;
+            nameLabel.setText(value);
+
+            Color fg = isDark ? Color.WHITE : Color.BLACK;
             if (isSelected) {
-                setBackground(new Color(100, 180, 255, 60));
-                setForeground(isDark ? Color.WHITE : Color.BLACK);
-            } else {
-                setForeground(isDark ? new Color(220, 220, 220) : new Color(50, 50, 50));
+                fg = isDark ? Color.WHITE : Color.BLACK;
             }
+            nameLabel.setForeground(fg);
+
             return this;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            if (isSelected) {
+                g2d.setColor(isDark ? new Color(255, 255, 255, 50) : new Color(0, 0, 0, 40));
+                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP*2, getHeight() - GAP*2, 15, 15);
+            } else {
+                g2d.setColor(isDark ? new Color(50, 50, 50, 180) : new Color(250, 250, 250, 220));
+                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP*2, getHeight() - GAP*2, 15, 15);
+            }
+
+            g2d.dispose();
+            super.paintComponent(g);
+        }
+    }
+    
+    private class ModernScrollBarUI extends BasicScrollBarUI {
+        @Override
+        protected void installDefaults() {
+            super.installDefaults();
+            scrollbar.setOpaque(false);
+        }
+
+        @Override
+        public Dimension getPreferredSize(JComponent c) {
+            return new Dimension(8, super.getPreferredSize(c).height);
+        }
+
+        @Override
+        protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+            if (isThumbRollover() || isDragging) {
+                g2d.setColor(isDark ? new Color(255, 255, 255, 80) : new Color(0, 0, 0, 80));
+            } else {
+                g2d.setColor(isDark ? new Color(255, 255, 255, 40) : new Color(0, 0, 0, 40));
+            }
+            
+            g2d.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, 8, 8);
+            g2d.dispose();
+        }
+
+        @Override
+        protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
+        }
+        
+        @Override
+        protected JButton createDecreaseButton(int orientation) {
+            return createZeroButton();
+        }
+
+        @Override
+        protected JButton createIncreaseButton(int orientation) {
+            return createZeroButton();
+        }
+
+        private JButton createZeroButton() {
+            JButton btn = new JButton();
+            btn.setPreferredSize(new Dimension(0, 0));
+            btn.setMinimumSize(new Dimension(0, 0));
+            btn.setMaximumSize(new Dimension(0, 0));
+            return btn;
         }
     }
 }

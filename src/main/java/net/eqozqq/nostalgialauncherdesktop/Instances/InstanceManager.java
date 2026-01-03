@@ -85,6 +85,40 @@ public class InstanceManager {
         }
     }
 
+    public void renameInstance(String oldName, String newName) {
+        if (oldName == null || oldName.trim().isEmpty() || DEFAULT_INSTANCE.equals(oldName.trim())) {
+            throw new IllegalArgumentException("Cannot rename the default instance.");
+        }
+        String cleanOld = oldName.trim();
+        String cleanNew = newName.trim();
+        
+        if (cleanNew.isEmpty()) {
+             throw new IllegalArgumentException("New name cannot be empty.");
+        }
+        if (cleanNew.equals(DEFAULT_INSTANCE)) {
+             throw new IllegalArgumentException("Cannot rename to the default instance name.");
+        }
+
+        File root = getInstancesRoot();
+        File oldDir = new File(root, cleanOld);
+        File newDir = new File(root, cleanNew);
+
+        if (!oldDir.exists()) {
+            throw new IllegalArgumentException("Instance not found: " + cleanOld);
+        }
+        if (newDir.exists()) {
+            throw new IllegalArgumentException("Instance already exists: " + cleanNew);
+        }
+
+        if (oldDir.renameTo(newDir)) {
+            if (activeInstance.equals(cleanOld)) {
+                setActiveInstance(cleanNew);
+            }
+        } else {
+            throw new RuntimeException("Failed to rename instance directory.");
+        }
+    }
+
     public void deleteInstance(String name) {
         if (name == null || name.trim().isEmpty() || DEFAULT_INSTANCE.equals(name.trim())) {
             throw new IllegalArgumentException("Cannot delete the default instance.");

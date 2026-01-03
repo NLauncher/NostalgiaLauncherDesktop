@@ -286,7 +286,7 @@ public class HomePanel extends JPanel {
         infoPanel.setBorder(BorderFactory.createEmptyBorder((int) (10 * scaleFactor), (int) (20 * scaleFactor),
                 (int) (10 * scaleFactor), (int) (20 * scaleFactor)));
 
-        JLabel versionLabel = new JLabel("NostalgiaLauncher Desktop v1.7.1 by eqozqq");
+        JLabel versionLabel = new JLabel("NostalgiaLauncher Desktop v1.8.0 by eqozqq");
         versionLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
         versionLabel.setFont(getRegularFont(Font.PLAIN, (float) (12 * scaleFactor)));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

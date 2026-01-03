@@ -1,6 +1,9 @@
 package net.eqozqq.nostalgialauncherdesktop;
 
 import com.formdev.flatlaf.FlatClientProperties;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -11,11 +14,15 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SettingsPanel extends JPanel {
@@ -70,6 +77,9 @@ public class SettingsPanel extends JPanel {
     private Color customBackgroundColor;
     private String language;
     private String customTranslationPath;
+    
+    private String githubTranslationUrl;
+    private String githubTranslationName;
 
     private LocaleManager localeManager;
     private SaveListener saveListener;
@@ -87,6 +97,8 @@ public class SettingsPanel extends JPanel {
     private final Map<String, String> themeMap = new LinkedHashMap<>();
 
     private static final String LAST_VERSION = "https://raw.githubusercontent.com/NLauncher/components/refs/heads/main/lastversion.txt";
+    private static final String GITHUB_LOCALES_BASE = "https://raw.githubusercontent.com/NLauncher/locales/main/";
+    private static final String GITHUB_LOCALES_CONFIG = GITHUB_LOCALES_BASE + "languages.json";
 
     public interface SaveListener {
         void onSave(SettingsPanel settings);
@@ -96,6 +108,7 @@ public class SettingsPanel extends JPanel {
             String currentExecutableSource, String currentCustomLauncherPath, String currentPostLaunchAction,
             boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion,
             String backgroundMode, Color customBackgroundColor, String currentCustomTranslationPath,
+            String currentGithubUrl, String currentGithubName,
             LocaleManager localeManager, SaveListener saveListener) {
         this.localeManager = localeManager;
         this.saveListener = saveListener;
@@ -115,19 +128,27 @@ public class SettingsPanel extends JPanel {
         this.customBackgroundColor = customBackgroundColor;
         this.language = localeManager.getCurrentLanguage();
         this.customTranslationPath = currentCustomTranslationPath;
+        this.githubTranslationUrl = currentGithubUrl;
+        this.githubTranslationName = currentGithubName;
         this.isDark = currentTheme.contains("Dark");
 
         setLayout(new BorderLayout());
         setOpaque(false);
         setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        languageMap.put("Deutsch", "de");
         languageMap.put("English", "en");
-        languageMap.put("Русский", "ru");
-        languageMap.put("Беларуская", "be");
-        languageMap.put("Українська", "uk");
-        languageMap.put("Português", "pt");
-        languageMap.put("简体中文", "zh_CN");
+        
+        String githubText = "Use translations from repository";
+        if (localeManager.has("combo.language.github")) {
+            githubText = localeManager.get("combo.language.github");
+        }
+        if ("github".equals(this.language) && this.githubTranslationName != null) {
+            githubText = (localeManager.has("combo.language.github_active") ? 
+                    localeManager.get("combo.language.github_active") : "Using translation from repository") + 
+                    " (" + this.githubTranslationName + ")";
+        }
+        languageMap.put(githubText, "github");
+
         languageMap.put(localeManager.has("combo.language.custom") ? localeManager.get("combo.language.custom")
                 : "Use custom translation", "custom");
 
@@ -323,7 +344,9 @@ public class SettingsPanel extends JPanel {
                 .findFirst().orElse("Dark");
 
         this.scaleFactor = (double) scaleSlider.getValue() / 100.0;
-        this.language = languageMap.get((String) languageComboBox.getSelectedItem());
+        
+        String selectedLang = (String) languageComboBox.getSelectedItem();
+        this.language = languageMap.get(selectedLang);
 
         if ("custom".equals(this.language)) {
             this.customTranslationPath = customTranslationPathField.getText();
@@ -644,6 +667,19 @@ public class SettingsPanel extends JPanel {
                 languageComboBox.setSelectedItem(name);
             }
         });
+        
+        languageComboBox.addActionListener(e -> {
+            String selected = (String) languageComboBox.getSelectedItem();
+            String code = languageMap.get(selected);
+            
+            if ("github".equals(code)) {
+                showGitHubTranslationsDialog();
+            }
+            
+            boolean isCustom = "custom".equals(code);
+            customTranslationPanel.setVisible(isCustom);
+        });
+        
         gbc.gridx = 1;
         gbc.gridy = gridY;
         gbc.gridwidth = 2;
@@ -685,13 +721,6 @@ public class SettingsPanel extends JPanel {
 
         boolean isCustomLanguage = "custom".equals(languageMap.get((String) languageComboBox.getSelectedItem()));
         customTranslationPanel.setVisible(isCustomLanguage);
-
-        languageComboBox.addActionListener(e -> {
-            String selected = (String) languageComboBox.getSelectedItem();
-            String code = languageMap.get(selected);
-            boolean isCustom = "custom".equals(code);
-            customTranslationPanel.setVisible(isCustom);
-        });
 
         gridY++;
         JLabel themeLabel = new JLabel(localeManager.get("label.theme"));
@@ -847,6 +876,112 @@ public class SettingsPanel extends JPanel {
 
         return card;
     }
+    
+    private static class RemoteLocale {
+        String name;
+        String file;
+        
+        @Override
+        public String toString() {
+            return name;
+        }
+    }
+
+    private void showGitHubTranslationsDialog() {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Repository Translations", true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setSize(300, 400);
+        dialog.setLocationRelativeTo(this);
+
+        DefaultListModel<RemoteLocale> listModel = new DefaultListModel<>();
+        JList<RemoteLocale> list = new JList<>(listModel);
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        dialog.add(new JScrollPane(list), BorderLayout.CENTER);
+
+        JLabel statusLabel = new JLabel("Loading...");
+        statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
+        dialog.add(statusLabel, BorderLayout.NORTH);
+
+        JButton selectButton = new JButton(localeManager.get("button.select"));
+        selectButton.setEnabled(false);
+        selectButton.addActionListener(e -> {
+            RemoteLocale selected = list.getSelectedValue();
+            if (selected != null) {
+                this.githubTranslationUrl = GITHUB_LOCALES_BASE + selected.file;
+                this.githubTranslationName = selected.name;
+                
+                String label = (localeManager.has("combo.language.github_active") ? 
+                        localeManager.get("combo.language.github_active") : "Using translation from repository") + 
+                        " (" + this.githubTranslationName + ")";
+                
+                DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) languageComboBox.getModel();
+                String selectedItem = (String) languageComboBox.getSelectedItem();
+                
+                languageMap.remove(selectedItem);
+                languageMap.put(label, "github");
+                
+                List<String> items = new ArrayList<>();
+                for (int i = 0; i < model.getSize(); i++) {
+                    String item = model.getElementAt(i);
+                    if (!item.equals(selectedItem)) {
+                        items.add(item);
+                    }
+                }
+                
+                int insertPos = items.size() - 1; 
+                items.add(insertPos, label);
+                
+                model.removeAllElements();
+                for (String item : items) {
+                    model.addElement(item);
+                }
+                model.setSelectedItem(label);
+                
+                dialog.dispose();
+            }
+        });
+        dialog.add(selectButton, BorderLayout.SOUTH);
+        
+        list.addListSelectionListener(e -> selectButton.setEnabled(list.getSelectedValue() != null));
+
+        SwingWorker<List<RemoteLocale>, Void> worker = new SwingWorker<List<RemoteLocale>, Void>() {
+            @Override
+            protected List<RemoteLocale> doInBackground() throws Exception {
+                URL url = new URL(GITHUB_LOCALES_CONFIG);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(5000);
+                
+                try (InputStreamReader reader = new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8)) {
+                    Gson gson = new Gson();
+                    Type listType = new TypeToken<List<RemoteLocale>>(){}.getType();
+                    return gson.fromJson(reader, listType);
+                }
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    List<RemoteLocale> files = get();
+                    for (RemoteLocale f : files) {
+                        listModel.addElement(f);
+                    }
+                    statusLabel.setText("Select a translation");
+                } catch (Exception ex) {
+                    statusLabel.setText("Error loading translations");
+                    ex.printStackTrace();
+                }
+            }
+        };
+        worker.execute();
+
+        dialog.setVisible(true);
+        
+        if (this.githubTranslationUrl == null) {
+            languageComboBox.setSelectedItem("English");
+        }
+    }
 
     private JPanel createAboutPanel() {
         JPanel card = createCardPanel();
@@ -891,16 +1026,6 @@ public class SettingsPanel extends JPanel {
         JLabel link4 = createHyperlink("https://github.com/zhuowei/SpoutNBT");
         gbc.gridy = gridY++;
         card.add(link4, gbc);
-
-        JLabel beTranslationCredit = new JLabel("Belarusian translation: Djabał Pažyralnik Kaleniaŭ");
-        beTranslationCredit.setFont(getCustomFont(Font.PLAIN, 14f));
-        gbc.gridy = gridY++;
-        card.add(beTranslationCredit, gbc);
-
-        JLabel deTranslationCredit = new JLabel("German translation: Raphipod");
-        deTranslationCredit.setFont(getCustomFont(Font.PLAIN, 14f));
-        gbc.gridy = gridY++;
-        card.add(deTranslationCredit, gbc);
 
         gbc.gridy = gridY++;
         gbc.gridx = 0;
@@ -1006,19 +1131,39 @@ public class SettingsPanel extends JPanel {
     }
 
     private JLabel createHyperlink(String url) {
-        JLabel label = new JLabel("<html><a href='" + url + "'>" + url + "</a></html>");
-        label.setFont(getCustomFont(Font.PLAIN, 14f));
-        label.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        label.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                try {
-                    Desktop.getDesktop().browse(new URI(url));
-                } catch (Exception ex) {
-                    ex.printStackTrace();
+    JLabel label = new JLabel("<html><a href='" + url + "'>" + url + "</a></html>");
+    label.setFont(getCustomFont(Font.PLAIN, 14f));
+    label.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+    label.addMouseListener(new MouseAdapter() {
+        @Override
+        public void mouseClicked(MouseEvent e) {
+            openLinkSilently(url);
+        }
+    });
+
+    return label;
+}
+
+    private void openLinkSilently(String url) {
+        try {
+            if (Desktop.isDesktopSupported()) {
+                Desktop desktop = Desktop.getDesktop();
+                if (desktop.isSupported(Desktop.Action.BROWSE)) {
+                    desktop.browse(new URI(url));
+                    return;
                 }
             }
-        });
-        return label;
+        } catch (Exception ignored) {}
+
+        try {
+            new ProcessBuilder("xdg-open", url).start();
+            return;
+        } catch (Exception ignored) {}
+
+        try {
+            new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
+        } catch (Exception ignored) {}
     }
 
     public String getCustomBackgroundPath() {
@@ -1075,5 +1220,13 @@ public class SettingsPanel extends JPanel {
 
     public String getExecutableSource() {
         return executableSource;
+    }
+    
+    public String getGithubTranslationUrl() {
+        return githubTranslationUrl;
+    }
+    
+    public String getGithubTranslationName() {
+        return githubTranslationName;
     }
 }
