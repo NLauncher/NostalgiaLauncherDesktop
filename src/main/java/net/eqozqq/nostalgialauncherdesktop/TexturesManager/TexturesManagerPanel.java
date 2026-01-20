@@ -22,7 +22,7 @@ public class TexturesManagerPanel extends JPanel {
     private DefaultListModel<String> listModel;
     private JPanel rightPanel;
     private JSplitPane splitPane;
-    
+
     private JLabel selectedVersionLabel;
     private JTextField archivePathField;
     private String selectedVersion;
@@ -52,7 +52,7 @@ public class TexturesManagerPanel extends JPanel {
         versionList.setVisibleRowCount(-1);
         versionList.setOpaque(false);
         versionList.setBackground(new Color(0, 0, 0, 0));
-        
+
         versionList.setFixedCellWidth(290);
         versionList.setFixedCellHeight(80);
 
@@ -63,7 +63,7 @@ public class TexturesManagerPanel extends JPanel {
         listScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         listScrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
         listScrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        
+
         listScrollPane.setBorder(new EmptyBorder(10, 10, 10, 10));
 
         rightPanel = createRightPanel();
@@ -75,7 +75,7 @@ public class TexturesManagerPanel extends JPanel {
         splitPane.setBorder(null);
         splitPane.setDividerSize(0);
         splitPane.setResizeWeight(1.0);
-        
+
         rightPanel.setVisible(false);
         splitPane.setDividerLocation(1.0);
 
@@ -125,9 +125,9 @@ public class TexturesManagerPanel extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 if (isDark) {
-                    g2d.setColor(new Color(45, 45, 45, 240)); 
+                    g2d.setColor(new Color(30, 30, 30, 180));
                 } else {
-                    g2d.setColor(new Color(245, 245, 245, 240));
+                    g2d.setColor(new Color(245, 245, 245, 180));
                 }
                 g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
                 g2d.dispose();
@@ -139,16 +139,17 @@ public class TexturesManagerPanel extends JPanel {
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.weightx = 1.0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.NORTHWEST;
         int y = 0;
 
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
-        selectedVersionLabel = new JLabel(""); 
+        selectedVersionLabel = new JLabel("");
         selectedVersionLabel.setFont(getFont(Font.BOLD, 18f));
         selectedVersionLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
-        
+
         JButton closeBtn = new JButton("×");
         closeBtn.setFont(getFont(Font.BOLD, 20f));
         closeBtn.setBorderPainted(false);
@@ -160,10 +161,10 @@ public class TexturesManagerPanel extends JPanel {
             versionList.clearSelection();
             rightPanel.setVisible(false);
         });
-        
+
         headerPanel.add(selectedVersionLabel, BorderLayout.WEST);
         headerPanel.add(closeBtn, BorderLayout.EAST);
-        
+
         gbc.gridx = 0;
         gbc.gridy = y;
         gbc.gridwidth = 2;
@@ -179,7 +180,7 @@ public class TexturesManagerPanel extends JPanel {
         gbc.gridx = 0;
         gbc.gridy = y;
         gbc.gridwidth = 2;
-        JLabel installLabel = new JLabel(localeManager.get("button.unpackTextures")); 
+        JLabel installLabel = new JLabel(localeManager.get("button.unpackTextures"));
         installLabel.setFont(getFont(Font.BOLD, 14f));
         installLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
         panel.add(installLabel, gbc);
@@ -192,7 +193,9 @@ public class TexturesManagerPanel extends JPanel {
         fileSelectionPanel.setOpaque(false);
         archivePathField = new JTextField();
         archivePathField.setEditable(false);
+        archivePathField.setPreferredSize(new Dimension(0, 40));
         JButton browseButton = new JButton(localeManager.get("button.browse"));
+        browseButton.setPreferredSize(new Dimension(0, 40));
         browseButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setDialogTitle(localeManager.get("dialog.selectTextureArchive.title"));
@@ -212,6 +215,7 @@ public class TexturesManagerPanel extends JPanel {
         gbc.gridwidth = 2;
         JButton unpackButton = new JButton(localeManager.get("button.unpackTextures"));
         unpackButton.setFont(getFont(Font.BOLD, 14f));
+        unpackButton.setPreferredSize(new Dimension(0, 40));
         unpackButton.addActionListener(e -> unpackTextures());
         panel.add(unpackButton, gbc);
         y++;
@@ -238,6 +242,7 @@ public class TexturesManagerPanel extends JPanel {
         gbc.gridwidth = 2;
         JButton restoreButton = new JButton(localeManager.get("button.restoreDefaultTextures"));
         restoreButton.setFont(getFont(Font.BOLD, 14f));
+        restoreButton.setPreferredSize(new Dimension(0, 40));
         restoreButton.addActionListener(e -> restoreDefaultTextures());
         panel.add(restoreButton, gbc);
         y++;
@@ -263,9 +268,9 @@ public class TexturesManagerPanel extends JPanel {
     private void unpackTextures() {
         String path = archivePathField.getText();
         if (path.isEmpty()) {
-            JOptionPane.showMessageDialog(this, 
+            JOptionPane.showMessageDialog(this,
                     localeManager.get("error.noArchiveSelected.message"),
-                    localeManager.get("error.noArchiveSelected.title"), 
+                    localeManager.get("error.noArchiveSelected.title"),
                     JOptionPane.WARNING_MESSAGE);
             return;
         }
@@ -273,15 +278,15 @@ public class TexturesManagerPanel extends JPanel {
             File archiveFile = new File(path);
             File versionDir = new File(InstanceManager.getInstance().resolvePath("versions/" + selectedVersion));
             ArchiveExtractor.install(archiveFile, versionDir);
-            
-            JOptionPane.showMessageDialog(this, 
+
+            JOptionPane.showMessageDialog(this,
                     localeManager.get("info.texturesInstalled"),
-                    localeManager.get("dialog.success.title"), 
+                    localeManager.get("dialog.success.title"),
                     JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, 
+            JOptionPane.showMessageDialog(this,
                     localeManager.get("error.installTexturesFailed", ex.getMessage()),
-                    localeManager.get("dialog.error.title"), 
+                    localeManager.get("dialog.error.title"),
                     JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
@@ -301,18 +306,18 @@ public class TexturesManagerPanel extends JPanel {
                     .orElse(null);
 
             if (targetVersion == null || targetVersion.getUrl().startsWith("file:")) {
-                JOptionPane.showMessageDialog(this, 
+                JOptionPane.showMessageDialog(this,
                         localeManager.get("error.restoreOfficialOnly"),
-                        localeManager.get("error.cannotRestore.title"), 
+                        localeManager.get("error.cannotRestore.title"),
                         JOptionPane.WARNING_MESSAGE);
                 return;
             }
 
-            int choice = JOptionPane.showConfirmDialog(this, 
+            int choice = JOptionPane.showConfirmDialog(this,
                     localeManager.get("dialog.confirmRestore.message"),
-                    localeManager.get("dialog.confirmRestore.title"), 
+                    localeManager.get("dialog.confirmRestore.title"),
                     JOptionPane.YES_NO_OPTION);
-            
+
             if (choice != JOptionPane.YES_OPTION)
                 return;
 
@@ -325,7 +330,7 @@ public class TexturesManagerPanel extends JPanel {
                 protected Void doInBackground() throws Exception {
                     File apkFile = versionManager.downloadVersion(targetVersion, progress -> {
                         publish((int) (progress * 100));
-                    });
+                    }, () -> isCancelled());
 
                     progressMonitor.setNote(localeManager.get("progress.extractingTextures"));
                     progressMonitor.setProgress(0);
@@ -348,13 +353,13 @@ public class TexturesManagerPanel extends JPanel {
                     try {
                         get();
                         JOptionPane.showMessageDialog(TexturesManagerPanel.this,
-                                localeManager.get("info.restoreSuccess"), 
+                                localeManager.get("info.restoreSuccess"),
                                 localeManager.get("dialog.success.title"),
                                 JOptionPane.INFORMATION_MESSAGE);
                     } catch (Exception ex) {
                         JOptionPane.showMessageDialog(TexturesManagerPanel.this,
                                 localeManager.get("error.restoreFailed", ex.getMessage()),
-                                localeManager.get("dialog.error.title"), 
+                                localeManager.get("dialog.error.title"),
                                 JOptionPane.ERROR_MESSAGE);
                         ex.printStackTrace();
                     }
@@ -363,9 +368,9 @@ public class TexturesManagerPanel extends JPanel {
             worker.execute();
 
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, 
+            JOptionPane.showMessageDialog(this,
                     localeManager.get("error.restoreFailed", ex.getMessage()),
-                    localeManager.get("dialog.error.title"), 
+                    localeManager.get("dialog.error.title"),
                     JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
@@ -407,7 +412,7 @@ public class TexturesManagerPanel extends JPanel {
     private class VersionGridRenderer extends JPanel implements ListCellRenderer<String> {
         private JLabel nameLabel;
         private boolean isSelected;
-        private final int GAP = 8; 
+        private final int GAP = 8;
 
         public VersionGridRenderer() {
             setLayout(new GridBagLayout());
@@ -416,7 +421,7 @@ public class TexturesManagerPanel extends JPanel {
 
             nameLabel = new JLabel();
             nameLabel.setFont(TexturesManagerPanel.this.getFont(Font.BOLD, 16f));
-            
+
             GridBagConstraints gbc = new GridBagConstraints();
             gbc.gridx = 0;
             gbc.gridy = 0;
@@ -448,18 +453,18 @@ public class TexturesManagerPanel extends JPanel {
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             if (isSelected) {
-                g2d.setColor(isDark ? new Color(255, 255, 255, 50) : new Color(0, 0, 0, 40));
-                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP*2, getHeight() - GAP*2, 15, 15);
+                g2d.setColor(isDark ? new Color(255, 255, 255, 40) : new Color(0, 0, 0, 30));
+                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP * 2, getHeight() - GAP * 2, 15, 15);
             } else {
-                g2d.setColor(isDark ? new Color(50, 50, 50, 180) : new Color(250, 250, 250, 220));
-                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP*2, getHeight() - GAP*2, 15, 15);
+                g2d.setColor(isDark ? new Color(0, 0, 0, 60) : new Color(255, 255, 255, 60));
+                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP * 2, getHeight() - GAP * 2, 15, 15);
             }
 
             g2d.dispose();
             super.paintComponent(g);
         }
     }
-    
+
     private class ModernScrollBarUI extends BasicScrollBarUI {
         @Override
         protected void installDefaults() {
@@ -482,7 +487,7 @@ public class TexturesManagerPanel extends JPanel {
             } else {
                 g2d.setColor(isDark ? new Color(255, 255, 255, 40) : new Color(0, 0, 0, 40));
             }
-            
+
             g2d.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, 8, 8);
             g2d.dispose();
         }
@@ -490,7 +495,7 @@ public class TexturesManagerPanel extends JPanel {
         @Override
         protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
         }
-        
+
         @Override
         protected JButton createDecreaseButton(int orientation) {
             return createZeroButton();

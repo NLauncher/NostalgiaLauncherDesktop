@@ -4,11 +4,11 @@
   <groupId>net.eqozqq</groupId>
   <artifactId>NostalgiaLauncherDesktop</artifactId>
   <name>NostalgiaLauncherDesktop</name>
-  <version>1.8.0</version>
+  <version>1.9.0</version>
   <description>Minecraft Pocket Edition Alpha Launcher</description>
   <build>
-    <sourceDirectory>src</sourceDirectory>
-    <finalName>NostalgiaLauncherDesktop</finalName>
+    <sourceDirectory>src/main/java</sourceDirectory>
+    <finalName>nld</finalName>
     <plugins>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>

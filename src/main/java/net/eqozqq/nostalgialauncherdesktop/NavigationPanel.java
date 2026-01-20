@@ -18,16 +18,16 @@ public class NavigationPanel extends JPanel {
     private final LocaleManager localeManager;
     private final double scaleFactor;
     private final boolean isDark;
-    
+
     private final List<NavButton> navButtons = new ArrayList<>();
-    private final List<NavButton> allButtons = new ArrayList<>(); 
+    private final List<NavButton> allButtons = new ArrayList<>();
     private NavButton selectedButton;
     private Consumer<String> onNavigate;
-    
+
     private boolean isCollapsed;
     private final NavButton collapseBtn;
     private final Preferences prefs;
-    
+
     private final int EXPANDED_WIDTH;
     private final int COLLAPSED_WIDTH;
     private static final String PREF_COLLAPSED = "nav_collapsed";
@@ -36,6 +36,7 @@ public class NavigationPanel extends JPanel {
     public static final String NAV_WORLDS = "worlds";
     public static final String NAV_TEXTURES = "textures";
     public static final String NAV_INSTANCES = "instances";
+    public static final String NAV_PROXY = "proxy";
     public static final String NAV_SETTINGS = "settings";
 
     public NavigationPanel(LocaleManager localeManager, double scaleFactor, String themeName) {
@@ -44,7 +45,7 @@ public class NavigationPanel extends JPanel {
         this.isDark = themeName.contains("Dark");
         this.prefs = Preferences.userNodeForPackage(NavigationPanel.class);
         this.isCollapsed = prefs.getBoolean(PREF_COLLAPSED, false);
-        
+
         this.EXPANDED_WIDTH = (int) (220 * scaleFactor);
         this.COLLAPSED_WIDTH = (int) (60 * scaleFactor);
 
@@ -62,19 +63,23 @@ public class NavigationPanel extends JPanel {
         NavButton homeBtn = createNavButton(
                 "icons/home_outline.svg", "icons/home_fill.svg",
                 localeManager.get("nav.home"), NAV_HOME);
-        
+
         NavButton worldsBtn = createNavButton(
-                "icons/explore_outline.svg", "icons/explore_fill.svg",
+                "icons/world_outline.svg", "icons/world_fill.svg",
                 localeManager.get("nav.worlds"), NAV_WORLDS);
-        
+
         NavButton texturesBtn = createNavButton(
                 "icons/texture_outline.svg", "icons/texture_fill.svg",
                 localeManager.get("nav.textures"), NAV_TEXTURES);
-        
+
         NavButton instancesBtn = createNavButton(
-                "icons/stacks_outline.svg", "icons/stacks_fill.svg",
+                "icons/instances_outline.svg", "icons/instances_fill.svg",
                 localeManager.get("nav.instances"), NAV_INSTANCES);
-        
+
+        NavButton proxyBtn = createNavButton(
+                "icons/proxy_outline.svg", "icons/proxy_fill.svg",
+                localeManager.get("nav.proxy"), NAV_PROXY);
+
         NavButton settingsBtn = createNavButton(
                 "icons/settings_outline.svg", "icons/settings_fill.svg",
                 localeManager.get("nav.settings"), NAV_SETTINGS);
@@ -83,21 +88,25 @@ public class NavigationPanel extends JPanel {
         addNavButton(topSection, worldsBtn);
         addNavButton(topSection, texturesBtn);
         addNavButton(topSection, instancesBtn);
-        
+        addNavButton(topSection, proxyBtn);
+
         topSection.add(Box.createVerticalStrut((int) (20 * scaleFactor)));
-        topSection.add(new JSeparator(SwingConstants.HORIZONTAL) {{
-            setMaximumSize(new Dimension(Short.MAX_VALUE, 1));
-            setForeground(isDark ? new Color(80, 80, 80) : new Color(200, 200, 200));
-            setBackground(isDark ? new Color(80, 80, 80) : new Color(200, 200, 200));
-        }});
+        topSection.add(new JSeparator(SwingConstants.HORIZONTAL) {
+            {
+                setMaximumSize(new Dimension(Short.MAX_VALUE, 1));
+                setForeground(isDark ? new Color(80, 80, 80) : new Color(200, 200, 200));
+                setBackground(isDark ? new Color(80, 80, 80) : new Color(200, 200, 200));
+            }
+        });
         topSection.add(Box.createVerticalStrut((int) (20 * scaleFactor)));
-        
+
         addNavButton(topSection, settingsBtn);
 
         navButtons.add(homeBtn);
         navButtons.add(worldsBtn);
         navButtons.add(texturesBtn);
         navButtons.add(instancesBtn);
+        navButtons.add(proxyBtn);
         navButtons.add(settingsBtn);
 
         JPanel bottomSection = new JPanel();
@@ -109,19 +118,20 @@ public class NavigationPanel extends JPanel {
 
         NavButton discordBtn = createLinkButton("icons/discord.svg", localeManager.get("nav.discord"),
                 "https://discord.gg/4fv4RrTav4");
-        NavButton websiteBtn = createLinkButton("icons/globe_outline.svg", localeManager.get("nav.website"),
+        NavButton websiteBtn = createLinkButton("icons/world_outline.svg", localeManager.get("nav.website"),
                 "https://nlauncher.github.io/");
 
         addNavButton(bottomSection, discordBtn);
         addNavButton(bottomSection, websiteBtn);
-        
+
         bottomSection.add(Box.createVerticalGlue());
-        
-        String initialIcon = isCollapsed ? "icons/keyboard_double_arrow_right.svg" : "icons/keyboard_double_arrow_left.svg";
+
+        String initialIcon = isCollapsed ? "icons/keyboard_double_arrow_right.svg"
+                : "icons/keyboard_double_arrow_left.svg";
         collapseBtn = new NavButton(initialIcon, initialIcon, "", null);
-        
+
         collapseBtn.setIconOnly(true);
-        
+
         for (java.awt.event.MouseListener ml : collapseBtn.getMouseListeners()) {
             collapseBtn.removeMouseListener(ml);
         }
@@ -130,10 +140,12 @@ public class NavigationPanel extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 toggleNavigation();
             }
+
             @Override
             public void mouseEntered(MouseEvent e) {
                 collapseBtn.setHovered(true);
             }
+
             @Override
             public void mouseExited(MouseEvent e) {
                 collapseBtn.setHovered(false);
@@ -158,19 +170,20 @@ public class NavigationPanel extends JPanel {
     private void toggleNavigation() {
         isCollapsed = !isCollapsed;
         prefs.putBoolean(PREF_COLLAPSED, isCollapsed);
-        
+
         setPreferredSize(new Dimension(isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH, 0));
-        
+
         for (NavButton btn : allButtons) {
             btn.setCollapsed(isCollapsed);
         }
-        
-        String iconPath = isCollapsed ? "icons/keyboard_double_arrow_right.svg" : "icons/keyboard_double_arrow_left.svg";
+
+        String iconPath = isCollapsed ? "icons/keyboard_double_arrow_right.svg"
+                : "icons/keyboard_double_arrow_left.svg";
         collapseBtn.updateIcons(iconPath, iconPath);
-        
+
         revalidate();
         repaint();
-        
+
         Container parent = getParent();
         if (parent != null) {
             parent.revalidate();
@@ -262,7 +275,7 @@ public class NavigationPanel extends JPanel {
         private final JLabel iconLabel;
         private final JLabel textLabel;
         private final Component spacer;
-        
+
         private FlatSVGIcon iconOutline;
         private FlatSVGIcon iconFill;
 
@@ -278,7 +291,7 @@ public class NavigationPanel extends JPanel {
 
             iconLabel = new JLabel();
             updateIcons(iconPathOutline, iconPathFill);
-            
+
             textLabel = new JLabel(text);
             textLabel.setFont(getRegularFont(Font.PLAIN, (float) (14 * scaleFactor)));
             updateColors();
@@ -329,19 +342,19 @@ public class NavigationPanel extends JPanel {
                 textLabel.setVisible(!collapsed);
                 spacer.setVisible(!collapsed);
             }
-            
+
             if (collapsed) {
-                 setBorder(new EmptyBorder(
-                    (int) (10 * scaleFactor), (int) (10 * scaleFactor),
-                    (int) (10 * scaleFactor), (int) (10 * scaleFactor)));
+                setBorder(new EmptyBorder(
+                        (int) (10 * scaleFactor), (int) (10 * scaleFactor),
+                        (int) (10 * scaleFactor), (int) (10 * scaleFactor)));
             } else {
-                 setBorder(new EmptyBorder(
-                    (int) (10 * scaleFactor), (int) (15 * scaleFactor),
-                    (int) (10 * scaleFactor), (int) (15 * scaleFactor)));
+                setBorder(new EmptyBorder(
+                        (int) (10 * scaleFactor), (int) (15 * scaleFactor),
+                        (int) (10 * scaleFactor), (int) (15 * scaleFactor)));
             }
             revalidate();
         }
-        
+
         public void setHovered(boolean h) {
             this.hovered = h;
             updateColors();
@@ -351,9 +364,9 @@ public class NavigationPanel extends JPanel {
         private void updateColors() {
             FlatSVGIcon currentIcon = selected ? iconFill : iconOutline;
             iconLabel.setIcon(currentIcon);
-            
+
             boolean highlight = selected || hovered;
-            
+
             if (highlight) {
                 textLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
             } else {
@@ -369,7 +382,7 @@ public class NavigationPanel extends JPanel {
             } else {
                 color = isDark ? new Color(180, 180, 180) : new Color(100, 100, 100);
             }
-            
+
             FlatSVGIcon currentIcon = (FlatSVGIcon) iconLabel.getIcon();
             if (currentIcon != null) {
                 currentIcon.setColorFilter(new FlatSVGIcon.ColorFilter(c -> color));

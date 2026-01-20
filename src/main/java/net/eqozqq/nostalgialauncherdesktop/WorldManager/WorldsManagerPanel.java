@@ -60,7 +60,7 @@ public class WorldsManagerPanel extends JPanel {
             this.seed = seed;
             this.gameType = gameType;
         }
-        
+
         @Override
         public String toString() {
             return name;
@@ -86,7 +86,7 @@ public class WorldsManagerPanel extends JPanel {
         titleLabel.setFont(getFont(Font.BOLD, 24f));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         titleLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
-        
+
         JLabel warningLabel = new JLabel(localeManager.get("message.backupRecommendation"));
         warningLabel.setFont(getFont(Font.PLAIN, 12f));
         warningLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -106,7 +106,7 @@ public class WorldsManagerPanel extends JPanel {
         worldsList.setVisibleRowCount(-1);
         worldsList.setOpaque(false);
         worldsList.setBackground(new Color(0, 0, 0, 0));
-        
+
         worldsList.setFixedCellWidth(290);
         worldsList.setFixedCellHeight(145);
 
@@ -115,10 +115,10 @@ public class WorldsManagerPanel extends JPanel {
         listScrollPane.getViewport().setOpaque(false);
         listScrollPane.setBorder(null);
         listScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        
+
         listScrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
         listScrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        
+
         listScrollPane.setBorder(new EmptyBorder(10, 10, 10, 10));
 
         infoPanel = createWorldInfoPanel();
@@ -130,7 +130,7 @@ public class WorldsManagerPanel extends JPanel {
         splitPane.setBorder(null);
         splitPane.setDividerSize(0);
         splitPane.setResizeWeight(1.0);
-        
+
         infoPanel.setVisible(false);
         splitPane.setDividerLocation(1.0);
 
@@ -195,9 +195,9 @@ public class WorldsManagerPanel extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 if (isDark) {
-                    g2d.setColor(new Color(45, 45, 45, 240)); 
+                    g2d.setColor(new Color(45, 45, 45, 150));
                 } else {
-                    g2d.setColor(new Color(245, 245, 245, 240));
+                    g2d.setColor(new Color(245, 245, 245, 150));
                 }
                 g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
                 g2d.dispose();
@@ -215,10 +215,10 @@ public class WorldsManagerPanel extends JPanel {
 
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
-        JLabel editLabel = new JLabel(localeManager.get("nav.worlds")); 
+        JLabel editLabel = new JLabel(localeManager.get("nav.worlds"));
         editLabel.setFont(getFont(Font.BOLD, 18f));
         editLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
-        
+
         JButton closeBtn = new JButton("×");
         closeBtn.setFont(getFont(Font.BOLD, 20f));
         closeBtn.setBorderPainted(false);
@@ -230,10 +230,10 @@ public class WorldsManagerPanel extends JPanel {
             worldsList.clearSelection();
             infoPanel.setVisible(false);
         });
-        
+
         headerPanel.add(editLabel, BorderLayout.WEST);
         headerPanel.add(closeBtn, BorderLayout.EAST);
-        
+
         gbc.gridx = 0;
         gbc.gridy = y;
         gbc.gridwidth = 3;
@@ -338,7 +338,7 @@ public class WorldsManagerPanel extends JPanel {
         panel.add(createLabel(localeManager.get("label.playerLocation")), gbc);
         gbc.gridx = 1;
         gbc.gridwidth = 2;
-        
+
         playerLocationField = new JTextField();
         playerLocationField.setEditable(false);
         playerLocationField.setOpaque(false);
@@ -368,7 +368,7 @@ public class WorldsManagerPanel extends JPanel {
         invulnerableBox.setOpaque(false);
         instaBuildBox.setOpaque(false);
         spawnMobsBox.setOpaque(false);
-        
+
         Color cbColor = isDark ? Color.WHITE : Color.BLACK;
         allowFlyingBox.setForeground(cbColor);
         flyingBox.setForeground(cbColor);
@@ -456,7 +456,7 @@ public class WorldsManagerPanel extends JPanel {
             playerLocationField.setText("N/A");
             playerLocationField.setToolTipText(null);
         }
-        
+
         playerLocationField.setCaretPosition(0);
 
         PlayerAbilities abilities = currentLevel.getPlayer().getAbilities();
@@ -517,18 +517,18 @@ public class WorldsManagerPanel extends JPanel {
             File[] worldFolders = worldsDir.listFiles(File::isDirectory);
             if (worldFolders != null) {
                 for (File worldFolder : worldFolders) {
-                    if (worldFolder.getName().equals("_LevelCache")) continue;
-                    
+                    if (worldFolder.getName().equals("_LevelCache"))
+                        continue;
+
                     File levelDat = new File(worldFolder, "level.dat");
                     if (levelDat.exists()) {
                         try {
                             Level lvl = NBTConverter.readLevel(readLevelDat(levelDat));
                             listModel.addElement(new WorldEntry(
-                                worldFolder, 
-                                lvl.getLevelName(), 
-                                lvl.getRandomSeed(), 
-                                lvl.getGameType()
-                            ));
+                                    worldFolder,
+                                    lvl.getLevelName(),
+                                    lvl.getRandomSeed(),
+                                    lvl.getGameType()));
                         } catch (Exception e) {
                             listModel.addElement(new WorldEntry(worldFolder, worldFolder.getName(), 0, 0));
                         }
@@ -564,14 +564,14 @@ public class WorldsManagerPanel extends JPanel {
         if (selected == null)
             return;
 
-        String newName = (String) JOptionPane.showInputDialog(this, 
+        String newName = (String) JOptionPane.showInputDialog(this,
                 localeManager.get("dialog.renameWorld.message"),
-                localeManager.get("dialog.renameWorld.title"), 
-                JOptionPane.QUESTION_MESSAGE, 
-                null, 
-                null, 
+                localeManager.get("dialog.renameWorld.title"),
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                null,
                 selected.name);
-        
+
         if (newName != null && !newName.trim().isEmpty() && !newName.equals(selected.name)) {
             try {
                 File levelDat = new File(selected.folder, "level.dat");
@@ -580,10 +580,10 @@ public class WorldsManagerPanel extends JPanel {
                     level.setLevelName(newName.trim());
                     CompoundTag rootTag = NBTConverter.writeLevel(level);
                     writeLevelDat(rootTag, levelDat);
-                    
+
                     selected.name = newName.trim();
                     worldsList.repaint();
-                    
+
                     if (currentWorldFolder != null && currentWorldFolder.equals(selected.folder)) {
                         worldNameField.setText(selected.name);
                         currentLevel.setLevelName(selected.name);
@@ -605,14 +605,14 @@ public class WorldsManagerPanel extends JPanel {
         if (selected == null)
             return;
 
-        String newName = (String) JOptionPane.showInputDialog(this, 
+        String newName = (String) JOptionPane.showInputDialog(this,
                 localeManager.get("dialog.renameFolder.message"),
-                localeManager.get("dialog.renameFolder.title"), 
-                JOptionPane.QUESTION_MESSAGE, 
-                null, 
-                null, 
+                localeManager.get("dialog.renameFolder.title"),
+                JOptionPane.QUESTION_MESSAGE,
+                null,
+                null,
                 selected.folder.getName());
-        
+
         if (newName != null && !newName.trim().isEmpty() && !newName.equals(selected.folder.getName())) {
             File newFile = new File(selected.folder.getParent(), newName.trim());
             if (newFile.exists()) {
@@ -732,7 +732,7 @@ public class WorldsManagerPanel extends JPanel {
         private JLabel seedLabel;
         private JLabel modeLabel;
         private boolean isSelected;
-        private final int GAP = 8; 
+        private final int GAP = 8;
 
         public WorldGridRenderer() {
             setLayout(new GridBagLayout());
@@ -741,10 +741,10 @@ public class WorldsManagerPanel extends JPanel {
 
             nameLabel = new JLabel();
             nameLabel.setFont(WorldsManagerPanel.this.getFont(Font.BOLD, 16f));
-            
+
             seedLabel = new JLabel();
             seedLabel.setFont(WorldsManagerPanel.this.getFont(Font.PLAIN, 12f));
-            
+
             modeLabel = new JLabel();
             modeLabel.setFont(WorldsManagerPanel.this.getFont(Font.PLAIN, 13f));
 
@@ -770,22 +770,22 @@ public class WorldsManagerPanel extends JPanel {
         public Component getListCellRendererComponent(JList<? extends WorldEntry> list, WorldEntry value, int index,
                 boolean isSelected, boolean cellHasFocus) {
             this.isSelected = isSelected;
-            
+
             nameLabel.setText(value.name);
             seedLabel.setText("Seed: " + value.seed);
-            
-            String modeStr = value.gameType == 1 ? localeManager.get("combo.gamemode.creative") 
-                                                 : localeManager.get("combo.gamemode.survival");
+
+            String modeStr = value.gameType == 1 ? localeManager.get("combo.gamemode.creative")
+                    : localeManager.get("combo.gamemode.survival");
             modeLabel.setText(modeStr);
 
             Color fg = isDark ? Color.WHITE : Color.BLACK;
             Color subFg = isDark ? new Color(200, 200, 200) : new Color(80, 80, 80);
-            
+
             if (isSelected) {
                 fg = isDark ? Color.WHITE : Color.BLACK;
                 subFg = isDark ? Color.WHITE : Color.BLACK;
             }
-            
+
             nameLabel.setForeground(fg);
             seedLabel.setForeground(subFg);
             modeLabel.setForeground(subFg);
@@ -799,18 +799,17 @@ public class WorldsManagerPanel extends JPanel {
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             if (isSelected) {
-                g2d.setColor(isDark ? new Color(255, 255, 255, 50) : new Color(0, 0, 0, 40));
-                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP*2, getHeight() - GAP*2, 15, 15);
+                g2d.setColor(isDark ? new Color(255, 255, 255, 40) : new Color(0, 0, 0, 30));
+                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP * 2, getHeight() - GAP * 2, 15, 15);
             } else {
-                g2d.setColor(isDark ? new Color(50, 50, 50, 180) : new Color(250, 250, 250, 220));
-                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP*2, getHeight() - GAP*2, 15, 15);
+                g2d.setColor(isDark ? new Color(0, 0, 0, 60) : new Color(255, 255, 255, 60));
+                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP * 2, getHeight() - GAP * 2, 15, 15);
             }
-
             g2d.dispose();
             super.paintComponent(g);
         }
     }
-    
+
     private class ModernScrollBarUI extends BasicScrollBarUI {
         @Override
         protected void installDefaults() {
@@ -833,7 +832,7 @@ public class WorldsManagerPanel extends JPanel {
             } else {
                 g2d.setColor(isDark ? new Color(255, 255, 255, 40) : new Color(0, 0, 0, 40));
             }
-            
+
             g2d.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, 8, 8);
             g2d.dispose();
         }
@@ -841,7 +840,7 @@ public class WorldsManagerPanel extends JPanel {
         @Override
         protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
         }
-        
+
         @Override
         protected JButton createDecreaseButton(int orientation) {
             return createZeroButton();

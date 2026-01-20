@@ -14,19 +14,19 @@ import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
 public class InstancesPanel extends JPanel {
     private final LocaleManager localeManager;
     private final boolean isDark;
-    
+
     private JList<String> instancesList;
     private DefaultListModel<String> listModel;
     private JSplitPane splitPane;
     private JPanel rightPanel;
     private Runnable onInstanceChanged;
-    
+
     private JLabel selectedInstanceLabel;
     private JLabel statusLabel;
     private JButton selectButton;
     private JButton renameButton;
     private JButton deleteButton;
-    
+
     private String selectedInstance;
 
     public InstancesPanel(LocaleManager localeManager, String themeName) {
@@ -54,7 +54,7 @@ public class InstancesPanel extends JPanel {
         instancesList.setVisibleRowCount(-1);
         instancesList.setOpaque(false);
         instancesList.setBackground(new Color(0, 0, 0, 0));
-        
+
         instancesList.setFixedCellWidth(290);
         instancesList.setFixedCellHeight(100);
 
@@ -75,12 +75,12 @@ public class InstancesPanel extends JPanel {
         createButton.setFont(getFont(Font.BOLD, 14f));
         createButton.setPreferredSize(new Dimension(0, 45));
         createButton.addActionListener(e -> createInstance());
-        
+
         JPanel createButtonPanel = new JPanel(new BorderLayout());
         createButtonPanel.setOpaque(false);
         createButtonPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
         createButtonPanel.add(createButton, BorderLayout.CENTER);
-        
+
         leftPanel.add(createButtonPanel, BorderLayout.SOUTH);
 
         rightPanel = createRightPanel();
@@ -92,7 +92,7 @@ public class InstancesPanel extends JPanel {
         splitPane.setBorder(null);
         splitPane.setDividerSize(0);
         splitPane.setResizeWeight(1.0);
-        
+
         rightPanel.setVisible(false);
         splitPane.setDividerLocation(1.0);
 
@@ -157,9 +157,9 @@ public class InstancesPanel extends JPanel {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 if (isDark) {
-                    g2d.setColor(new Color(45, 45, 45, 240)); 
+                    g2d.setColor(new Color(30, 30, 30, 180));
                 } else {
-                    g2d.setColor(new Color(245, 245, 245, 240));
+                    g2d.setColor(new Color(245, 245, 245, 180));
                 }
                 g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
                 g2d.dispose();
@@ -171,16 +171,17 @@ public class InstancesPanel extends JPanel {
 
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.weightx = 1.0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.anchor = GridBagConstraints.NORTHWEST;
         int y = 0;
 
         JPanel headerPanel = new JPanel(new BorderLayout());
         headerPanel.setOpaque(false);
-        selectedInstanceLabel = new JLabel(""); 
+        selectedInstanceLabel = new JLabel("");
         selectedInstanceLabel.setFont(getFont(Font.BOLD, 18f));
         selectedInstanceLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
-        
+
         JButton closeBtn = new JButton("×");
         closeBtn.setFont(getFont(Font.BOLD, 20f));
         closeBtn.setBorderPainted(false);
@@ -192,10 +193,10 @@ public class InstancesPanel extends JPanel {
             instancesList.clearSelection();
             rightPanel.setVisible(false);
         });
-        
+
         headerPanel.add(selectedInstanceLabel, BorderLayout.WEST);
         headerPanel.add(closeBtn, BorderLayout.EAST);
-        
+
         gbc.gridx = 0;
         gbc.gridy = y;
         gbc.gridwidth = 2;
@@ -221,6 +222,7 @@ public class InstancesPanel extends JPanel {
         gbc.gridwidth = 2;
         selectButton = new JButton(localeManager.get("button.select"));
         selectButton.setFont(getFont(Font.BOLD, 14f));
+        selectButton.setPreferredSize(new Dimension(0, 40));
         selectButton.addActionListener(e -> selectInstance());
         panel.add(selectButton, gbc);
         y++;
@@ -230,6 +232,7 @@ public class InstancesPanel extends JPanel {
         gbc.gridwidth = 2;
         renameButton = new JButton(localeManager.get("menu.rename"));
         renameButton.setFont(getFont(Font.BOLD, 14f));
+        renameButton.setPreferredSize(new Dimension(0, 40));
         renameButton.addActionListener(e -> renameInstance());
         panel.add(renameButton, gbc);
         y++;
@@ -239,6 +242,7 @@ public class InstancesPanel extends JPanel {
         gbc.gridwidth = 2;
         deleteButton = new JButton(localeManager.get("menu.delete"));
         deleteButton.setFont(getFont(Font.BOLD, 14f));
+        deleteButton.setPreferredSize(new Dimension(0, 40));
         deleteButton.addActionListener(e -> deleteInstance());
         panel.add(deleteButton, gbc);
         y++;
@@ -258,22 +262,22 @@ public class InstancesPanel extends JPanel {
 
     private void updateRightPanel(String instanceName) {
         selectedInstanceLabel.setText(instanceName);
-        
+
         boolean isActive = instanceName.equals(InstanceManager.getInstance().getActiveInstance());
         boolean isDefault = instanceName.equals(InstanceManager.getDefaultInstanceName());
-        
+
         if (isActive) {
-            statusLabel.setText(localeManager.get("status.ready")); 
-            statusLabel.setForeground(new Color(76, 175, 80)); 
+            statusLabel.setText(localeManager.get("status.ready"));
+            statusLabel.setForeground(new Color(76, 175, 80));
             selectButton.setEnabled(false);
-            selectButton.setText(localeManager.get("status.ready")); 
+            selectButton.setText(localeManager.get("status.ready"));
         } else {
             statusLabel.setText("Inactive");
             statusLabel.setForeground(isDark ? Color.GRAY : Color.DARK_GRAY);
             selectButton.setEnabled(true);
             selectButton.setText(localeManager.get("button.select"));
         }
-        
+
         renameButton.setEnabled(!isDefault);
         deleteButton.setEnabled(!isDefault);
     }
@@ -296,18 +300,18 @@ public class InstancesPanel extends JPanel {
     }
 
     private void createInstance() {
-        String name = JOptionPane.showInputDialog(this, 
+        String name = JOptionPane.showInputDialog(this,
                 localeManager.get("dialog.instance.addPrompt"),
-                localeManager.get("dialog.instances.title"), 
+                localeManager.get("dialog.instances.title"),
                 JOptionPane.PLAIN_MESSAGE);
-        
+
         if (name != null && !name.trim().isEmpty()) {
             try {
                 InstanceManager.getInstance().createInstance(name.trim());
                 reload();
             } catch (Exception e) {
-                JOptionPane.showMessageDialog(this, 
-                        e.getMessage(), 
+                JOptionPane.showMessageDialog(this,
+                        e.getMessage(),
                         localeManager.get("dialog.error.title"),
                         JOptionPane.ERROR_MESSAGE);
             }
@@ -315,22 +319,23 @@ public class InstancesPanel extends JPanel {
     }
 
     private void renameInstance() {
-        if (selectedInstance == null) return;
-        
+        if (selectedInstance == null)
+            return;
+
         if (selectedInstance.equals(InstanceManager.getDefaultInstanceName())) {
-             JOptionPane.showMessageDialog(this, 
+            JOptionPane.showMessageDialog(this,
                     localeManager.get("error.instance.reservedName"),
-                    localeManager.get("dialog.error.title"), 
+                    localeManager.get("dialog.error.title"),
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        String newName = (String) JOptionPane.showInputDialog(this, 
+        String newName = (String) JOptionPane.showInputDialog(this,
                 localeManager.get("menu.rename"),
-                localeManager.get("dialog.instances.title"), 
+                localeManager.get("dialog.instances.title"),
                 JOptionPane.PLAIN_MESSAGE,
                 null, null, selectedInstance);
-        
+
         if (newName != null && !newName.trim().isEmpty() && !newName.trim().equals(selectedInstance)) {
             try {
                 InstanceManager.getInstance().renameInstance(selectedInstance, newName.trim());
@@ -341,8 +346,8 @@ public class InstancesPanel extends JPanel {
                     onInstanceChanged.run();
                 }
             } catch (Exception e) {
-                JOptionPane.showMessageDialog(this, 
-                        e.getMessage(), 
+                JOptionPane.showMessageDialog(this,
+                        e.getMessage(),
                         localeManager.get("dialog.error.title"),
                         JOptionPane.ERROR_MESSAGE);
             }
@@ -350,7 +355,8 @@ public class InstancesPanel extends JPanel {
     }
 
     private void selectInstance() {
-        if (selectedInstance == null) return;
+        if (selectedInstance == null)
+            return;
 
         if (selectedInstance.equals(InstanceManager.getInstance().getActiveInstance())) {
             return;
@@ -359,28 +365,29 @@ public class InstancesPanel extends JPanel {
         InstanceManager.getInstance().setActiveInstance(selectedInstance);
         updateRightPanel(selectedInstance);
         instancesList.repaint();
-        
+
         if (onInstanceChanged != null) {
             onInstanceChanged.run();
         }
     }
 
     private void deleteInstance() {
-        if (selectedInstance == null) return;
+        if (selectedInstance == null)
+            return;
 
         if (selectedInstance.equals(InstanceManager.getDefaultInstanceName())) {
-            JOptionPane.showMessageDialog(this, 
+            JOptionPane.showMessageDialog(this,
                     localeManager.get("error.instance.reservedName"),
-                    localeManager.get("dialog.error.title"), 
+                    localeManager.get("dialog.error.title"),
                     JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        int confirm = JOptionPane.showConfirmDialog(this, 
+        int confirm = JOptionPane.showConfirmDialog(this,
                 localeManager.get("dialog.instance.deleteWarning"),
-                localeManager.get("dialog.warning.title"), 
+                localeManager.get("dialog.warning.title"),
                 JOptionPane.YES_NO_OPTION);
-        
+
         if (confirm == JOptionPane.YES_OPTION) {
             try {
                 InstanceManager.getInstance().deleteInstance(selectedInstance);
@@ -390,8 +397,8 @@ public class InstancesPanel extends JPanel {
                     onInstanceChanged.run();
                 }
             } catch (Exception e) {
-                JOptionPane.showMessageDialog(this, 
-                        e.getMessage(), 
+                JOptionPane.showMessageDialog(this,
+                        e.getMessage(),
                         localeManager.get("dialog.error.title"),
                         JOptionPane.ERROR_MESSAGE);
             }
@@ -412,7 +419,7 @@ public class InstancesPanel extends JPanel {
         private JLabel nameLabel;
         private JLabel statusLabel;
         private boolean isSelected;
-        private final int GAP = 8; 
+        private final int GAP = 8;
 
         public InstanceGridRenderer() {
             setLayout(new GridBagLayout());
@@ -421,7 +428,7 @@ public class InstancesPanel extends JPanel {
 
             nameLabel = new JLabel();
             nameLabel.setFont(InstancesPanel.this.getFont(Font.BOLD, 16f));
-            
+
             statusLabel = new JLabel();
             statusLabel.setFont(InstancesPanel.this.getFont(Font.PLAIN, 12f));
 
@@ -444,12 +451,12 @@ public class InstancesPanel extends JPanel {
         public Component getListCellRendererComponent(JList<? extends String> list, String value, int index,
                 boolean isSelected, boolean cellHasFocus) {
             this.isSelected = isSelected;
-            
+
             nameLabel.setText(value);
-            
+
             boolean isActive = value.equals(InstanceManager.getInstance().getActiveInstance());
             if (isActive) {
-                statusLabel.setText(localeManager.get("status.ready")); 
+                statusLabel.setText(localeManager.get("status.ready"));
                 statusLabel.setForeground(new Color(76, 175, 80));
             } else {
                 statusLabel.setText("Inactive");
@@ -471,18 +478,18 @@ public class InstancesPanel extends JPanel {
             g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
             if (isSelected) {
-                g2d.setColor(isDark ? new Color(255, 255, 255, 50) : new Color(0, 0, 0, 40));
-                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP*2, getHeight() - GAP*2, 15, 15);
+                g2d.setColor(isDark ? new Color(255, 255, 255, 40) : new Color(0, 0, 0, 30));
+                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP * 2, getHeight() - GAP * 2, 15, 15);
             } else {
-                g2d.setColor(isDark ? new Color(50, 50, 50, 180) : new Color(250, 250, 250, 220));
-                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP*2, getHeight() - GAP*2, 15, 15);
+                g2d.setColor(isDark ? new Color(0, 0, 0, 60) : new Color(255, 255, 255, 60));
+                g2d.fillRoundRect(GAP, GAP, getWidth() - GAP * 2, getHeight() - GAP * 2, 15, 15);
             }
 
             g2d.dispose();
             super.paintComponent(g);
         }
     }
-    
+
     private class ModernScrollBarUI extends BasicScrollBarUI {
         @Override
         protected void installDefaults() {
@@ -505,7 +512,7 @@ public class InstancesPanel extends JPanel {
             } else {
                 g2d.setColor(isDark ? new Color(255, 255, 255, 40) : new Color(0, 0, 0, 40));
             }
-            
+
             g2d.fillRoundRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height, 8, 8);
             g2d.dispose();
         }
@@ -513,7 +520,7 @@ public class InstancesPanel extends JPanel {
         @Override
         protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
         }
-        
+
         @Override
         protected JButton createDecreaseButton(int orientation) {
             return createZeroButton();

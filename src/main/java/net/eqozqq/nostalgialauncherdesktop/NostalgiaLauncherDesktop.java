@@ -36,6 +36,8 @@ import net.eqozqq.nostalgialauncherdesktop.WorldManager.WorldsManagerPanel;
 import net.eqozqq.nostalgialauncherdesktop.TexturesManager.TexturesManagerPanel;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstancesPanel;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
+import net.eqozqq.nostalgialauncherdesktop.Proxy.ProxyPanel;
+import net.eqozqq.nostalgialauncherdesktop.Proxy.ProxyManager;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseAdapter;
 
@@ -53,6 +55,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private WorldsManagerPanel worldsPanel;
     private TexturesManagerPanel texturesPanel;
     private InstancesPanel instancesPanel;
+    private ProxyPanel proxyPanel;
     private SettingsPanel settingsPanel;
     private JPanel contentPanel;
     private CardLayout cardLayout;
@@ -80,11 +83,13 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private String themeName;
     private String backgroundMode;
     private String customTranslationPath;
-    
+
     private String githubTranslationUrl;
     private String githubTranslationName;
-    
-    private static final String CURRENT_VERSION = "1.8.0";
+
+    private SwingWorker<Void, Integer> launchWorker;
+
+    private static final String CURRENT_VERSION = "1.9.0";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
@@ -328,7 +333,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 settings.setProperty("customTranslationPath", customTranslationPath);
             else
                 settings.remove("customTranslationPath");
-            
+
             if (githubTranslationUrl != null) {
                 settings.setProperty("githubTranslationUrl", githubTranslationUrl);
                 settings.setProperty("githubTranslationName", githubTranslationName);
@@ -336,7 +341,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 settings.remove("githubTranslationUrl");
                 settings.remove("githubTranslationName");
             }
-                
+
             settings.store(fos, null);
         } catch (IOException e) {
             e.printStackTrace();
@@ -396,6 +401,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         worldsPanel = new WorldsManagerPanel(localeManager, themeName);
         texturesPanel = new TexturesManagerPanel(localeManager, themeName);
         instancesPanel = new InstancesPanel(localeManager, themeName);
+        proxyPanel = new ProxyPanel(localeManager, themeName, scaleFactor);
 
         instancesPanel.setOnInstanceChanged(() -> {
             saveSettings();
@@ -409,13 +415,15 @@ public class NostalgiaLauncherDesktop extends JFrame {
         settingsPanel = new SettingsPanel(
                 customBackgroundPath, customVersionsSource, useDefaultVersionsSource, executableSource,
                 customLauncherPath, postLaunchAction, enableDebugging, scaleFactor, themeName, CURRENT_VERSION,
-                backgroundMode, customBackgroundColor, customTranslationPath, githubTranslationUrl, githubTranslationName,
+                backgroundMode, customBackgroundColor, customTranslationPath, githubTranslationUrl,
+                githubTranslationName,
                 localeManager, this::onSettingsSaved);
 
         contentPanel.add(homePanel, NavigationPanel.NAV_HOME);
         contentPanel.add(worldsPanel, NavigationPanel.NAV_WORLDS);
         contentPanel.add(texturesPanel, NavigationPanel.NAV_TEXTURES);
         contentPanel.add(instancesPanel, NavigationPanel.NAV_INSTANCES);
+        contentPanel.add(proxyPanel, NavigationPanel.NAV_PROXY);
         contentPanel.add(settingsPanel, NavigationPanel.NAV_SETTINGS);
 
         backgroundPanel.add(navigationPanel, BorderLayout.WEST);
@@ -443,6 +451,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 instancesPanel.reload();
                 cardLayout.show(contentPanel, NavigationPanel.NAV_INSTANCES);
                 break;
+            case NavigationPanel.NAV_PROXY:
+                cardLayout.show(contentPanel, NavigationPanel.NAV_PROXY);
+                break;
             case NavigationPanel.NAV_SETTINGS:
                 cardLayout.show(contentPanel, NavigationPanel.NAV_SETTINGS);
                 break;
@@ -463,7 +474,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         customTranslationPath = updatedSettings.getCustomTranslationPath();
         githubTranslationUrl = updatedSettings.getGithubTranslationUrl();
         githubTranslationName = updatedSettings.getGithubTranslationName();
-        
+
         String newLanguage = updatedSettings.getLanguage();
         String newThemeName = updatedSettings.getThemeName();
         final boolean wasMaximized = (getExtendedState() & JFrame.MAXIMIZED_BOTH) != 0;
@@ -471,9 +482,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
         SwingWorker<Void, Void> worker = new SwingWorker<Void, Void>() {
             @Override
             protected Void doInBackground() throws Exception {
-                if (!newLanguage.equals(localeManager.getCurrentLanguage()) || 
-                    ("custom".equals(newLanguage)) || ("github".equals(newLanguage))) {
-                    
+                if (!newLanguage.equals(localeManager.getCurrentLanguage()) ||
+                        ("custom".equals(newLanguage)) || ("github".equals(newLanguage))) {
+
                     if ("custom".equals(newLanguage)) {
                         localeManager.loadCustomLanguage(customTranslationPath);
                     } else if ("github".equals(newLanguage)) {
@@ -666,6 +677,13 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private class LaunchButtonListener implements ActionListener {
         @Override
         public void actionPerformed(ActionEvent e) {
+            if (launchWorker != null && !launchWorker.isDone()) {
+                launchWorker.cancel(true);
+                versionManager.cancelDownload();
+                statusLabel.setText(localeManager.get("status.cancelling"));
+                launchButton.setEnabled(false);
+                return;
+            }
             Version selectedVersion = (Version) versionComboBox.getSelectedItem();
             if (selectedVersion == null) {
                 JOptionPane.showMessageDialog(NostalgiaLauncherDesktop.this,
@@ -680,10 +698,12 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     private void launchVersion(Version version) {
-        SwingWorker<Void, Integer> worker = new SwingWorker<Void, Integer>() {
+        launchWorker = new SwingWorker<Void, Integer>() {
+            Process gameProcess;
+
             @Override
             protected Void doInBackground() throws Exception {
-                launchButton.setEnabled(false);
+                launchButton.setText(localeManager.get("button.cancel"));
                 refreshButton.setEnabled(false);
                 addVersionButton.setEnabled(false);
                 nicknameField.setEnabled(false);
@@ -691,6 +711,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 progressBar.setVisible(true);
                 progressBar.setValue(0);
                 progressBar.setString(localeManager.get("progress.initializing"));
+                if (isCancelled())
+                    return null;
+
                 File gameDir = new File(InstanceManager.getInstance().resolvePath("game"));
                 if (!gameDir.exists())
                     gameDir.mkdirs();
@@ -742,6 +765,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
                         throw new IOException(localeManager.get("error.invalidFilePath") + ": " + customLauncherPath);
                 }
 
+                if (isCancelled())
+                    return null;
                 statusLabel.setText(localeManager.get("status.checkingInstallation"));
                 publish(15);
                 if (!versionManager.isVersionInstalled(version)) {
@@ -751,12 +776,16 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     File apkFile = versionManager.downloadVersion(version, progress -> {
                         int progressValue = 20 + (int) (progress * 45);
                         publish(progressValue);
-                    });
+                    }, () -> isCancelled());
+                    if (isCancelled())
+                        return null;
                     statusLabel.setText(localeManager.get("status.extracting"));
                     progressBar.setString(localeManager.get("progress.extracting"));
                     publish(65);
-                    versionManager.extractVersion(apkFile, gameDir);
+                    versionManager.extractVersion(apkFile, gameDir, () -> isCancelled());
                 }
+                if (isCancelled())
+                    return null;
                 statusLabel.setText(localeManager.get("status.preparingDir"));
                 progressBar.setString(localeManager.get("progress.preparing"));
                 publish(80);
@@ -772,7 +801,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 String launcherPath = null;
                 if ("CUSTOM".equals(executableSource) || "COMPILED".equals(executableSource))
                     launcherPath = customLauncherPath;
-                Process gameProcess = gameLauncher.launchGame(gameDir, launcherPath, enableDebugging);
+                gameProcess = gameLauncher.launchGame(gameDir, launcherPath, enableDebugging);
                 SwingUtilities.invokeLater(() -> {
                     switch (postLaunchAction) {
                         case "Minimize Launcher":
@@ -788,7 +817,12 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 publish(100);
                 statusLabel.setText(localeManager.get("status.launched"));
                 progressBar.setVisible(false);
-                gameProcess.waitFor();
+                try {
+                    gameProcess.waitFor();
+                } catch (InterruptedException e) {
+                    gameProcess.destroy();
+                    return null;
+                }
                 return null;
             }
 
@@ -800,89 +834,70 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
             @Override
             protected void done() {
+                launchButton.setText(localeManager.get("button.launch"));
+                launchButton.setEnabled(true);
+                refreshButton.setEnabled(true);
+                addVersionButton.setEnabled(true);
+                nicknameField.setEnabled(true);
+                versionComboBox.setEnabled(true);
+                progressBar.setVisible(false);
+                launchWorker = null;
                 try {
                     get();
-                    statusLabel.setText(localeManager.get("status.ready"));
-                    progressBar.setVisible(false);
                 } catch (Exception e) {
-                    String message = e.getCause() != null ? e.getCause().getMessage() : e.getMessage();
-                    JOptionPane.showMessageDialog(NostalgiaLauncherDesktop.this,
-                            localeManager.get("error.launchFailed.message", message),
-                            localeManager.get("error.launchFailed.title"), JOptionPane.ERROR_MESSAGE);
-                    statusLabel.setText(localeManager.get("status.error.launchFailed"));
-                    progressBar.setVisible(false);
-                } finally {
-                    launchButton.setEnabled(true);
-                    refreshButton.setEnabled(true);
-                    addVersionButton.setEnabled(true);
-                    nicknameField.setEnabled(true);
-                    versionComboBox.setEnabled(true);
-                    versionManager.updateInstalledVersions();
+                    if (e instanceof java.util.concurrent.CancellationException || (e.getCause() != null
+                            && (e.getCause() instanceof java.util.concurrent.CancellationException
+                                    || "Cancelled".equals(e.getCause().getMessage())
+                                    || "Cancelled".equals(e.getMessage())))) {
+                        statusLabel.setText(localeManager.get("status.ready"));
+                    } else {
+                        JOptionPane.showMessageDialog(NostalgiaLauncherDesktop.this,
+                                localeManager.get("error.launchFailed.message", e.getMessage()),
+                                localeManager.get("error.launchFailed.title"), JOptionPane.ERROR_MESSAGE);
+                        statusLabel.setText(localeManager.get("status.error.launchFailed"));
+                    }
                 }
             }
         };
-        worker.execute();
+        launchWorker.execute();
     }
 
-    private void downloadLauncherComponents(ProgressCallback callback) throws IOException {
-        String osName = System.getProperty("os.name").toLowerCase();
-        boolean isWindows = osName.contains("win");
-        File gameDir = new File(InstanceManager.getInstance().resolvePath("game"));
-        String executableName = isWindows ? "ninecraft.exe" : "ninecraft";
-        File executable = new File(gameDir, executableName);
-        if (executable.exists()) {
-            if (executable.isDirectory())
-                deleteRecursive(executable);
-            else
-                executable.delete();
-        }
+    private void downloadLauncherComponents(java.util.function.Consumer<Float> progressCallback) throws IOException {
+        String url = SystemInfo.isWindows ? DEFAULT_LAUNCHER_URL_WINDOWS : DEFAULT_LAUNCHER_URL_LINUX;
+        File cacheDir = new File(InstanceManager.getInstance().resolvePath("cache"));
+        if (!cacheDir.exists())
+            cacheDir.mkdirs();
+        File zipFile = new File(cacheDir, "launcher_components.zip");
         statusLabel.setText(localeManager.get("status.loadingComponents"));
         progressBar.setString(localeManager.get("progress.loadingComponents"));
-        String launcherUrl = isWindows ? DEFAULT_LAUNCHER_URL_WINDOWS : DEFAULT_LAUNCHER_URL_LINUX;
+
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpGet request = new HttpGet(launcherUrl);
-            try (CloseableHttpResponse response = httpClient.execute(request)) {
+            HttpGet httpGet = new HttpGet(url);
+            try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
                 HttpEntity entity = response.getEntity();
                 if (entity != null) {
                     long totalSize = entity.getContentLength();
-                    File tempZipFile = File.createTempFile("launcher_components", ".zip");
-                    try (InputStream inputStream = entity.getContent();
-                            OutputStream outputStream = new FileOutputStream(tempZipFile)) {
-                        byte[] buffer = new byte[4096];
-                        int bytesRead;
-                        long totalBytesRead = 0;
-                        while ((bytesRead = inputStream.read(buffer)) != -1) {
-                            outputStream.write(buffer, 0, bytesRead);
-                            totalBytesRead += bytesRead;
-                            if (callback != null && totalSize > 0)
-                                callback.onProgress((double) totalBytesRead / totalSize);
-                        }
-                    }
-                    try (java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(
-                            Files.newInputStream(tempZipFile.toPath()))) {
-                        java.util.zip.ZipEntry entry;
-                        while ((entry = zis.getNextEntry()) != null) {
-                            if (entry.isDirectory())
-                                continue;
-                            File newFile = new File(gameDir, entry.getName());
-                            File parent = newFile.getParentFile();
-                            if (parent != null && !parent.exists())
-                                parent.mkdirs();
-                            try (FileOutputStream fos = new FileOutputStream(newFile)) {
-                                byte[] buffer = new byte[1024];
-                                int len;
-                                while ((len = zis.read(buffer)) > 0)
-                                    fos.write(buffer, 0, len);
+                    try (InputStream is = entity.getContent();
+                            FileOutputStream fos = new FileOutputStream(zipFile)) {
+                        byte[] buffer = new byte[8192];
+                        int read;
+                        long totalRead = 0;
+                        while ((read = is.read(buffer)) != -1) {
+                            if (launchWorker != null && launchWorker.isCancelled()) {
+                                throw new IOException("Cancelled");
                             }
-                            if (!isWindows && entry.getName().equals("ninecraft"))
-                                newFile.setExecutable(true);
+                            fos.write(buffer, 0, read);
+                            totalRead += read;
+                            if (totalSize > 0)
+                                progressCallback.accept((float) totalRead / totalSize);
                         }
-                    } finally {
-                        tempZipFile.delete();
                     }
                 }
             }
         }
+
+        File gameDir = new File(InstanceManager.getInstance().resolvePath("game"));
+        versionManager.extractVersion(zipFile, gameDir, () -> launchWorker != null && launchWorker.isCancelled());
     }
 
     private void deleteRecursive(File file) {

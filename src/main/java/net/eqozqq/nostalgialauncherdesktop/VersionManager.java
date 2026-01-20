@@ -39,6 +39,8 @@ public class VersionManager {
     private static final String CUSTOM_VERSIONS_FILE = "custom_versions.json";
     private static final String VERSIONS_LIST_CACHE_FILE = "cache" + File.separator + "versions_list.json";
 
+    private volatile HttpGet currentRequest;
+
     private Set<String> installedVersions;
 
     public VersionManager() {
@@ -57,9 +59,11 @@ public class VersionManager {
                         try (CloseableHttpResponse response = httpClient.execute(request)) {
                             HttpEntity entity = response.getEntity();
                             if (entity != null) {
-                                String jsonString = org.apache.commons.io.IOUtils.toString(entity.getContent(), "UTF-8");
+                                String jsonString = org.apache.commons.io.IOUtils.toString(entity.getContent(),
+                                        "UTF-8");
                                 Gson gson = new Gson();
-                                Type listType = new TypeToken<List<Version>>(){}.getType();
+                                Type listType = new TypeToken<List<Version>>() {
+                                }.getType();
                                 List<Version> networkVersions = gson.fromJson(jsonString, listType);
                                 versions.addAll(networkVersions);
                                 saveVersionsCache(networkVersions);
@@ -70,8 +74,10 @@ public class VersionManager {
                     File file = new File(source);
                     if (file.exists() && file.isFile()) {
                         Gson gson = new Gson();
-                        Type listType = new TypeToken<List<Version>>(){}.getType();
-                        versions.addAll(gson.fromJson(new InputStreamReader(Files.newInputStream(file.toPath())), listType));
+                        Type listType = new TypeToken<List<Version>>() {
+                        }.getType();
+                        versions.addAll(
+                                gson.fromJson(new InputStreamReader(Files.newInputStream(file.toPath())), listType));
                     } else {
                         throw new IOException("versionManager.error.fileNotFound:" + source);
                     }
@@ -90,8 +96,8 @@ public class VersionManager {
 
         if (isOffline) {
             versions = versions.stream()
-                .filter(v -> isVersionInstalled(v) || isApkCached(v))
-                .collect(Collectors.toList());
+                    .filter(v -> isVersionInstalled(v) || isApkCached(v))
+                    .collect(Collectors.toList());
         }
 
         return versions.stream().distinct().collect(Collectors.toList());
@@ -118,7 +124,8 @@ public class VersionManager {
         if (cacheFile.exists()) {
             try (FileReader reader = new FileReader(cacheFile)) {
                 Gson gson = new Gson();
-                Type listType = new TypeToken<List<Version>>(){}.getType();
+                Type listType = new TypeToken<List<Version>>() {
+                }.getType();
                 List<Version> cachedVersions = gson.fromJson(reader, listType);
                 if (cachedVersions != null) {
                     return cachedVersions;
@@ -135,7 +142,8 @@ public class VersionManager {
         if (customVersionsFile.exists()) {
             try (FileReader reader = new FileReader(customVersionsFile)) {
                 Gson gson = new Gson();
-                Type listType = new TypeToken<List<Version>>(){}.getType();
+                Type listType = new TypeToken<List<Version>>() {
+                }.getType();
                 List<Version> customVersions = gson.fromJson(reader, listType);
                 if (customVersions != null) {
                     return customVersions;
@@ -152,7 +160,8 @@ public class VersionManager {
         customVersions.add(version);
         File targetFile = new File(InstanceManager.getInstance().resolvePath(CUSTOM_VERSIONS_FILE));
         File parent = targetFile.getParentFile();
-        if (parent != null && !parent.exists()) parent.mkdirs();
+        if (parent != null && !parent.exists())
+            parent.mkdirs();
         try (Writer writer = new FileWriter(targetFile)) {
             Gson gson = new GsonBuilder().setPrettyPrinting().create();
             gson.toJson(customVersions, writer);
@@ -166,8 +175,8 @@ public class VersionManager {
         if (Files.exists(versionsPath)) {
             try (Stream<Path> paths = Files.list(versionsPath)) {
                 installedVersions = paths.filter(Files::isDirectory)
-                                         .map(path -> path.getFileName().toString())
-                                         .collect(Collectors.toSet());
+                        .map(path -> path.getFileName().toString())
+                        .collect(Collectors.toSet());
             } catch (IOException e) {
                 e.printStackTrace();
                 installedVersions = Collections.emptySet();
@@ -190,19 +199,26 @@ public class VersionManager {
         return apkFile.exists() && apkFile.length() > 0;
     }
 
-    public File downloadVersion(Version version, ProgressCallback callback) throws IOException {
+    public File downloadVersion(Version version, ProgressCallback callback,
+            java.util.function.Supplier<Boolean> isCancelled) throws IOException {
         File versionsCacheDir = new File(InstanceManager.getInstance().resolvePath(VERSIONS_CACHE_DIR));
         if (!versionsCacheDir.exists()) {
             if (!versionsCacheDir.mkdirs()) {
-                throw new IOException("versionManager.error.createCacheDirFailed:" + versionsCacheDir.getAbsolutePath());
+                throw new IOException(
+                        "versionManager.error.createCacheDirFailed:" + versionsCacheDir.getAbsolutePath());
             }
         }
 
         String fileName = version.getName() + ".apk";
         File outputFile = new File(versionsCacheDir, fileName);
 
-        if (outputFile.exists() && outputFile.length() > 0) {
-            return outputFile;
+        if (outputFile.exists()) {
+            if (isValidZip(outputFile)) {
+                return outputFile;
+            } else {
+                System.out.println("Corrupted APK found, deleting: " + outputFile.getAbsolutePath());
+                outputFile.delete();
+            }
         }
 
         String downloadUrl = version.getUrl();
@@ -211,29 +227,32 @@ public class VersionManager {
         }
 
         if (downloadUrl.startsWith("file:")) {
-             File sourceFile = new File(URI.create(downloadUrl));
-             if(sourceFile.exists()) {
-                 FileUtils.copyFile(sourceFile, outputFile);
-                 return outputFile;
-             } else {
-                 throw new IOException("versionManager.error.customVersionNotFound:" + sourceFile.getAbsolutePath());
-             }
+            File sourceFile = new File(URI.create(downloadUrl));
+            if (sourceFile.exists()) {
+                FileUtils.copyFile(sourceFile, outputFile);
+                return outputFile;
+            } else {
+                throw new IOException("versionManager.error.customVersionNotFound:" + sourceFile.getAbsolutePath());
+            }
         }
-
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpGet request = new HttpGet(downloadUrl);
+            currentRequest = request;
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 HttpEntity entity = response.getEntity();
                 if (entity != null) {
                     long totalSize = entity.getContentLength();
                     try (java.io.InputStream inputStream = entity.getContent();
-                         OutputStream outputStream = new FileOutputStream(outputFile)) {
+                            OutputStream outputStream = new FileOutputStream(outputFile)) {
                         byte[] buffer = new byte[4096];
                         int bytesRead;
                         long totalBytesRead = 0;
 
                         while ((bytesRead = inputStream.read(buffer)) != -1) {
+                            if (isCancelled != null && isCancelled.get()) {
+                                throw new IOException("Cancelled");
+                            }
                             outputStream.write(buffer, 0, bytesRead);
                             totalBytesRead += bytesRead;
                             if (callback != null && totalSize > 0) {
@@ -243,16 +262,25 @@ public class VersionManager {
                     }
                 }
             }
+        } catch (IOException e) {
+            // Delete incomplete file if download failed or cancelled
+            if (outputFile.exists()) {
+                outputFile.delete();
+            }
+            throw e;
+        } finally {
+            currentRequest = null;
         }
-        
+
         if (!outputFile.exists() || outputFile.length() == 0) {
             throw new IOException("versionManager.error.downloadFailed:" + outputFile.getAbsolutePath());
         }
-        
+
         return outputFile;
     }
 
-    public void extractVersion(File apkFile, File gameDir) throws IOException {
+    public void extractVersion(File apkFile, File gameDir, java.util.function.Supplier<Boolean> isCancelled)
+            throws IOException {
         if (!apkFile.exists()) {
             throw new IOException("versionManager.error.apkNotFound:" + apkFile.getAbsolutePath());
         }
@@ -278,19 +306,19 @@ public class VersionManager {
                 if (entry.isDirectory()) {
                     continue;
                 }
-                
+
                 String entryName = entry.getName();
-                
+
                 if (entryName.startsWith("assets/") || entryName.startsWith("res/") || entryName.startsWith("lib/")) {
                     File newFile = new File(targetDir, entryName);
-                    
+
                     File parentDir = newFile.getParentFile();
                     if (parentDir != null && !parentDir.exists()) {
                         if (!parentDir.mkdirs()) {
                             continue;
                         }
                     }
-                    
+
                     try (FileOutputStream fos = new FileOutputStream(newFile)) {
                         byte[] buffer = new byte[4096];
                         int bytesRead;
@@ -299,8 +327,25 @@ public class VersionManager {
                         }
                     }
                 }
+                if (isCancelled != null && isCancelled.get()) {
+                    throw new IOException("Cancelled");
+                }
                 zipInputStream.closeEntry();
             }
+        }
+    }
+
+    public void cancelDownload() {
+        if (currentRequest != null) {
+            currentRequest.abort();
+        }
+    }
+
+    private boolean isValidZip(File file) {
+        try (ZipInputStream zis = new ZipInputStream(Files.newInputStream(file.toPath()))) {
+            return zis.getNextEntry() != null;
+        } catch (IOException e) {
+            return false;
         }
     }
 
