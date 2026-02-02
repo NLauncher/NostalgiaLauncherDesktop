@@ -390,7 +390,9 @@ public class TexturesManagerPanel extends JPanel {
             if (directories != null) {
                 Arrays.sort(directories);
                 for (String dirName : directories) {
-                    if (!dirName.equals("_LevelCache") && !dirName.equals("default_textures")) {
+                    if (!dirName.equals("_LevelCache") && !dirName.equals("default_textures")
+                            && !dirName.equals("cache") && !dirName.startsWith(".")
+                            && !dirName.contains("launcher_components")) {
                         listModel.addElement(dirName);
                     }
                 }

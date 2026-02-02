@@ -23,6 +23,8 @@ public class NinecraftCompilationDialog extends JDialog {
     private JButton startCompileButton;
 
     private Consumer<String> onStartCompilation;
+    private Runnable onCancelRequested;
+    private volatile boolean cancelled = false;
 
     private static final String ORIGINAL_REPO = "https://github.com/MCPI-Revival/Ninecraft.git";
 
@@ -97,12 +99,15 @@ public class NinecraftCompilationDialog extends JDialog {
         startCompileButton.addActionListener(e -> {
             String url = originalRepoRadio.isSelected() ? ORIGINAL_REPO : repoUrlField.getText().trim();
             if (url.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "URL cannot be empty", "Error", JOptionPane.ERROR_MESSAGE);
+                ErrorDialog.showSync(this, localeManager.get("dialog.error.title", "Error"),
+                        localeManager.get("error.urlEmpty", "URL cannot be empty"));
                 return;
             }
 
             cardLayout.show(mainPanel, "LOG");
             setDefaultCloseOperation(JDialog.DO_NOTHING_ON_CLOSE);
+            closeButton.setEnabled(true);
+            closeButton.setText(localeManager.get("button.cancel"));
 
             if (onStartCompilation != null) {
                 onStartCompilation.accept(url);
@@ -151,7 +156,17 @@ public class NinecraftCompilationDialog extends JDialog {
 
         closeButton = new JButton(localeManager.get("button.cancel"));
         closeButton.setEnabled(false);
-        closeButton.addActionListener(e -> dispose());
+        closeButton.addActionListener(e -> {
+            if (!cancelled && onCancelRequested != null) {
+                cancelled = true;
+                closeButton.setEnabled(false);
+                statusLabel.setText(localeManager.get("status.cancelling", "Cancelling..."));
+                appendLog(localeManager.get("compiler.log.cancelling", "Cancelling..."));
+                onCancelRequested.run();
+            } else {
+                dispose();
+            }
+        });
 
         bottomPanel.add(installDepsButton);
         bottomPanel.add(closeButton);
@@ -165,6 +180,14 @@ public class NinecraftCompilationDialog extends JDialog {
 
     public void setOnStartCompilation(Consumer<String> action) {
         this.onStartCompilation = action;
+    }
+
+    public void setOnCancelRequested(Runnable action) {
+        this.onCancelRequested = action;
+    }
+
+    public boolean isCancelled() {
+        return cancelled;
     }
 
     public void appendLog(String text) {
@@ -193,8 +216,12 @@ public class NinecraftCompilationDialog extends JDialog {
         SwingUtilities.invokeLater(() -> {
             progressBar.setIndeterminate(false);
             progressBar.setValue(success ? 100 : 0);
-            statusLabel.setText(success ? localeManager.get("dialog.compilation.status.success")
-                    : localeManager.get("dialog.compilation.status.failed"));
+            if (cancelled) {
+                statusLabel.setText(localeManager.get("dialog.compilation.status.cancelled", "Cancelled"));
+            } else {
+                statusLabel.setText(success ? localeManager.get("dialog.compilation.status.success")
+                        : localeManager.get("dialog.compilation.status.failed"));
+            }
             closeButton.setText(localeManager.get("button.close"));
             closeButton.setEnabled(true);
             setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);

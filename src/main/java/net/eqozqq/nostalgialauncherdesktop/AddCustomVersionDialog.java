@@ -128,36 +128,35 @@ public class AddCustomVersionDialog extends JDialog {
         String path;
 
         if (name.isEmpty()) {
-            JOptionPane.showMessageDialog(this, localeManager.get("error.nameEmpty"),
-                    localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+            ErrorDialog.showSync(this, localeManager.get("dialog.error.title"), localeManager.get("error.nameEmpty"));
             return;
         }
 
         if (urlRadioButton.isSelected()) {
             path = urlField.getText().trim();
             if (path.isEmpty()) {
-                JOptionPane.showMessageDialog(this, localeManager.get("error.urlEmpty"),
-                        localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                        localeManager.get("error.urlEmpty"));
                 return;
             }
             try {
                 new URL(path);
             } catch (MalformedURLException ex) {
-                JOptionPane.showMessageDialog(this, localeManager.get("error.invalidUrl"),
-                        localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                        localeManager.get("error.invalidUrl") + "\n\n" + ex.getMessage());
                 return;
             }
         } else {
             path = filePathField.getText().trim();
             if (path.isEmpty()) {
-                JOptionPane.showMessageDialog(this, localeManager.get("error.filePathEmpty"),
-                        localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                        localeManager.get("error.filePathEmpty"));
                 return;
             }
             File file = new File(path);
             if (!file.exists() || !file.isFile()) {
-                JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"),
-                        localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                        localeManager.get("error.invalidFilePath") + "\n\n" + path);
                 return;
             }
             path = file.toURI().toString();

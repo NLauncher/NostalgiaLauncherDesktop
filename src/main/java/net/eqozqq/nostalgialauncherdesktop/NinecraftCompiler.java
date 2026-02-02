@@ -11,38 +11,81 @@ public class NinecraftCompiler {
     private static final String DEPS_AMD64 = "git make cmake gcc g++ gcc-multilib g++-multilib libopenal-dev:i386 libx11-dev:i386 libxrandr-dev:i386 libxinerama-dev:i386 libxcursor-dev:i386 libxi-dev:i386 libgl-dev:i386 zenity unzip python3-jinja2";
     private static final String DEPS_ARM64 = "git make cmake gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libopenal-dev:armhf libx11-dev:armhf libxrandr-dev:armhf libxinerama-dev:armhf libxcursor-dev:armhf libxi-dev:armhf libgl-dev:armhf zenity unzip python3-jinja2";
 
-    public static boolean compile(File gameDir, NinecraftCompilationDialog dialog, LocaleManager localeManager, String repoUrl) {
+    private volatile boolean cancelled = false;
+    private volatile Process currentProcess = null;
+
+    public void cancel() {
+        cancelled = true;
+        if (currentProcess != null) {
+            currentProcess.destroyForcibly();
+        }
+    }
+
+    public boolean isCancelled() {
+        return cancelled;
+    }
+
+    public boolean compile(File gameDir, NinecraftCompilationDialog dialog, LocaleManager localeManager,
+            String repoUrl) {
+        cancelled = false;
         File sourceDir = new File(gameDir, "Ninecraft_source");
         String os = System.getProperty("os.name").toLowerCase();
         boolean isWindows = os.contains("win");
         String arch = System.getProperty("os.arch").toLowerCase();
         boolean isArm = arch.contains("arm") || arch.contains("aarch64");
-        
+
         try {
+            if (cancelled)
+                return false;
+
             dialog.setStatus(localeManager.get("compiler.status.checkingDeps"));
             List<String> missing = isWindows ? checkWindowsDependencies() : checkLinuxDependencies(isArm);
-            
+
             if (!missing.isEmpty()) {
-                dialog.appendLog(localeManager.get("compiler.error.missingSpecificDeps") + " " + String.join(", ", missing));
+                dialog.appendLog(
+                        localeManager.get("compiler.error.missingSpecificDeps") + " " + String.join(", ", missing));
                 dialog.appendLog(localeManager.get("compiler.log.installPrompt"));
                 dialog.setStatus(localeManager.get("compiler.status.missingDepsTitle"));
-                
+
                 dialog.showInstallButton(() -> installDependencies(isWindows, isArm, dialog, localeManager));
                 return false;
             }
 
+            if (cancelled)
+                return false;
+
             if (sourceDir.exists()) {
                 dialog.setStatus(localeManager.get("compiler.status.updatingRepo"));
-                
+
                 dialog.appendLog("Setting remote origin to: " + repoUrl);
-                runCommand(sourceDir, dialog, localeManager, "git", "remote", "set-url", "origin", repoUrl);
-                
-                if (!runCommand(sourceDir, dialog, localeManager, "git", "pull")) return false;
-                if (!runCommand(sourceDir, dialog, localeManager, "git", "submodule", "update", "--init", "--recursive")) return false;
+                if (!runCommand(sourceDir, dialog, localeManager, "git", "remote", "set-url", "origin", repoUrl)) {
+                    if (cancelled)
+                        return false;
+                }
+
+                if (!runCommand(sourceDir, dialog, localeManager, "git", "pull")) {
+                    if (cancelled)
+                        return false;
+                    return false;
+                }
+                if (!runCommand(sourceDir, dialog, localeManager, "git", "submodule", "update", "--init",
+                        "--recursive")) {
+                    if (cancelled)
+                        return false;
+                    return false;
+                }
             } else {
                 dialog.setStatus(localeManager.get("compiler.status.cloningRepo"));
-                if (!runCommand(gameDir, dialog, localeManager, "git", "clone", "--recursive", repoUrl, "Ninecraft_source")) return false;
+                if (!runCommand(gameDir, dialog, localeManager, "git", "clone", "--recursive", repoUrl,
+                        "Ninecraft_source")) {
+                    if (cancelled)
+                        return false;
+                    return false;
+                }
             }
+
+            if (cancelled)
+                return false;
 
             dialog.setStatus(localeManager.get("compiler.status.compiling"));
             dialog.appendLog(localeManager.get("compiler.log.archDetected") + " " + arch);
@@ -53,6 +96,8 @@ public class NinecraftCompiler {
                 dialog.appendLog(localeManager.get("compiler.log.buildTarget") + " " + batchFile);
 
                 if (!runCommand(sourceDir, dialog, localeManager, "cmd", "/c", batchFile)) {
+                    if (cancelled)
+                        return false;
                     dialog.appendLog(localeManager.get("compiler.error.compilationFailed"));
                     return false;
                 }
@@ -61,11 +106,16 @@ public class NinecraftCompiler {
                 dialog.appendLog(localeManager.get("compiler.log.buildTarget") + " " + makeTarget);
 
                 if (!runCommand(sourceDir, dialog, localeManager, "make", makeTarget)) {
+                    if (cancelled)
+                        return false;
                     dialog.appendLog(localeManager.get("compiler.error.compilationFailed"));
                     dialog.showInstallButton(() -> installDependencies(isWindows, isArm, dialog, localeManager));
                     return false;
                 }
             }
+
+            if (cancelled)
+                return false;
 
             String binaryName = isWindows ? "ninecraft.exe" : "ninecraft";
             File builtBinary = new File(sourceDir, binaryName);
@@ -76,11 +126,13 @@ public class NinecraftCompiler {
             File targetBinary = new File(gameDir, binaryName);
 
             if (builtBinary.exists()) {
-                if (targetBinary.exists()) targetBinary.delete();
-                
+                if (targetBinary.exists())
+                    targetBinary.delete();
+
                 if (builtBinary.renameTo(targetBinary)) {
                     targetBinary.setExecutable(true);
-                    dialog.appendLog(localeManager.get("compiler.log.binaryMoved") + " " + targetBinary.getAbsolutePath());
+                    dialog.appendLog(
+                            localeManager.get("compiler.log.binaryMoved") + " " + targetBinary.getAbsolutePath());
                     return true;
                 } else {
                     dialog.appendLog(localeManager.get("compiler.error.moveBinary"));
@@ -92,57 +144,69 @@ public class NinecraftCompiler {
             }
 
         } catch (Exception e) {
-            dialog.appendLog(localeManager.get("compiler.error.exception") + " " + e.getMessage());
-            e.printStackTrace();
+            if (!cancelled) {
+                dialog.appendLog(localeManager.get("compiler.error.exception") + " " + e.getMessage());
+                e.printStackTrace();
+            }
             return false;
         }
     }
 
-    private static List<String> checkWindowsDependencies() {
+    private List<String> checkWindowsDependencies() {
         List<String> missing = new ArrayList<>();
-        
-        if (!hasCommand("git")) missing.add("git");
-        if (!hasCommand("cmake")) missing.add("cmake");
-        
+
+        if (!hasCommand("git"))
+            missing.add("git");
+        if (!hasCommand("cmake"))
+            missing.add("cmake");
+
         boolean hasPython = hasCommand("python") || hasCommand("python3");
         if (!hasPython) {
             missing.add("python");
         } else {
-            if (!checkPythonPackage("jinja2")) missing.add("jinja2 (pip package)");
+            if (!checkPythonPackage("jinja2"))
+                missing.add("jinja2 (pip package)");
         }
 
         boolean hasGcc = hasCommand("gcc");
-        boolean hasMsvc = hasCommand("cl"); 
-        
+        boolean hasMsvc = hasCommand("cl");
+
         if (!hasGcc && !hasMsvc) {
             missing.add("Compiler (MinGW or Visual Studio)");
         }
-        
+
         return missing;
     }
 
-    private static List<String> checkLinuxDependencies(boolean isArm) {
+    private List<String> checkLinuxDependencies(boolean isArm) {
         List<String> missing = new ArrayList<>();
-        
-        if (!hasCommand("git")) missing.add("git");
-        if (!hasCommand("make")) missing.add("make");
-        if (!hasCommand("cmake")) missing.add("cmake");
-        
+
+        if (!hasCommand("git"))
+            missing.add("git");
+        if (!hasCommand("make"))
+            missing.add("make");
+        if (!hasCommand("cmake"))
+            missing.add("cmake");
+
         if (hasCommand("dpkg")) {
             if (isArm) {
-                if (!hasPackage("gcc-arm-linux-gnueabihf")) missing.add("gcc-arm-linux-gnueabihf");
+                if (!hasPackage("gcc-arm-linux-gnueabihf"))
+                    missing.add("gcc-arm-linux-gnueabihf");
             } else {
-                if (!hasPackage("gcc-multilib")) missing.add("gcc-multilib");
-                if (!hasPackage("g++-multilib")) missing.add("g++-multilib");
+                if (!hasPackage("gcc-multilib"))
+                    missing.add("gcc-multilib");
+                if (!hasPackage("g++-multilib"))
+                    missing.add("g++-multilib");
             }
         } else {
-            if (!hasCommand("gcc")) missing.add("gcc");
+            if (!hasCommand("gcc"))
+                missing.add("gcc");
         }
-        
+
         return missing;
     }
 
-    private static boolean hasCommand(String command) {
+    private boolean hasCommand(String command) {
         try {
             boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
             String checkCmd = isWindows ? "where" : "which";
@@ -153,7 +217,7 @@ public class NinecraftCompiler {
         }
     }
 
-    private static boolean checkPythonPackage(String pkg) {
+    private boolean checkPythonPackage(String pkg) {
         String python = hasCommand("python") ? "python" : "python3";
         try {
             Process p = new ProcessBuilder(python, "-c", "import " + pkg).start();
@@ -163,7 +227,7 @@ public class NinecraftCompiler {
         }
     }
 
-    private static boolean hasPackage(String packageName) {
+    private boolean hasPackage(String packageName) {
         try {
             Process p = new ProcessBuilder("dpkg", "-s", packageName).start();
             return p.waitFor() == 0;
@@ -172,7 +236,8 @@ public class NinecraftCompiler {
         }
     }
 
-    private static void installDependencies(boolean isWindows, boolean isArm, NinecraftCompilationDialog dialog, LocaleManager localeManager) {
+    private void installDependencies(boolean isWindows, boolean isArm, NinecraftCompilationDialog dialog,
+            LocaleManager localeManager) {
         if (isWindows) {
             dialog.appendLog("Checking Windows dependencies...");
             if (hasCommand("python") || hasCommand("python3")) {
@@ -184,7 +249,7 @@ public class NinecraftCompiler {
             } else {
                 dialog.appendLog("Python is missing. Please install Python 3.");
             }
-            
+
             if (!hasCommand("git") || !hasCommand("cmake")) {
                 dialog.appendLog("Please install Git and CMake manually and add them to PATH.");
             }
@@ -206,15 +271,18 @@ public class NinecraftCompiler {
         dialog.appendLog(localeManager.get("compiler.log.command") + " " + installCmd);
 
         try {
-            String[] terminals = {"x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "lxterminal", "mate-terminal"};
+            String[] terminals = { "x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "lxterminal",
+                    "mate-terminal" };
             boolean launched = false;
 
             for (String terminal : terminals) {
                 if (hasCommand(terminal)) {
                     if (terminal.equals("gnome-terminal") || terminal.equals("mate-terminal")) {
-                        new ProcessBuilder(terminal, "--", "bash", "-c", installCmd + "; echo 'Done. Press Enter to close.'; read").start();
+                        new ProcessBuilder(terminal, "--", "bash", "-c",
+                                installCmd + "; echo 'Done. Press Enter to close.'; read").start();
                     } else {
-                        new ProcessBuilder(terminal, "-e", "bash -c \"" + installCmd + "; echo 'Done. Press Enter to close.'; read\"").start();
+                        new ProcessBuilder(terminal, "-e",
+                                "bash -c \"" + installCmd + "; echo 'Done. Press Enter to close.'; read\"").start();
                     }
                     launched = true;
                     break;
@@ -231,28 +299,44 @@ public class NinecraftCompiler {
         }
     }
 
-    private static boolean runCommand(File workingDir, NinecraftCompilationDialog dialog, LocaleManager localeManager, String... command) {
+    private boolean runCommand(File workingDir, NinecraftCompilationDialog dialog, LocaleManager localeManager,
+            String... command) {
+        if (cancelled)
+            return false;
+
         try {
             ProcessBuilder pb = new ProcessBuilder(command);
-            if (workingDir != null) pb.directory(workingDir);
+            if (workingDir != null)
+                pb.directory(workingDir);
             pb.redirectErrorStream(true);
-            Process p = pb.start();
+            currentProcess = pb.start();
 
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(p.getInputStream()))) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(currentProcess.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
+                    if (cancelled) {
+                        currentProcess.destroyForcibly();
+                        return false;
+                    }
                     dialog.appendLog(line);
                 }
             }
 
-            int exitCode = p.waitFor();
+            int exitCode = currentProcess.waitFor();
+            currentProcess = null;
+
+            if (cancelled)
+                return false;
+
             if (exitCode != 0) {
                 dialog.appendLog(localeManager.get("compiler.error.commandFailed") + " " + exitCode);
                 return false;
             }
             return true;
         } catch (Exception e) {
-            dialog.appendLog(localeManager.get("compiler.error.executeCommand") + " " + e.getMessage());
+            if (!cancelled) {
+                dialog.appendLog(localeManager.get("compiler.error.executeCommand") + " " + e.getMessage());
+            }
             return false;
         }
     }

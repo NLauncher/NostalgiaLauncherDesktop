@@ -89,7 +89,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private SwingWorker<Void, Integer> launchWorker;
 
-    private static final String CURRENT_VERSION = "1.9.0";
+    private static final String CURRENT_VERSION = "1.9.1";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
@@ -536,8 +536,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     }
                 }
             } catch (IOException e) {
-                JOptionPane.showMessageDialog(this, localeManager.get("version.add.error.save", e.getMessage()),
-                        localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                        localeManager.get("version.add.error.save", e.getMessage()) + "\n\n" + e.toString());
             }
         }
     }
@@ -661,9 +661,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
                         }
                     }
                 } catch (Exception e) {
-                    JOptionPane.showMessageDialog(NostalgiaLauncherDesktop.this,
-                            localeManager.get("error.loadVersions", e.getMessage()),
-                            localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                    ErrorDialog.showSync(NostalgiaLauncherDesktop.this, localeManager.get("dialog.error.title"),
+                            localeManager.get("error.loadVersions", e.getMessage()) + "\n\n" + e.toString());
                     statusLabel.setText(localeManager.get("status.error.loadVersions"));
                 } finally {
                     refreshButton.setEnabled(true);
@@ -737,11 +736,13 @@ public class NostalgiaLauncherDesktop extends JFrame {
                         SwingUtilities.invokeAndWait(() -> {
                             NinecraftCompilationDialog dialog = new NinecraftCompilationDialog(
                                     NostalgiaLauncherDesktop.this, localeManager);
+                            NinecraftCompiler compiler = new NinecraftCompiler();
+                            dialog.setOnCancelRequested(() -> compiler.cancel());
                             dialog.setOnStartCompilation((repoUrl) -> {
                                 new Thread(() -> {
-                                    boolean result = NinecraftCompiler.compile(gameDir, dialog, localeManager, repoUrl);
+                                    boolean result = compiler.compile(gameDir, dialog, localeManager, repoUrl);
                                     dialog.compilationFinished(result);
-                                    success[0] = result;
+                                    success[0] = result && !compiler.isCancelled();
                                 }).start();
                             });
                             dialog.setVisible(true);
@@ -851,9 +852,17 @@ public class NostalgiaLauncherDesktop extends JFrame {
                                     || "Cancelled".equals(e.getMessage())))) {
                         statusLabel.setText(localeManager.get("status.ready"));
                     } else {
-                        JOptionPane.showMessageDialog(NostalgiaLauncherDesktop.this,
-                                localeManager.get("error.launchFailed.message", e.getMessage()),
-                                localeManager.get("error.launchFailed.title"), JOptionPane.ERROR_MESSAGE);
+                        StringBuilder errorDetails = new StringBuilder();
+                        errorDetails.append(localeManager.get("error.launchFailed.message", e.getMessage()));
+                        errorDetails.append("\n\n");
+                        if (e.getCause() != null) {
+                            errorDetails.append("Cause: ").append(e.getCause().toString()).append("\n\n");
+                        }
+                        for (StackTraceElement element : e.getStackTrace()) {
+                            errorDetails.append("  at ").append(element.toString()).append("\n");
+                        }
+                        ErrorDialog.showSync(NostalgiaLauncherDesktop.this,
+                                localeManager.get("error.launchFailed.title"), errorDetails.toString());
                         statusLabel.setText(localeManager.get("status.error.launchFailed"));
                     }
                 }
@@ -897,7 +906,42 @@ public class NostalgiaLauncherDesktop extends JFrame {
         }
 
         File gameDir = new File(InstanceManager.getInstance().resolvePath("game"));
-        versionManager.extractVersion(zipFile, gameDir, () -> launchWorker != null && launchWorker.isCancelled());
+        if (!gameDir.exists())
+            gameDir.mkdirs();
+
+        try (java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(
+                java.nio.file.Files.newInputStream(zipFile.toPath()))) {
+            java.util.zip.ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                if (launchWorker != null && launchWorker.isCancelled()) {
+                    throw new IOException("Cancelled");
+                }
+
+                String entryName = entry.getName();
+                File outFile = new File(gameDir, entryName);
+
+                if (entry.isDirectory()) {
+                    outFile.mkdirs();
+                } else {
+                    File parent = outFile.getParentFile();
+                    if (parent != null && !parent.exists())
+                        parent.mkdirs();
+
+                    try (FileOutputStream fos = new FileOutputStream(outFile)) {
+                        byte[] buffer = new byte[4096];
+                        int len;
+                        while ((len = zis.read(buffer)) > 0) {
+                            fos.write(buffer, 0, len);
+                        }
+                    }
+
+                    if (entryName.equals("ninecraft") || entryName.endsWith("/ninecraft")) {
+                        outFile.setExecutable(true);
+                    }
+                }
+                zis.closeEntry();
+            }
+        }
     }
 
     private void deleteRecursive(File file) {

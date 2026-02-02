@@ -358,15 +358,15 @@ public class SettingsPanel extends JPanel {
                 try {
                     new URL(versionsSourceField.getText());
                 } catch (MalformedURLException ex) {
-                    JOptionPane.showMessageDialog(this, localeManager.get("error.invalidUrl"),
-                            localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                    ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                            localeManager.get("error.invalidUrl") + "\n\n" + ex.getMessage());
                     return;
                 }
             } else if (fileRadioButton.isSelected()) {
                 File file = new File(versionsSourceField.getText());
                 if (!file.exists() || !file.isFile()) {
-                    JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"),
-                            localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                    ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                            localeManager.get("error.invalidFilePath") + "\n\n" + versionsSourceField.getText());
                     return;
                 }
             }
@@ -375,8 +375,8 @@ public class SettingsPanel extends JPanel {
         if ("CUSTOM".equals(this.executableSource)) {
             File file = new File(customLauncherField.getText());
             if (!file.exists() || !file.isFile()) {
-                JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"),
-                        localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                        localeManager.get("error.invalidFilePath") + "\n\n" + customLauncherField.getText());
                 return;
             }
         }
@@ -384,8 +384,8 @@ public class SettingsPanel extends JPanel {
         if ("custom".equals(this.language)) {
             File file = new File(customTranslationPathField.getText());
             if (!file.exists() || !file.isFile()) {
-                JOptionPane.showMessageDialog(this, localeManager.get("error.invalidFilePath"),
-                        localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                        localeManager.get("error.invalidFilePath") + "\n\n" + customTranslationPathField.getText());
                 return;
             }
         }
@@ -1025,7 +1025,7 @@ public class SettingsPanel extends JPanel {
         JLabel link3 = createHyperlink("https://phosphoricons.com");
         gbc.gridy = gridY++;
         card.add(link3, gbc);
-        
+
         JLabel link4 = createHyperlink("https://www.formdev.com/flatlaf/");
         gbc.gridy = gridY++;
         card.add(link4, gbc);

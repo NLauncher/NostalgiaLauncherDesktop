@@ -40,11 +40,22 @@ public class HomePanel extends JPanel {
         setOpaque(false);
         setLayout(new GridBagLayout());
 
+        JButton helpButton = createHelpButton();
+        GridBagConstraints gbcHelp = new GridBagConstraints();
+        gbcHelp.gridx = 1;
+        gbcHelp.gridy = 0;
+        gbcHelp.weighty = 0.0;
+        gbcHelp.anchor = GridBagConstraints.NORTHEAST;
+        gbcHelp.insets = new Insets((int) (20 * scaleFactor), 0, 0, (int) (20 * scaleFactor));
+        add(helpButton, gbcHelp);
+
         JPanel contentPanel = createContentPanel();
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.gridx = 0;
         gbc.gridy = 0;
+        gbc.gridwidth = 2;
         gbc.weighty = 1.0;
+        gbc.weightx = 1.0;
         gbc.anchor = GridBagConstraints.CENTER;
         add(contentPanel, gbc);
 
@@ -52,7 +63,9 @@ public class HomePanel extends JPanel {
         GridBagConstraints gbcInfo = new GridBagConstraints();
         gbcInfo.gridx = 0;
         gbcInfo.gridy = 1;
+        gbcInfo.gridwidth = 2;
         gbcInfo.weighty = 0.0;
+        gbcInfo.weightx = 1.0;
         gbcInfo.anchor = GridBagConstraints.PAGE_END;
         gbcInfo.insets = new Insets(0, 0, (int) (20 * scaleFactor), 0);
         add(infoPanel, gbcInfo);
@@ -286,7 +299,7 @@ public class HomePanel extends JPanel {
         infoPanel.setBorder(BorderFactory.createEmptyBorder((int) (10 * scaleFactor), (int) (20 * scaleFactor),
                 (int) (10 * scaleFactor), (int) (20 * scaleFactor)));
 
-        JLabel versionLabel = new JLabel("NostalgiaLauncher Desktop v1.9.0 by eqozqq");
+        JLabel versionLabel = new JLabel("NostalgiaLauncher Desktop v1.9.1 by eqozqq");
         versionLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
         versionLabel.setFont(getRegularFont(Font.PLAIN, (float) (12 * scaleFactor)));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -301,6 +314,36 @@ public class HomePanel extends JPanel {
         infoPanel.add(disclaimerLabel);
 
         return infoPanel;
+    }
+
+    private JButton createHelpButton() {
+        JButton helpButton = new JButton(localeManager.get("button.help", "Having a problem?")) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (isDark) {
+                    g2d.setColor(new Color(30, 30, 30, 180));
+                } else {
+                    g2d.setColor(new Color(255, 255, 255, 150));
+                }
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+        helpButton.setOpaque(false);
+        helpButton.setContentAreaFilled(false);
+        helpButton.setBorderPainted(false);
+        helpButton.setFocusPainted(false);
+        helpButton.setFont(getRegularFont(Font.PLAIN, (float) (12 * scaleFactor)));
+        helpButton.setForeground(isDark ? new Color(200, 200, 200) : new Color(80, 80, 80));
+        helpButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        helpButton.setBorder(BorderFactory.createEmptyBorder(
+                (int) (8 * scaleFactor), (int) (15 * scaleFactor),
+                (int) (8 * scaleFactor), (int) (15 * scaleFactor)));
+        helpButton.addActionListener(e -> HelpDialog.show(this, localeManager));
+        return helpButton;
     }
 
     public JTextField getNicknameField() {

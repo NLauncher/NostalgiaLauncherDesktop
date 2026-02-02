@@ -255,5 +255,15 @@
   "proxy.directConnect": "Direct Connect",
   "proxy.button.saveToList": "Save to List",
   "proxy.status.active": "Active",
-  "proxy.status.idle": "Idle"
+  "proxy.status.idle": "Idle",
+  "button.help": "Having a problem?",
+  "help.dialog.title": "Having a problem?",
+  "help.dialog.text1": "If you are experiencing any issues, first check whether the solution is described on the common problems page:",
+  "help.dialog.text2": "If no solution is found, join our Discord server where you can describe your problem and get help from the community.",
+  "help.dialog.discord": "Discord",
+  "button.copied": "Copied!",
+  "dialog.compilation.status.cancelled": "Cancelled",
+  "compiler.log.cancelling": "Cancelling operation...",
+  "combo.language.github": "Use translations from repository",
+  "combo.language.github_active": "Using translation from repository"
 }
