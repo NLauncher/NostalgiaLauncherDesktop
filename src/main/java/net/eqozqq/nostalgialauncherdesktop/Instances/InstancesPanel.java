@@ -14,11 +14,9 @@ import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
 public class InstancesPanel extends JPanel {
     private final LocaleManager localeManager;
     private final boolean isDark;
-
+    private final double scaleFactor;
     private JList<String> instancesList;
     private DefaultListModel<String> listModel;
-    private JSplitPane splitPane;
-    private JPanel rightPanel;
     private Runnable onInstanceChanged;
 
     private JLabel selectedInstanceLabel;
@@ -29,9 +27,10 @@ public class InstancesPanel extends JPanel {
 
     private String selectedInstance;
 
-    public InstancesPanel(LocaleManager localeManager, String themeName) {
+    public InstancesPanel(LocaleManager localeManager, String themeName, double scaleFactor) {
         this.localeManager = localeManager;
         this.isDark = themeName.contains("Dark");
+        this.scaleFactor = scaleFactor;
         setLayout(new BorderLayout());
         setOpaque(false);
         setBorder(new EmptyBorder(20, 20, 20, 20));
@@ -65,38 +64,15 @@ public class InstancesPanel extends JPanel {
         listScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         listScrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
         listScrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        listScrollPane.setBorder(new EmptyBorder(10, 10, 10, 10));
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.setOpaque(false);
+        contentPanel.add(listScrollPane, BorderLayout.CENTER);
 
-        JPanel leftPanel = new JPanel(new BorderLayout());
-        leftPanel.setOpaque(false);
-        leftPanel.add(listScrollPane, BorderLayout.CENTER);
+        mainCard.add(contentPanel, BorderLayout.CENTER);
+        add(mainCard, BorderLayout.CENTER);
 
-        JButton createButton = new JButton(localeManager.get("button.instance.add"));
-        createButton.setFont(getFont(Font.BOLD, 14f));
-        createButton.setPreferredSize(new Dimension(0, 45));
-        createButton.addActionListener(e -> createInstance());
-
-        JPanel createButtonPanel = new JPanel(new BorderLayout());
-        createButtonPanel.setOpaque(false);
-        createButtonPanel.setBorder(new EmptyBorder(10, 10, 10, 10));
-        createButtonPanel.add(createButton, BorderLayout.CENTER);
-
-        leftPanel.add(createButtonPanel, BorderLayout.SOUTH);
-
-        rightPanel = createRightPanel();
-        rightPanel.setMinimumSize(new Dimension(450, 0));
-        rightPanel.setPreferredSize(new Dimension(450, 0));
-
-        splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftPanel, rightPanel);
-        splitPane.setOpaque(false);
-        splitPane.setBorder(null);
-        splitPane.setDividerSize(0);
-        splitPane.setResizeWeight(1.0);
-
-        rightPanel.setVisible(false);
-        splitPane.setDividerLocation(1.0);
-
-        mainCard.add(splitPane, BorderLayout.CENTER);
+        JPanel footerPanel = createFooterPanel();
+        add(footerPanel, BorderLayout.SOUTH);
 
         instancesList.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
@@ -115,18 +91,11 @@ public class InstancesPanel extends JPanel {
         instancesList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 selectedInstance = instancesList.getSelectedValue();
-                if (selectedInstance != null) {
-                    updateRightPanel(selectedInstance);
-                    rightPanel.setVisible(true);
-                    splitPane.setDividerLocation(splitPane.getWidth() - rightPanel.getPreferredSize().width);
-                } else {
-                    rightPanel.setVisible(false);
-                }
+                updateUIState();
             }
         });
 
         reload();
-        add(mainCard, BorderLayout.CENTER);
     }
 
     private JPanel createCardPanel() {
@@ -150,134 +119,138 @@ public class InstancesPanel extends JPanel {
         return card;
     }
 
-    private JPanel createRightPanel() {
-        JPanel panel = new JPanel(new GridBagLayout()) {
+    private JPanel createFooterPanel() {
+        JPanel footerCard = new JPanel(new GridBagLayout()) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 if (isDark) {
-                    g2d.setColor(new Color(30, 30, 30, 180));
+                    g2d.setColor(new Color(30, 30, 30, 200));
                 } else {
-                    g2d.setColor(new Color(245, 245, 245, 180));
+                    g2d.setColor(new Color(255, 255, 255, 200));
                 }
                 g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
                 g2d.dispose();
                 super.paintComponent(g);
             }
         };
-        panel.setOpaque(false);
-        panel.setBorder(BorderFactory.createEmptyBorder(15, 20, 15, 20));
+        footerCard.setOpaque(false);
+        footerCard.setBorder(BorderFactory.createEmptyBorder((int) (15 * scaleFactor), (int) (20 * scaleFactor),
+                (int) (15 * scaleFactor), (int) (20 * scaleFactor)));
 
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(6, 6, 6, 6);
+        gbc.insets = new Insets(0, 0, 0, (int) (15 * scaleFactor));
+        gbc.fill = GridBagConstraints.VERTICAL;
+        gbc.weighty = 1.0;
+
+        JButton addBtn = createStyledButton(localeManager.get("button.instance.add"), true, 14f);
+        addBtn.addActionListener(e -> createInstance());
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.gridheight = 2;
+        footerCard.add(addBtn, gbc);
+
+        gbc.gridheight = 1;
         gbc.weightx = 1.0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
-        gbc.anchor = GridBagConstraints.NORTHWEST;
-        int y = 0;
-
-        JPanel headerPanel = new JPanel(new BorderLayout());
-        headerPanel.setOpaque(false);
+        gbc.insets = new Insets(0, 0, 0, (int) (15 * scaleFactor));
         selectedInstanceLabel = new JLabel("");
-        selectedInstanceLabel.setFont(getFont(Font.BOLD, 18f));
+        selectedInstanceLabel.setFont(getFont(Font.BOLD, (float) (16 * scaleFactor)));
         selectedInstanceLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
+        gbc.gridx = 1;
+        gbc.gridy = 0;
+        footerCard.add(selectedInstanceLabel, gbc);
 
-        JButton closeBtn = new JButton("×");
-        closeBtn.setFont(getFont(Font.BOLD, 20f));
-        closeBtn.setBorderPainted(false);
-        closeBtn.setContentAreaFilled(false);
-        closeBtn.setFocusPainted(false);
-        closeBtn.setForeground(isDark ? Color.GRAY : Color.DARK_GRAY);
-        closeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        closeBtn.addActionListener(e -> {
-            instancesList.clearSelection();
-            rightPanel.setVisible(false);
-        });
+        statusLabel = new JLabel("");
+        statusLabel.setFont(getFont(Font.PLAIN, (float) (12 * scaleFactor)));
+        gbc.gridy = 1;
+        footerCard.add(statusLabel, gbc);
 
-        headerPanel.add(selectedInstanceLabel, BorderLayout.WEST);
-        headerPanel.add(closeBtn, BorderLayout.EAST);
-
-        gbc.gridx = 0;
-        gbc.gridy = y;
-        gbc.gridwidth = 2;
-        panel.add(headerPanel, gbc);
-        y++;
-
-        gbc.gridx = 0;
-        gbc.gridy = y;
-        gbc.gridwidth = 2;
-        statusLabel = new JLabel();
-        statusLabel.setFont(getFont(Font.PLAIN, 14f));
-        panel.add(statusLabel, gbc);
-        y++;
-
-        gbc.gridx = 0;
-        gbc.gridy = y;
-        gbc.gridwidth = 2;
-        panel.add(new JSeparator(), gbc);
-        y++;
-
-        gbc.gridx = 0;
-        gbc.gridy = y;
-        gbc.gridwidth = 2;
-        selectButton = new JButton(localeManager.get("button.select"));
-        selectButton.setFont(getFont(Font.BOLD, 14f));
-        selectButton.setPreferredSize(new Dimension(0, 40));
+        gbc.weightx = 0;
+        gbc.fill = GridBagConstraints.VERTICAL;
+        gbc.insets = new Insets(0, 0, 5, 0);
+        selectButton = createStyledButton(localeManager.get("button.select"), true, 13f);
         selectButton.addActionListener(e -> selectInstance());
-        panel.add(selectButton, gbc);
-        y++;
+        gbc.gridx = 2;
+        gbc.gridy = 0;
+        footerCard.add(selectButton, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy = y;
-        gbc.gridwidth = 2;
-        renameButton = new JButton(localeManager.get("menu.rename"));
-        renameButton.setFont(getFont(Font.BOLD, 14f));
-        renameButton.setPreferredSize(new Dimension(0, 40));
+        renameButton = createStyledButton(localeManager.get("menu.rename"), false, 12f);
         renameButton.addActionListener(e -> renameInstance());
-        panel.add(renameButton, gbc);
-        y++;
+        gbc.gridx = 3;
+        gbc.gridy = 0;
+        gbc.insets = new Insets(0, (int) (10 * scaleFactor), 5, 0);
+        footerCard.add(renameButton, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy = y;
-        gbc.gridwidth = 2;
-        deleteButton = new JButton(localeManager.get("menu.delete"));
-        deleteButton.setFont(getFont(Font.BOLD, 14f));
-        deleteButton.setPreferredSize(new Dimension(0, 40));
+        deleteButton = createStyledButton(localeManager.get("menu.delete"), false, 12f);
         deleteButton.addActionListener(e -> deleteInstance());
-        panel.add(deleteButton, gbc);
-        y++;
+        gbc.gridx = 3;
+        gbc.gridy = 1;
+        footerCard.add(deleteButton, gbc);
 
-        gbc.gridx = 0;
-        gbc.gridy = y;
-        gbc.weighty = 1.0;
-        gbc.fill = GridBagConstraints.BOTH;
-        panel.add(new JPanel() {
-            {
-                setOpaque(false);
-            }
-        }, gbc);
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setOpaque(false);
+        wrapper.setBorder(new EmptyBorder((int) (15 * scaleFactor), 0, 0, 0));
+        wrapper.add(footerCard, BorderLayout.CENTER);
 
-        return panel;
+        return wrapper;
     }
 
-    private void updateRightPanel(String instanceName) {
-        selectedInstanceLabel.setText(instanceName);
+    private JButton createStyledButton(String text, boolean bold, float fontSize) {
+        JButton btn = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (isDark) {
+                    g2d.setColor(new Color(65, 65, 65, 230));
+                } else {
+                    g2d.setColor(new Color(240, 240, 240, 230));
+                }
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+        btn.setOpaque(false);
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setFont(getFont(bold ? Font.BOLD : Font.PLAIN, fontSize * (float) scaleFactor));
+        btn.setForeground(isDark ? Color.WHITE : Color.BLACK);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setPreferredSize(new Dimension((int) (150 * scaleFactor), (int) (35 * scaleFactor)));
+        return btn;
+    }
 
-        boolean isActive = instanceName.equals(InstanceManager.getInstance().getActiveInstance());
-        boolean isDefault = instanceName.equals(InstanceManager.getDefaultInstanceName());
+    private void updateUIState() {
+        if (selectedInstance == null) {
+            selectedInstanceLabel.setText("");
+            statusLabel.setText("");
+            selectButton.setVisible(false);
+            renameButton.setVisible(false);
+            deleteButton.setVisible(false);
+            return;
+        }
+
+        selectedInstanceLabel.setText(selectedInstance);
+        boolean isActive = selectedInstance.equals(InstanceManager.getInstance().getActiveInstance());
+        boolean isDefault = selectedInstance.equals(InstanceManager.getDefaultInstanceName());
 
         if (isActive) {
             statusLabel.setText(localeManager.get("status.ready"));
             statusLabel.setForeground(new Color(76, 175, 80));
             selectButton.setEnabled(false);
-            selectButton.setText(localeManager.get("status.ready"));
         } else {
             statusLabel.setText("Inactive");
             statusLabel.setForeground(isDark ? Color.GRAY : Color.DARK_GRAY);
             selectButton.setEnabled(true);
-            selectButton.setText(localeManager.get("button.select"));
         }
 
+        selectButton.setVisible(true);
+        renameButton.setVisible(true);
+        deleteButton.setVisible(true);
         renameButton.setEnabled(!isDefault);
         deleteButton.setEnabled(!isDefault);
     }
@@ -292,11 +265,7 @@ public class InstancesPanel extends JPanel {
         for (String instance : instances) {
             listModel.addElement(instance);
         }
-        if (selectedInstance != null && instances.contains(selectedInstance)) {
-            updateRightPanel(selectedInstance);
-        } else {
-            rightPanel.setVisible(false);
-        }
+        updateUIState();
     }
 
     private void createInstance() {
@@ -363,7 +332,7 @@ public class InstancesPanel extends JPanel {
         }
 
         InstanceManager.getInstance().setActiveInstance(selectedInstance);
-        updateRightPanel(selectedInstance);
+        updateUIState();
         instancesList.repaint();
 
         if (onInstanceChanged != null) {
@@ -392,7 +361,7 @@ public class InstancesPanel extends JPanel {
             try {
                 InstanceManager.getInstance().deleteInstance(selectedInstance);
                 reload();
-                rightPanel.setVisible(false);
+                updateUIState();
                 if (onInstanceChanged != null) {
                     onInstanceChanged.run();
                 }

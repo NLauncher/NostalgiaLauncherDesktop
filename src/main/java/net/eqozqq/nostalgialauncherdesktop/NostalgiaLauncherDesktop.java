@@ -20,7 +20,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
@@ -37,8 +37,7 @@ import net.eqozqq.nostalgialauncherdesktop.TexturesManager.TexturesManagerPanel;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstancesPanel;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 import net.eqozqq.nostalgialauncherdesktop.Proxy.ProxyPanel;
-import net.eqozqq.nostalgialauncherdesktop.Proxy.ProxyManager;
-import java.awt.event.MouseEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 
 public class NostalgiaLauncherDesktop extends JFrame {
@@ -89,7 +88,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private SwingWorker<Void, Integer> launchWorker;
 
-    private static final String CURRENT_VERSION = "1.9.1";
+    private static final String CURRENT_VERSION = "1.9.2";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
@@ -263,7 +262,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     private void loadSettings() {
-        try (FileInputStream fis = new FileInputStream("launcher.properties")) {
+        File settingsFile = new File(InstanceManager.getDataRoot(), "launcher.properties");
+        try (FileInputStream fis = new FileInputStream(settingsFile)) {
             settings.load(fis);
             backgroundMode = settings.getProperty("backgroundMode", "Default");
             customBackgroundPath = settings.getProperty("customBackgroundPath");
@@ -277,9 +277,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             }
             customVersionsSource = settings.getProperty("customVersionsSource");
             useDefaultVersionsSource = Boolean.parseBoolean(settings.getProperty("useDefaultVersionsSource", "true"));
-            executableSource = settings.getProperty("executableSource");
-            if (executableSource == null)
-                executableSource = SystemInfo.isLinux ? "COMPILED" : "SERVER";
+            executableSource = settings.getProperty("executableSource", "SERVER");
             customLauncherPath = settings.getProperty("customLauncherPath");
             if (settings.containsKey("useDefaultLauncher")) {
                 boolean useDefault = Boolean.parseBoolean(settings.getProperty("useDefaultLauncher"));
@@ -297,7 +295,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         } catch (IOException | NumberFormatException e) {
             backgroundMode = "Default";
             useDefaultVersionsSource = true;
-            executableSource = SystemInfo.isLinux ? "COMPILED" : "SERVER";
+            executableSource = "SERVER";
             postLaunchAction = "Do Nothing";
             enableDebugging = false;
             scaleFactor = 1.3;
@@ -306,7 +304,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     private void saveSettings() {
-        try (FileOutputStream fos = new FileOutputStream("launcher.properties")) {
+        File settingsFile = new File(InstanceManager.getDataRoot(), "launcher.properties");
+        try (FileOutputStream fos = new FileOutputStream(settingsFile)) {
             settings.setProperty("backgroundMode", backgroundMode);
             if (customBackgroundPath != null)
                 settings.setProperty("customBackgroundPath", customBackgroundPath);
@@ -398,9 +397,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
         progressBar = homePanel.getProgressBar();
         statusLabel = homePanel.getStatusLabel();
 
-        worldsPanel = new WorldsManagerPanel(localeManager, themeName);
-        texturesPanel = new TexturesManagerPanel(localeManager, themeName);
-        instancesPanel = new InstancesPanel(localeManager, themeName);
+        worldsPanel = new WorldsManagerPanel(localeManager, themeName, scaleFactor);
+        texturesPanel = new TexturesManagerPanel(localeManager, themeName, scaleFactor);
+        instancesPanel = new InstancesPanel(localeManager, themeName, scaleFactor);
         proxyPanel = new ProxyPanel(localeManager, themeName, scaleFactor);
 
         instancesPanel.setOnInstanceChanged(() -> {

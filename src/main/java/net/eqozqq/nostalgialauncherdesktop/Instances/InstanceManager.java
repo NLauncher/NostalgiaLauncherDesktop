@@ -13,19 +13,29 @@ import java.util.stream.Stream;
 
 public class InstanceManager {
     private static final String DEFAULT_INSTANCE = "Default Instance";
-    private static final String INSTANCES_DIR = "instances";
+    private static final String DATA_ROOT = System.getProperty("user.home") + File.separator + ".nostalgialauncher";
+    private static final String INSTANCES_DIR = DATA_ROOT + File.separator + "instances";
 
     private static InstanceManager instance;
     private String activeInstance = DEFAULT_INSTANCE;
     private Properties settings;
 
-    private InstanceManager() {}
+    private InstanceManager() {
+        File dataRoot = new File(DATA_ROOT);
+        if (!dataRoot.exists()) {
+            dataRoot.mkdirs();
+        }
+    }
 
     public static synchronized InstanceManager getInstance() {
         if (instance == null) {
             instance = new InstanceManager();
         }
         return instance;
+    }
+
+    public static String getDataRoot() {
+        return DATA_ROOT;
     }
 
     public void init(Properties settings) {
@@ -63,10 +73,10 @@ public class InstanceManager {
         File[] files = root.listFiles();
         if (files != null) {
             Arrays.stream(files)
-                .filter(File::isDirectory)
-                .map(File::getName)
-                .filter(name -> !name.equals(DEFAULT_INSTANCE))
-                .forEach(instances::add);
+                    .filter(File::isDirectory)
+                    .map(File::getName)
+                    .filter(name -> !name.equals(DEFAULT_INSTANCE))
+                    .forEach(instances::add);
         }
         return instances;
     }
@@ -81,7 +91,7 @@ public class InstanceManager {
             throw new IllegalArgumentException("Instance already exists: " + name);
         }
         if (!newInstanceDir.mkdirs()) {
-             throw new RuntimeException("Failed to create instance directory: " + name);
+            throw new RuntimeException("Failed to create instance directory: " + name);
         }
     }
 
@@ -91,12 +101,12 @@ public class InstanceManager {
         }
         String cleanOld = oldName.trim();
         String cleanNew = newName.trim();
-        
+
         if (cleanNew.isEmpty()) {
-             throw new IllegalArgumentException("New name cannot be empty.");
+            throw new IllegalArgumentException("New name cannot be empty.");
         }
         if (cleanNew.equals(DEFAULT_INSTANCE)) {
-             throw new IllegalArgumentException("Cannot rename to the default instance name.");
+            throw new IllegalArgumentException("Cannot rename to the default instance name.");
         }
 
         File root = getInstancesRoot();
@@ -135,7 +145,7 @@ public class InstanceManager {
             }
         }
     }
-    
+
     private static void deleteRecursive(Path path) throws IOException {
         if (Files.isDirectory(path)) {
             try (Stream<Path> entries = Files.list(path)) {
@@ -156,14 +166,14 @@ public class InstanceManager {
             return baseDir();
         }
         if (isDefault()) {
-            return relative;
+            return DATA_ROOT + File.separator + relative.replace("/", File.separator);
         }
         return INSTANCES_DIR + File.separator + activeInstance + File.separator + relative.replace("/", File.separator);
     }
 
     public String baseDir() {
         if (isDefault()) {
-            return ".";
+            return DATA_ROOT;
         }
         return INSTANCES_DIR + File.separator + activeInstance;
     }

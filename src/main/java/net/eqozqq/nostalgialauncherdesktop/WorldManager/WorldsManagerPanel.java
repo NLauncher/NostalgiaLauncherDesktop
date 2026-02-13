@@ -26,6 +26,7 @@ public class WorldsManagerPanel extends JPanel {
     private static final String BACKUPS_PATH = "backups/";
 
     private final LocaleManager localeManager;
+    private final double scaleFactor;
     private final boolean isDark;
     private DefaultListModel<WorldEntry> listModel;
     private JList<WorldEntry> worldsList;
@@ -67,9 +68,10 @@ public class WorldsManagerPanel extends JPanel {
         }
     }
 
-    public WorldsManagerPanel(LocaleManager localeManager, String themeName) {
+    public WorldsManagerPanel(LocaleManager localeManager, String themeName, double scaleFactor) {
         this.localeManager = localeManager;
         this.isDark = themeName.contains("Dark");
+        this.scaleFactor = scaleFactor;
         setLayout(new BorderLayout());
         setOpaque(false);
         setBorder(new EmptyBorder(20, 20, 20, 20));
@@ -95,6 +97,7 @@ public class WorldsManagerPanel extends JPanel {
         headerPanel.add(titleLabel);
         headerPanel.add(Box.createVerticalStrut(3));
         headerPanel.add(warningLabel);
+        headerPanel.add(Box.createVerticalStrut(10));
 
         mainCard.add(headerPanel, BorderLayout.NORTH);
 
@@ -165,6 +168,71 @@ public class WorldsManagerPanel extends JPanel {
         });
 
         add(mainCard, BorderLayout.CENTER);
+
+        JButton importButton = createImportButton();
+        JPanel footerCard = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0)) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (isDark) {
+                    g2d.setColor(new Color(30, 30, 30, 200));
+                } else {
+                    g2d.setColor(new Color(255, 255, 255, 200));
+                }
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+        footerCard.setOpaque(false);
+        footerCard.setBorder(new EmptyBorder((int) (10 * scaleFactor), (int) (15 * scaleFactor),
+                (int) (10 * scaleFactor), (int) (15 * scaleFactor)));
+        footerCard.add(importButton);
+
+        JPanel footerWrapper = new JPanel(new BorderLayout());
+        footerWrapper.setOpaque(false);
+        footerWrapper.setBorder(new EmptyBorder((int) (15 * scaleFactor), 0, 0, 0));
+        footerWrapper.add(footerCard, BorderLayout.WEST);
+
+        add(footerWrapper, BorderLayout.SOUTH);
+    }
+
+    private JButton createImportButton() {
+        JButton importButton = new JButton(localeManager.get("button.importWorld", "Import World")) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (isDark) {
+                    g2d.setColor(new Color(65, 65, 65, 230));
+                } else {
+                    g2d.setColor(new Color(240, 240, 240, 230));
+                }
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 15, 15);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+        importButton.setOpaque(false);
+        importButton.setContentAreaFilled(false);
+        importButton.setBorderPainted(false);
+        importButton.setFocusPainted(false);
+        importButton.setFont(getFont(Font.BOLD, (float) (14 * scaleFactor)));
+        importButton.setForeground(isDark ? Color.WHITE : Color.BLACK);
+        importButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        importButton.setBorder(BorderFactory.createEmptyBorder(
+                (int) (12 * scaleFactor), (int) (20 * scaleFactor),
+                (int) (12 * scaleFactor), (int) (20 * scaleFactor)));
+        importButton.addActionListener(e -> {
+            Window parentWindow = javax.swing.SwingUtilities.getWindowAncestor(this);
+            WorldImportDialog dialog = new WorldImportDialog((Frame) parentWindow, localeManager);
+            dialog.setVisible(true);
+            if (dialog.isSuccess()) {
+                loadWorlds();
+            }
+        });
+        return importButton;
     }
 
     private JPanel createCardPanel() {

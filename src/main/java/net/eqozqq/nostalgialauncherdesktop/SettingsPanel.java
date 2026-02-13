@@ -566,6 +566,21 @@ public class SettingsPanel extends JPanel {
         browseLauncherButton.addActionListener(e -> {
             JFileChooser fileChooser = new JFileChooser();
             fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+            fileChooser.setAcceptAllFileFilterUsed(false);
+            fileChooser.addChoosableFileFilter(new javax.swing.filechooser.FileFilter() {
+                @Override
+                public boolean accept(File f) {
+                    if (f.isDirectory())
+                        return true;
+                    String name = f.getName().toLowerCase();
+                    return name.endsWith(".exe") || !name.contains(".");
+                }
+
+                @Override
+                public String getDescription() {
+                    return "Executable files (*.exe, extensionless)";
+                }
+            });
             int option = fileChooser.showOpenDialog(this);
             if (option == JFileChooser.APPROVE_OPTION) {
                 File file = fileChooser.getSelectedFile();

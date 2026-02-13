@@ -263,7 +263,7 @@ public class VersionManager {
                 }
             }
         } catch (IOException e) {
-            // Delete incomplete file if download failed or cancelled
+            
             if (outputFile.exists()) {
                 outputFile.delete();
             }

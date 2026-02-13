@@ -5,7 +5,8 @@ Minecraft PE Alpha versions launcher for Windows and Linux
 - Download and quickly switch between versions
 - Add your own version sources and custom executables for launching versions
 - World manager that allows editing world info
-- Fast texture installer
+- Texture manager
+- Proxy for adding servers
 - Instances
 - And more..
 
