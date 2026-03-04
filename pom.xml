@@ -7,7 +7,7 @@
 
     <groupId>net.eqozqq</groupId>
     <artifactId>NostalgiaLauncherDesktop</artifactId>
-    <version>1.9.2</version>
+    <version>1.9.3</version>
     <packaging>jar</packaging>
 
     <name>NostalgiaLauncherDesktop</name>
@@ -66,7 +66,19 @@
         <artifactId>junrar</artifactId>
         <version>7.4.1</version>
     </dependency>
+        <dependency>
+            <groupId>dev.firstdark.discordrpc</groupId>
+            <artifactId>discord-rpc</artifactId>
+            <version>1.0.4</version>
+        </dependency>
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>firstdark-releases</id>
+            <url>https://maven.firstdark.dev/releases</url>
+        </repository>
+    </repositories>
 
     <build>
         <finalName>nld</finalName>

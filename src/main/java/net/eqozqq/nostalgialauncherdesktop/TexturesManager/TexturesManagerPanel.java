@@ -23,6 +23,7 @@ public class TexturesManagerPanel extends JPanel {
 
     private JButton addButton;
     private JButton restoreButton;
+    private JPanel textureActionPanel;
     private File texturesDir;
 
     public TexturesManagerPanel(LocaleManager localeManager, String themeName, double scaleFactor) {
@@ -78,20 +79,86 @@ public class TexturesManagerPanel extends JPanel {
         versionList.addMouseListener(new java.awt.event.MouseAdapter() {
             @Override
             public void mouseClicked(java.awt.event.MouseEvent e) {
-                if (e.getClickCount() == 1) {
-                    int index = versionList.locationToIndex(e.getPoint());
-                    if (index >= 0) {
-                        File textureFile = listModel.getElementAt(index);
-                        if (textureFile != null && textureFile.exists()) {
-                            TextureInstallDialog dialog = new TextureInstallDialog(
-                                    (Frame) SwingUtilities.getWindowAncestor(TexturesManagerPanel.this),
-                                    localeManager, scaleFactor, textureFile);
-                            dialog.setVisible(true);
-                        }
+                int index = versionList.locationToIndex(e.getPoint());
+                if (index < 0)
+                    return;
+                Rectangle cellBounds = versionList.getCellBounds(index, index);
+                if (cellBounds == null || !cellBounds.contains(e.getPoint()))
+                    return;
+                if (e.getClickCount() == 1 && SwingUtilities.isLeftMouseButton(e)) {
+                    File textureFile = listModel.getElementAt(index);
+                    if (textureFile != null && textureFile.exists()) {
+                        TextureInstallDialog dialog = new TextureInstallDialog(
+                                (Frame) SwingUtilities.getWindowAncestor(TexturesManagerPanel.this),
+                                localeManager, scaleFactor, textureFile);
+                        dialog.setVisible(true);
                     }
                 }
             }
         });
+
+        versionList.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                boolean hasSelection = versionList.getSelectedValue() != null;
+                if (textureActionPanel != null) {
+                    textureActionPanel.setVisible(hasSelection);
+                }
+            }
+        });
+    }
+
+    private void renameSelectedTexture() {
+        File selected = versionList.getSelectedValue();
+        if (selected == null)
+            return;
+        String fullName = selected.getName();
+        int lastDot = fullName.lastIndexOf('.');
+        String baseName = lastDot > 0 ? fullName.substring(0, lastDot) : fullName;
+        String extension = lastDot > 0 ? fullName.substring(lastDot) : "";
+        String newName = (String) JOptionPane.showInputDialog(
+                this,
+                localeManager.get("dialog.renameTexture.message", "New name:"),
+                localeManager.get("dialog.renameTexture.title", "Rename Texture"),
+                JOptionPane.QUESTION_MESSAGE, null, null, baseName);
+        if (newName == null || newName.trim().isEmpty() || newName.trim().equals(baseName))
+            return;
+        File newFile = new File(selected.getParentFile(), newName.trim() + extension);
+        if (newFile.exists()) {
+            JOptionPane.showMessageDialog(this,
+                    localeManager.get("error.fileExists", "A file with that name already exists."),
+                    localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (selected.renameTo(newFile)) {
+            loadUserTextures();
+        } else {
+            JOptionPane.showMessageDialog(this,
+                    localeManager.get("error.renameFailed", "Could not rename the file."),
+                    localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private void deleteSelectedTexture() {
+        File selected = versionList.getSelectedValue();
+        if (selected == null)
+            return;
+        String displayName = selected.getName();
+        int lastDot = displayName.lastIndexOf('.');
+        if (lastDot > 0)
+            displayName = displayName.substring(0, lastDot);
+        int response = JOptionPane.showConfirmDialog(this,
+                localeManager.get("dialog.deleteTexture.message", displayName),
+                localeManager.get("dialog.deleteTexture.title", "Delete Texture"),
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        if (response == JOptionPane.YES_OPTION) {
+            if (selected.delete()) {
+                loadUserTextures();
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        localeManager.get("error.deleteFailed", "Could not delete the file."),
+                        localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     private JPanel createCardPanel() {
@@ -150,6 +217,19 @@ public class TexturesManagerPanel extends JPanel {
         restoreButton = createStyledButton(localeManager.get("button.restoreDefaultTextures"), false, 12f);
         restoreButton.addActionListener(e -> restoreDefaultTextures());
         footerCard.add(restoreButton);
+
+        textureActionPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, (int) (8 * scaleFactor), 0));
+        textureActionPanel.setOpaque(false);
+        textureActionPanel.setVisible(false);
+
+        JButton renameBtn = createStyledButton(localeManager.get("menu.rename", "Rename"), false, 13f);
+        JButton deleteBtn = createStyledButton(localeManager.get("menu.delete", "Delete"), false, 13f);
+        deleteBtn.setForeground(new Color(220, 80, 80));
+        renameBtn.addActionListener(e -> renameSelectedTexture());
+        deleteBtn.addActionListener(e -> deleteSelectedTexture());
+        textureActionPanel.add(renameBtn);
+        textureActionPanel.add(deleteBtn);
+        footerCard.add(textureActionPanel);
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);

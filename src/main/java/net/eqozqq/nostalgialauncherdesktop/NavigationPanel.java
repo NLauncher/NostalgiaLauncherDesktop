@@ -46,8 +46,8 @@ public class NavigationPanel extends JPanel {
         this.prefs = Preferences.userNodeForPackage(NavigationPanel.class);
         this.isCollapsed = prefs.getBoolean(PREF_COLLAPSED, false);
 
-        this.EXPANDED_WIDTH = (int) (220 * scaleFactor);
-        this.COLLAPSED_WIDTH = (int) (60 * scaleFactor);
+        this.EXPANDED_WIDTH = (int) (280 * scaleFactor);
+        this.COLLAPSED_WIDTH = (int) (62 * scaleFactor);
 
         setLayout(new BorderLayout());
         setPreferredSize(new Dimension(isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH, 0));
@@ -274,33 +274,40 @@ public class NavigationPanel extends JPanel {
         private boolean isIconOnly = false;
         private final JLabel iconLabel;
         private final JLabel textLabel;
-        private final Component spacer;
 
         private FlatSVGIcon iconOutline;
         private FlatSVGIcon iconFill;
 
         public NavButton(String iconPathOutline, String iconPathFill, String text, String navId) {
             this.navId = navId;
-            setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
+            setLayout(new GridBagLayout());
             setOpaque(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             setBorder(new EmptyBorder(
-                    (int) (10 * scaleFactor), (int) (15 * scaleFactor),
-                    (int) (10 * scaleFactor), (int) (15 * scaleFactor)));
-            setMaximumSize(new Dimension(Integer.MAX_VALUE, (int) (45 * scaleFactor)));
+                    (int) (10 * scaleFactor), 0,
+                    (int) (10 * scaleFactor), 0));
+            setMaximumSize(new Dimension(Integer.MAX_VALUE, (int) (52 * scaleFactor)));
 
             iconLabel = new JLabel();
+            iconLabel.setBorder(new EmptyBorder(0, 0, 0, 0));
             updateIcons(iconPathOutline, iconPathFill);
 
             textLabel = new JLabel(text);
             textLabel.setFont(getRegularFont(Font.PLAIN, (float) (14 * scaleFactor)));
             updateColors();
 
-            add(iconLabel);
-            spacer = Box.createHorizontalStrut((int) (15 * scaleFactor));
-            add(spacer);
-            add(textLabel);
-            add(Box.createHorizontalGlue());
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.gridx = 0;
+            gbc.gridy = 0;
+            gbc.anchor = GridBagConstraints.CENTER;
+            gbc.insets = new Insets(0, (int) (30 * scaleFactor), 0, 0);
+            add(iconLabel, gbc);
+
+            gbc.gridx = 1;
+            gbc.weightx = 1.0;
+            gbc.anchor = GridBagConstraints.WEST;
+            gbc.insets = new Insets(0, (int) (14 * scaleFactor), 0, (int) (30 * scaleFactor));
+            add(textLabel, gbc);
 
             addMouseListener(new MouseAdapter() {
                 @Override
@@ -328,30 +335,30 @@ public class NavigationPanel extends JPanel {
 
         public void setIconOnly(boolean iconOnly) {
             this.isIconOnly = iconOnly;
-            if (iconOnly) {
-                textLabel.setVisible(false);
-                spacer.setVisible(false);
-            }
+            textLabel.setVisible(!iconOnly);
         }
 
         public void setCollapsed(boolean collapsed) {
             if (isIconOnly) {
                 textLabel.setVisible(false);
-                spacer.setVisible(false);
             } else {
                 textLabel.setVisible(!collapsed);
-                spacer.setVisible(!collapsed);
             }
-
+            GridBagConstraints gbc = ((GridBagLayout) getLayout()).getConstraints(iconLabel);
             if (collapsed) {
-                setBorder(new EmptyBorder(
-                        (int) (10 * scaleFactor), (int) (10 * scaleFactor),
-                        (int) (10 * scaleFactor), (int) (10 * scaleFactor)));
+                gbc.insets = new Insets(0, 0, 0, 0);
+                gbc.weightx = 0;
+                GridBagConstraints gbcText = ((GridBagLayout) getLayout()).getConstraints(textLabel);
+                gbcText.weightx = 0;
+                ((GridBagLayout) getLayout()).setConstraints(textLabel, gbcText);
             } else {
-                setBorder(new EmptyBorder(
-                        (int) (10 * scaleFactor), (int) (15 * scaleFactor),
-                        (int) (10 * scaleFactor), (int) (15 * scaleFactor)));
+                gbc.insets = new Insets(0, (int) (15 * scaleFactor), 0, 0);
+                gbc.weightx = 0;
+                GridBagConstraints gbcText = ((GridBagLayout) getLayout()).getConstraints(textLabel);
+                gbcText.weightx = 1.0;
+                ((GridBagLayout) getLayout()).setConstraints(textLabel, gbcText);
             }
+            ((GridBagLayout) getLayout()).setConstraints(iconLabel, gbc);
             revalidate();
         }
 

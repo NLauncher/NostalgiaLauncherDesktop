@@ -53,9 +53,8 @@ public class InstancesPanel extends JPanel {
         instancesList.setVisibleRowCount(-1);
         instancesList.setOpaque(false);
         instancesList.setBackground(new Color(0, 0, 0, 0));
-
-        instancesList.setFixedCellWidth(290);
-        instancesList.setFixedCellHeight(100);
+        instancesList.setFixedCellWidth(360);
+        instancesList.setFixedCellHeight(130);
 
         JScrollPane listScrollPane = new JScrollPane(instancesList);
         listScrollPane.setOpaque(false);

@@ -211,7 +211,7 @@ public class ProxyPanel extends JPanel {
         saveButton.setBorderPainted(false);
         saveButton.setFocusPainted(false);
         saveButton.setFont(getFont(Font.PLAIN, (float) (12 * scaleFactor)));
-        saveButton.setForeground(isDark ? Color.WHITE : Color.BLACK); // Changed from 230,230,230 and 40,40,40
+        saveButton.setForeground(isDark ? Color.WHITE : Color.BLACK);
         saveButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
         saveButton.setPreferredSize(new Dimension((int) (180 * scaleFactor), (int) (35 * scaleFactor)));
         saveButton.addActionListener(e -> saveCurrentServer());

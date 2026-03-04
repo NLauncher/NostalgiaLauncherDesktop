@@ -88,7 +88,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private SwingWorker<Void, Integer> launchWorker;
 
-    private static final String CURRENT_VERSION = "1.9.2";
+    private static final String CURRENT_VERSION = "1.9.3";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
@@ -112,6 +112,76 @@ public class NostalgiaLauncherDesktop extends JFrame {
         setIcon();
         setupLinuxIntegration();
         setGlassPane(loadingOverlay);
+        DiscordRPCManager.getInstance().init();
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                DiscordRPCManager.getInstance().shutdown();
+            }
+        });
+
+        Toolkit.getDefaultToolkit().addAWTEventListener(event -> {
+            if (event instanceof java.awt.event.MouseEvent) {
+                java.awt.event.MouseEvent me = (java.awt.event.MouseEvent) event;
+                if (me.getID() == java.awt.event.MouseEvent.MOUSE_PRESSED) {
+                    java.awt.Component target = me.getComponent();
+                    if (target == null)
+                        return;
+                    if (target instanceof JButton)
+                        return;
+                    if (target instanceof JTextField)
+                        return;
+                    if (target instanceof JTextArea)
+                        return;
+                    if (target instanceof JComboBox)
+                        return;
+                    if (target instanceof JCheckBox)
+                        return;
+                    if (target instanceof JRadioButton)
+                        return;
+                    if (target instanceof JScrollBar)
+                        return;
+                    if (target instanceof JSlider)
+                        return;
+                    if (target instanceof JList) {
+                        JList<?> list = (JList<?>) target;
+                        int index = list.locationToIndex(me.getPoint());
+                        if (index >= 0) {
+                            Rectangle bounds = list.getCellBounds(index, index);
+                            if (bounds == null || !bounds.contains(me.getPoint())) {
+                                SwingUtilities.invokeLater(list::clearSelection);
+                            }
+                        } else {
+                            SwingUtilities.invokeLater(list::clearSelection);
+                        }
+                        return;
+                    }
+                    java.awt.Component check = target;
+                    while (check != null) {
+                        if (check instanceof JScrollPane) {
+                            java.awt.Component view = ((JScrollPane) check).getViewport().getView();
+                            if (view instanceof JList) {
+                                JList<?> list = (JList<?>) view;
+                                java.awt.Point p = SwingUtilities.convertPoint(target, me.getPoint(), list);
+                                int index = list.locationToIndex(p);
+                                if (index >= 0) {
+                                    Rectangle bounds = list.getCellBounds(index, index);
+                                    if (bounds == null || !bounds.contains(p)) {
+                                        SwingUtilities.invokeLater(list::clearSelection);
+                                    }
+                                } else {
+                                    SwingUtilities.invokeLater(list::clearSelection);
+                                }
+                                return;
+                            }
+                        }
+                        check = check.getParent();
+                    }
+                    SwingUtilities.invokeLater(() -> java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager()
+                            .clearGlobalFocusOwner());
+                }
+            }
+        }, java.awt.AWTEvent.MOUSE_EVENT_MASK);
     }
 
     private void setIcon() {
@@ -357,6 +427,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
         try {
             FlatLaf.setUseNativeWindowDecorations(false);
             UIManager.put("TitlePane.useWindowDecorations", Boolean.FALSE);
+            int baseFontSize = (int) Math.round(13 * scaleFactor);
+            UIManager.put("defaultFont", new Font("SansSerif", Font.PLAIN, baseFontSize));
             UIManager.setLookAndFeel(newTheme);
             SwingUtilities.updateComponentTreeUI(this);
         } catch (UnsupportedLookAndFeelException e) {
@@ -434,27 +506,34 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     private void onNavigate(String navId) {
+        DiscordRPCManager discordRPCManager = DiscordRPCManager.getInstance();
         switch (navId) {
             case NavigationPanel.NAV_HOME:
                 cardLayout.show(contentPanel, NavigationPanel.NAV_HOME);
+                discordRPCManager.updatePresence("On Main Page");
                 break;
             case NavigationPanel.NAV_WORLDS:
                 worldsPanel.loadWorlds();
                 cardLayout.show(contentPanel, NavigationPanel.NAV_WORLDS);
+                discordRPCManager.updatePresence("In World Manager");
                 break;
             case NavigationPanel.NAV_TEXTURES:
                 texturesPanel.resetView();
                 cardLayout.show(contentPanel, NavigationPanel.NAV_TEXTURES);
+                discordRPCManager.updatePresence("In Texture Manager");
                 break;
             case NavigationPanel.NAV_INSTANCES:
                 instancesPanel.reload();
                 cardLayout.show(contentPanel, NavigationPanel.NAV_INSTANCES);
+                DiscordRPCManager.getInstance().updatePresence(localeManager.get("rpc.instances"));
                 break;
             case NavigationPanel.NAV_PROXY:
                 cardLayout.show(contentPanel, NavigationPanel.NAV_PROXY);
+                discordRPCManager.updatePresence("In Proxy");
                 break;
             case NavigationPanel.NAV_SETTINGS:
                 cardLayout.show(contentPanel, NavigationPanel.NAV_SETTINGS);
+                DiscordRPCManager.getInstance().updatePresence("In Settings");
                 break;
         }
     }
@@ -696,6 +775,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     private void launchVersion(Version version) {
+        DiscordRPCManager.getInstance().updatePresence("Playing Minecraft PE a" + version.getName());
         launchWorker = new SwingWorker<Void, Integer>() {
             Process gameProcess;
 
@@ -842,6 +922,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 versionComboBox.setEnabled(true);
                 progressBar.setVisible(false);
                 launchWorker = null;
+                DiscordRPCManager.getInstance().updatePresence("On Main Page");
                 try {
                     get();
                 } catch (Exception e) {

@@ -39,6 +39,7 @@
   "nav.settings": "Settings",
   "nav.discord": "Discord",
   "nav.website": "Website",
+  "rpc.instances": "Managing Instances",
   "label.instance.info": "Double-click to select, right-click for options",
   "menu.select": "Select",
   "button.back": "Back",
@@ -285,5 +286,6 @@
   "button.install": "Install",
   "dialog.restore.title": "Restore Textures",
   "dialog.confirmInstallTexture.message": "Are you sure you want to install texture '%s' for version '%s' in instance '%s'?",
-  "dialog.confirmInstall.title": "Confirm Installation"
+  "dialog.confirmInstall.title": "Confirm Installation",
+  "label.version": "Version"
 }

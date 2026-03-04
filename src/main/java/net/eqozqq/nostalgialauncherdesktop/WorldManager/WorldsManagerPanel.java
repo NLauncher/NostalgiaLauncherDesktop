@@ -30,10 +30,12 @@ public class WorldsManagerPanel extends JPanel {
     private final boolean isDark;
     private DefaultListModel<WorldEntry> listModel;
     private JList<WorldEntry> worldsList;
+    private JScrollPane infoScrollPane;
     private JPanel infoPanel;
     private JSplitPane splitPane;
     private Level currentLevel;
     private File currentWorldFolder;
+    private JPanel worldActionPanel;
 
     private JLabel lastPlayedLabel;
     private JTextField worldNameField;
@@ -126,30 +128,38 @@ public class WorldsManagerPanel extends JPanel {
 
         infoPanel = createWorldInfoPanel();
         infoPanel.setMinimumSize(new Dimension(500, 0));
-        infoPanel.setPreferredSize(new Dimension(500, 0));
 
-        splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, listScrollPane, infoPanel);
+        infoScrollPane = new JScrollPane(infoPanel);
+        infoScrollPane.setOpaque(false);
+        infoScrollPane.getViewport().setOpaque(false);
+        infoScrollPane.setBorder(null);
+        infoScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+        infoScrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        infoScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        infoScrollPane.setPreferredSize(new Dimension(500, 0));
+        infoScrollPane.setMinimumSize(new Dimension(500, 0));
+
+        splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, listScrollPane, infoScrollPane);
         splitPane.setOpaque(false);
         splitPane.setBorder(null);
         splitPane.setDividerSize(0);
         splitPane.setResizeWeight(1.0);
 
-        infoPanel.setVisible(false);
+        infoScrollPane.setVisible(false);
         splitPane.setDividerLocation(1.0);
 
         mainCard.add(splitPane, BorderLayout.CENTER);
 
         worldsList.addMouseListener(new MouseAdapter() {
             public void mousePressed(MouseEvent e) {
-                if (SwingUtilities.isRightMouseButton(e)) {
-                    int index = worldsList.locationToIndex(e.getPoint());
-                    if (index != -1) {
-                        Rectangle cellBounds = worldsList.getCellBounds(index, index);
-                        if (cellBounds != null && cellBounds.contains(e.getPoint())) {
-                            worldsList.setSelectedIndex(index);
-                            showPopupMenu(e);
-                        }
+                int index = worldsList.locationToIndex(e.getPoint());
+                if (index != -1) {
+                    Rectangle cellBounds = worldsList.getCellBounds(index, index);
+                    if (cellBounds == null || !cellBounds.contains(e.getPoint())) {
+                        worldsList.clearSelection();
                     }
+                } else {
+                    worldsList.clearSelection();
                 }
             }
         });
@@ -159,10 +169,12 @@ public class WorldsManagerPanel extends JPanel {
                 WorldEntry selected = worldsList.getSelectedValue();
                 if (selected != null) {
                     loadWorldInfo(selected.folder);
-                    infoPanel.setVisible(true);
-                    splitPane.setDividerLocation(splitPane.getWidth() - infoPanel.getPreferredSize().width);
+                    infoScrollPane.setVisible(true);
+                    splitPane.setDividerLocation(splitPane.getWidth() - infoScrollPane.getPreferredSize().width);
+                    worldActionPanel.setVisible(true);
                 } else {
-                    infoPanel.setVisible(false);
+                    infoScrollPane.setVisible(false);
+                    worldActionPanel.setVisible(false);
                 }
             }
         });
@@ -170,6 +182,28 @@ public class WorldsManagerPanel extends JPanel {
         add(mainCard, BorderLayout.CENTER);
 
         JButton importButton = createImportButton();
+
+        worldActionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, (int) (8 * scaleFactor), 0));
+        worldActionPanel.setOpaque(false);
+        worldActionPanel.setVisible(false);
+
+        JButton renameWorldBtn = createFooterButton(localeManager.get("menu.renameWorld"));
+        JButton renameFolderBtn = createFooterButton(localeManager.get("menu.renameFolder"));
+        JButton backupBtn = createFooterButton(localeManager.get("menu.backupWorld"));
+        JButton deleteBtn = createFooterButton(localeManager.get("menu.deleteWorld"));
+
+        deleteBtn.setForeground(new Color(220, 80, 80));
+
+        renameWorldBtn.addActionListener(e -> renameSelectedWorld());
+        renameFolderBtn.addActionListener(e -> renameSelectedWorldFolder());
+        backupBtn.addActionListener(e -> backupSelectedWorld());
+        deleteBtn.addActionListener(e -> deleteSelectedWorld());
+
+        worldActionPanel.add(renameWorldBtn);
+        worldActionPanel.add(renameFolderBtn);
+        worldActionPanel.add(backupBtn);
+        worldActionPanel.add(deleteBtn);
+
         JPanel footerCard = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0)) {
             @Override
             protected void paintComponent(Graphics g) {
@@ -189,6 +223,8 @@ public class WorldsManagerPanel extends JPanel {
         footerCard.setBorder(new EmptyBorder((int) (10 * scaleFactor), (int) (15 * scaleFactor),
                 (int) (10 * scaleFactor), (int) (15 * scaleFactor)));
         footerCard.add(importButton);
+        footerCard.add(Box.createHorizontalStrut((int) (15 * scaleFactor)));
+        footerCard.add(worldActionPanel);
 
         JPanel footerWrapper = new JPanel(new BorderLayout());
         footerWrapper.setOpaque(false);
@@ -196,6 +232,35 @@ public class WorldsManagerPanel extends JPanel {
         footerWrapper.add(footerCard, BorderLayout.WEST);
 
         add(footerWrapper, BorderLayout.SOUTH);
+    }
+
+    private JButton createFooterButton(String text) {
+        JButton btn = new JButton(text) {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2d = (Graphics2D) g.create();
+                g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                if (isDark) {
+                    g2d.setColor(new Color(65, 65, 65, 200));
+                } else {
+                    g2d.setColor(new Color(235, 235, 235, 220));
+                }
+                g2d.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
+                g2d.dispose();
+                super.paintComponent(g);
+            }
+        };
+        btn.setOpaque(false);
+        btn.setContentAreaFilled(false);
+        btn.setBorderPainted(false);
+        btn.setFocusPainted(false);
+        btn.setFont(getFont(Font.PLAIN, (float) (13 * scaleFactor)));
+        btn.setForeground(isDark ? Color.WHITE : Color.BLACK);
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setBorder(BorderFactory.createEmptyBorder(
+                (int) (10 * scaleFactor), (int) (16 * scaleFactor),
+                (int) (10 * scaleFactor), (int) (16 * scaleFactor)));
+        return btn;
     }
 
     private JButton createImportButton() {
@@ -296,7 +361,7 @@ public class WorldsManagerPanel extends JPanel {
         closeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         closeBtn.addActionListener(e -> {
             worldsList.clearSelection();
-            infoPanel.setVisible(false);
+            infoScrollPane.setVisible(false);
         });
 
         headerPanel.add(editLabel, BorderLayout.WEST);
@@ -604,27 +669,7 @@ public class WorldsManagerPanel extends JPanel {
                 }
             }
         }
-        infoPanel.setVisible(false);
-    }
-
-    private void showPopupMenu(MouseEvent e) {
-        JPopupMenu popupMenu = new JPopupMenu();
-        JMenuItem renameWorldItem = new JMenuItem(localeManager.get("menu.renameWorld"));
-        JMenuItem renameFolderItem = new JMenuItem(localeManager.get("menu.renameFolder"));
-        JMenuItem backupWorldItem = new JMenuItem(localeManager.get("menu.backupWorld"));
-        JMenuItem deleteWorldItem = new JMenuItem(localeManager.get("menu.deleteWorld"));
-
-        renameWorldItem.addActionListener(ae -> renameSelectedWorld());
-        renameFolderItem.addActionListener(ae -> renameSelectedWorldFolder());
-        backupWorldItem.addActionListener(ae -> backupSelectedWorld());
-        deleteWorldItem.addActionListener(ae -> deleteSelectedWorld());
-
-        popupMenu.add(renameWorldItem);
-        popupMenu.add(renameFolderItem);
-        popupMenu.add(backupWorldItem);
-        popupMenu.add(deleteWorldItem);
-
-        popupMenu.show(e.getComponent(), e.getX(), e.getY());
+        infoScrollPane.setVisible(false);
     }
 
     private void renameSelectedWorld() {
