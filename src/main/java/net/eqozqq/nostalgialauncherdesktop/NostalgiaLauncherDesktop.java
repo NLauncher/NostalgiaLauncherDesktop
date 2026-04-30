@@ -20,7 +20,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
@@ -37,8 +36,6 @@ import net.eqozqq.nostalgialauncherdesktop.TexturesManager.TexturesManagerPanel;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstancesPanel;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 import net.eqozqq.nostalgialauncherdesktop.Proxy.ProxyPanel;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
 
 public class NostalgiaLauncherDesktop extends JFrame {
     private JTextField nicknameField;
@@ -88,7 +85,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private SwingWorker<Void, Integer> launchWorker;
 
-    private static final String CURRENT_VERSION = "1.9.3";
+    private static final String CURRENT_VERSION = "1.9.4";
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
@@ -112,6 +109,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         setIcon();
         setupLinuxIntegration();
         setGlassPane(loadingOverlay);
+        showFirstLaunchDisclaimer();
         DiscordRPCManager.getInstance().init();
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
@@ -882,6 +880,15 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 if ("CUSTOM".equals(executableSource) || "COMPILED".equals(executableSource))
                     launcherPath = customLauncherPath;
                 gameProcess = gameLauncher.launchGame(gameDir, launcherPath, enableDebugging);
+
+                final StringBuilder processOutput = new StringBuilder();
+                Thread outputReader = new Thread(() -> {
+                    String output = GameLauncher.readProcessOutput(gameProcess);
+                    processOutput.append(output);
+                });
+                outputReader.setDaemon(true);
+                outputReader.start();
+
                 SwingUtilities.invokeLater(() -> {
                     switch (postLaunchAction) {
                         case "Minimize Launcher":
@@ -897,12 +904,39 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 publish(100);
                 statusLabel.setText(localeManager.get("status.launched"));
                 progressBar.setVisible(false);
+
+                long launchTime = System.currentTimeMillis();
+                int exitCode;
                 try {
-                    gameProcess.waitFor();
+                    exitCode = gameProcess.waitFor();
                 } catch (InterruptedException e) {
                     gameProcess.destroy();
                     return null;
                 }
+
+                outputReader.join(2000);
+
+                long runDuration = System.currentTimeMillis() - launchTime;
+
+                if (exitCode != 0) {
+                    final String output = processOutput.toString().trim();
+                    final long duration = runDuration;
+                    final int code = exitCode;
+                    SwingUtilities.invokeLater(() -> {
+                        StringBuilder errorMsg = new StringBuilder();
+                        errorMsg.append("Ninecraft exited with code: ").append(code).append("\n");
+                        errorMsg.append("Runtime: ").append(duration / 1000.0).append("s\n\n");
+                        if (!output.isEmpty()) {
+                            errorMsg.append("--- Process Output ---\n");
+                            errorMsg.append(output);
+                        } else {
+                            errorMsg.append("No output was captured from the process.");
+                        }
+                        ErrorDialog.show(NostalgiaLauncherDesktop.this,
+                                localeManager.get("error.launchFailed.title"), errorMsg.toString());
+                    });
+                }
+
                 return null;
             }
 
@@ -992,6 +1026,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         try (java.util.zip.ZipInputStream zis = new java.util.zip.ZipInputStream(
                 java.nio.file.Files.newInputStream(zipFile.toPath()))) {
             java.util.zip.ZipEntry entry;
+            String canonicalGameDir = gameDir.getCanonicalPath() + File.separator;
             while ((entry = zis.getNextEntry()) != null) {
                 if (launchWorker != null && launchWorker.isCancelled()) {
                     throw new IOException("Cancelled");
@@ -999,6 +1034,10 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
                 String entryName = entry.getName();
                 File outFile = new File(gameDir, entryName);
+
+                if (!outFile.getCanonicalPath().startsWith(canonicalGameDir)) {
+                    throw new IOException("Zip entry outside target directory: " + entryName);
+                }
 
                 if (entry.isDirectory()) {
                     outFile.mkdirs();
@@ -1032,6 +1071,109 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     deleteRecursive(child);
         }
         file.delete();
+    }
+
+    private void showFirstLaunchDisclaimer() {
+        String shown = settings.getProperty("disclaimerShown", "false");
+        if ("true".equals(shown)) {
+            return;
+        }
+
+        JDialog dialog = new JDialog(this, "Disclaimer", true);
+        dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        dialog.setResizable(false);
+
+        JPanel mainPanel = new JPanel();
+        mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(25, 30, 20, 30));
+
+        JLabel iconLabel = new JLabel(UIManager.getIcon("OptionPane.warningIcon"));
+        iconLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(iconLabel);
+        mainPanel.add(Box.createVerticalStrut(15));
+
+        JLabel titleLabel = new JLabel("Disclaimer");
+        titleLabel.setFont(getRegularFont(Font.BOLD, 18f));
+        titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(titleLabel);
+        mainPanel.add(Box.createVerticalStrut(15));
+
+        String htmlText = "<html><body style='width: 420px; font-family: sans-serif; font-size: 11px;'>"
+                + "<p>NOSTALGIALAUNCHER IS NOT RESPONSIBLE FOR ANY GAME-RELATED ISSUES. "
+                + "WE ARE NOT AFFILIATED WITH THE GAME ITSELF. "
+                + "NOSTALGIALAUNCHER ONLY AUTOMATES THE PROCESS OF LAUNCHING THE GAME "
+                + "USING THIRD-PARTY SOFTWARE CALLED NINECRAFT, "
+                + "WHICH IS RESPONSIBLE FOR RUNNING THE GAME VERSIONS.</p>"
+                + "<p style='margin-top: 8px;'>WE DO NOT AFFECT THE FUNCTIONALITY OF THE GAME VERSIONS "
+                + "AND DO NOT INFLUENCE WHETHER THE GAME RUNS PROPERLY ON YOUR DEVICE.</p>"
+                + "<p style='margin-top: 12px; color: gray;'>If you encounter any issues, "
+                + "feel free to join our Discord server for help and support.</p>"
+                + "</body></html>";
+
+        JLabel textLabel = new JLabel(htmlText);
+        textLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
+        mainPanel.add(textLabel);
+        mainPanel.add(Box.createVerticalStrut(20));
+
+        JPanel buttonPanel = new JPanel(new GridLayout(1, 2, 10, 0));
+        buttonPanel.setMaximumSize(new Dimension(460, 45));
+        buttonPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        JButton discordButton = new JButton("Discord");
+        discordButton.setPreferredSize(new Dimension(0, 45));
+        discordButton.setFont(getRegularFont(Font.BOLD, 14f));
+        try {
+            com.formdev.flatlaf.extras.FlatSVGIcon discordIcon = new com.formdev.flatlaf.extras.FlatSVGIcon(
+                    "icons/discord.svg", 20, 20);
+            boolean isDarkTheme = themeName.contains("Dark");
+            discordIcon.setColorFilter(new com.formdev.flatlaf.extras.FlatSVGIcon.ColorFilter(
+                    c -> isDarkTheme ? Color.WHITE : Color.BLACK));
+            discordButton.setIcon(discordIcon);
+        } catch (Exception ignored) {
+        }
+        discordButton.addActionListener(e -> {
+            String url = "https://discord.gg/4fv4RrTav4";
+            try {
+                if (java.awt.Desktop.isDesktopSupported()) {
+                    java.awt.Desktop desktop = java.awt.Desktop.getDesktop();
+                    if (desktop.isSupported(java.awt.Desktop.Action.BROWSE)) {
+                        desktop.browse(new java.net.URI(url));
+                        return;
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+
+            try {
+                new ProcessBuilder("xdg-open", url).start();
+                return;
+            } catch (Exception ignored) {
+            }
+
+            try {
+                new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
+            } catch (Exception ignored) {
+            }
+        });
+
+        JButton okButton = new JButton("OK");
+        okButton.setPreferredSize(new Dimension(0, 45));
+        okButton.setFont(getRegularFont(Font.BOLD, 14f));
+        okButton.addActionListener(e -> dialog.dispose());
+
+        buttonPanel.add(discordButton);
+        buttonPanel.add(okButton);
+
+        mainPanel.add(buttonPanel);
+
+        dialog.setContentPane(mainPanel);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.getRootPane().setDefaultButton(okButton);
+        dialog.setVisible(true);
+
+        settings.setProperty("disclaimerShown", "true");
+        saveSettings();
     }
 
     public static void main(String[] args) {

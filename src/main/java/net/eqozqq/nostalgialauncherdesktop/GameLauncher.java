@@ -1,7 +1,11 @@
 package net.eqozqq.nostalgialauncherdesktop;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 public class GameLauncher {
     public Process launchGame(File gameDir, String customExecutablePath, boolean enableDebugging) throws Exception {
@@ -32,19 +36,60 @@ public class GameLauncher {
                 processBuilder = new ProcessBuilder(executable.getAbsolutePath());
             }
         } else {
-            processBuilder = new ProcessBuilder(executable.getAbsolutePath());
+            if (enableDebugging) {
+                String[] terminals = { "x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "lxterminal", "mate-terminal" };
+                String selectedTerminal = null;
+                for (String terminal : terminals) {
+                    if (hasCommand(terminal)) {
+                        selectedTerminal = terminal;
+                        break;
+                    }
+                }
+                if (selectedTerminal != null) {
+                    if (selectedTerminal.equals("gnome-terminal") || selectedTerminal.equals("mate-terminal")) {
+                        processBuilder = new ProcessBuilder(selectedTerminal, "--", "bash", "-c", 
+                            "\"" + executable.getAbsolutePath() + "\"; echo 'Process exited.'; read");
+                    } else {
+                        processBuilder = new ProcessBuilder(selectedTerminal, "-e", 
+                            "bash -c '\"" + executable.getAbsolutePath() + "\"; echo \"Process exited.\"; read'");
+                    }
+                } else {
+                    processBuilder = new ProcessBuilder(executable.getAbsolutePath());
+                }
+            } else {
+                processBuilder = new ProcessBuilder(executable.getAbsolutePath());
+            }
         }
 
         processBuilder.directory(gameDir);
-        
-        if (!enableDebugging) {
-            processBuilder.inheritIO();
-        }
+        processBuilder.redirectErrorStream(true);
 
         try {
             return processBuilder.start();
         } catch (IOException e) {
             throw new Exception("error.launchGameFailed:" + e.getMessage(), e);
         }
+    }
+
+    private boolean hasCommand(String command) {
+        try {
+            Process p = new ProcessBuilder("which", command).start();
+            return p.waitFor() == 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static String readProcessOutput(Process process) {
+        StringBuilder output = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append("\n");
+            }
+        } catch (IOException e) {
+            output.append("Failed to read process output: ").append(e.getMessage());
+        }
+        return output.toString();
     }
 }

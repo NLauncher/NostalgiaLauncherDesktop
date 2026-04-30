@@ -302,6 +302,7 @@ public class VersionManager {
 
         try (ZipInputStream zipInputStream = new ZipInputStream(Files.newInputStream(apkFile.toPath()))) {
             ZipEntry entry;
+            String canonicalTargetDir = targetDir.getCanonicalPath() + File.separator;
             while ((entry = zipInputStream.getNextEntry()) != null) {
                 if (entry.isDirectory()) {
                     continue;
@@ -311,6 +312,10 @@ public class VersionManager {
 
                 if (entryName.startsWith("assets/") || entryName.startsWith("res/") || entryName.startsWith("lib/")) {
                     File newFile = new File(targetDir, entryName);
+
+                    if (!newFile.getCanonicalPath().startsWith(canonicalTargetDir)) {
+                        throw new IOException("Zip entry outside target directory: " + entryName);
+                    }
 
                     File parentDir = newFile.getParentFile();
                     if (parentDir != null && !parentDir.exists()) {

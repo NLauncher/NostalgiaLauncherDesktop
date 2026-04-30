@@ -8,7 +8,7 @@ import java.awt.datatransfer.StringSelection;
 public class ErrorDialog extends JDialog {
 
     public ErrorDialog(Component parent, String title, String message) {
-        super(getParentFrame(parent), title, true);
+        super(getParentWindow(parent), title, ModalityType.APPLICATION_MODAL);
 
         setSize(500, 350);
         setLocationRelativeTo(parent);
@@ -59,12 +59,12 @@ public class ErrorDialog extends JDialog {
         getRootPane().setDefaultButton(okButton);
     }
 
-    private static JFrame getParentFrame(Component component) {
+    private static Window getParentWindow(Component component) {
         if (component == null)
             return null;
-        if (component instanceof JFrame)
-            return (JFrame) component;
-        return (JFrame) SwingUtilities.getWindowAncestor(component);
+        if (component instanceof Window)
+            return (Window) component;
+        return SwingUtilities.getWindowAncestor(component);
     }
 
     public static void show(Component parent, String title, String message) {

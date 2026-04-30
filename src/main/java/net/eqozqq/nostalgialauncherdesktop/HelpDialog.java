@@ -8,7 +8,7 @@ import java.net.URI;
 public class HelpDialog extends JDialog {
 
     public HelpDialog(Component parent, LocaleManager localeManager) {
-        super(getParentFrame(parent), localeManager.get("help.dialog.title", "Having a problem?"), true);
+        super(getParentWindow(parent), localeManager.get("help.dialog.title", "Having a problem?"), ModalityType.APPLICATION_MODAL);
 
         setSize(550, 300);
         setLocationRelativeTo(parent);
@@ -96,12 +96,12 @@ public class HelpDialog extends JDialog {
         }
     }
 
-    private static JFrame getParentFrame(Component component) {
+    private static Window getParentWindow(Component component) {
         if (component == null)
             return null;
-        if (component instanceof JFrame)
-            return (JFrame) component;
-        return (JFrame) SwingUtilities.getWindowAncestor(component);
+        if (component instanceof Window)
+            return (Window) component;
+        return SwingUtilities.getWindowAncestor(component);
     }
 
     public static void show(Component parent, LocaleManager localeManager) {

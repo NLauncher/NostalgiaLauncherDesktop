@@ -17,7 +17,7 @@ public class DiscordRPCManager {
     private DiscordRPCManager() {
     }
 
-    public static DiscordRPCManager getInstance() {
+    public static synchronized DiscordRPCManager getInstance() {
         if (instance == null) {
             instance = new DiscordRPCManager();
         }
