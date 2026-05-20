@@ -25,7 +25,7 @@ public class ServerStorage {
                 Type listType = new TypeToken<List<Server>>() {
                 }.getType();
                 return gson.fromJson(reader, listType);
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }

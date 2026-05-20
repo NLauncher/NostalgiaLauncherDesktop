@@ -241,11 +241,7 @@ public class NavigationPanel extends JPanel {
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                try {
-                    Desktop.getDesktop().browse(new URI(url));
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+                NostalgiaLauncherDesktop.openURL(url);
             }
         });
         allButtons.add(button);

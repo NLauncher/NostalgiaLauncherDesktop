@@ -31,7 +31,8 @@ public class GameLauncher {
         ProcessBuilder processBuilder;
         if (isWindows) {
             if (enableDebugging) {
-                processBuilder = new ProcessBuilder("cmd.exe", "/c", "start", "\"" + executable.getName() + " Debug\"", executable.getAbsolutePath());
+                processBuilder = new ProcessBuilder("cmd.exe", "/c", "start", "/wait", "\"" + executable.getName() + " Debug\"", "cmd.exe", "/c", 
+                    "\"" + executable.getAbsolutePath() + "\" & echo %errorlevel% > exit.tmp & pause");
             } else {
                 processBuilder = new ProcessBuilder(executable.getAbsolutePath());
             }
@@ -48,10 +49,10 @@ public class GameLauncher {
                 if (selectedTerminal != null) {
                     if (selectedTerminal.equals("gnome-terminal") || selectedTerminal.equals("mate-terminal")) {
                         processBuilder = new ProcessBuilder(selectedTerminal, "--", "bash", "-c", 
-                            "\"" + executable.getAbsolutePath() + "\"; echo 'Process exited.'; read");
+                            "\"" + executable.getAbsolutePath() + "\"; echo $? > exit.tmp; echo 'Process exited.'; read");
                     } else {
                         processBuilder = new ProcessBuilder(selectedTerminal, "-e", 
-                            "bash -c '\"" + executable.getAbsolutePath() + "\"; echo \"Process exited.\"; read'");
+                            "bash -c '\"" + executable.getAbsolutePath() + "\"; echo $? > exit.tmp; echo \"Process exited.\"; read'");
                     }
                 } else {
                     processBuilder = new ProcessBuilder(executable.getAbsolutePath());

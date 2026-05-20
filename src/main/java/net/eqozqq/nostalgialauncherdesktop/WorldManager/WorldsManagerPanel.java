@@ -260,6 +260,7 @@ public class WorldsManagerPanel extends JPanel {
         btn.setBorder(BorderFactory.createEmptyBorder(
                 (int) (10 * scaleFactor), (int) (16 * scaleFactor),
                 (int) (10 * scaleFactor), (int) (16 * scaleFactor)));
+        btn.setPreferredSize(new Dimension(btn.getPreferredSize().width, (int) (45 * scaleFactor)));
         return btn;
     }
 
@@ -289,6 +290,7 @@ public class WorldsManagerPanel extends JPanel {
         importButton.setBorder(BorderFactory.createEmptyBorder(
                 (int) (12 * scaleFactor), (int) (20 * scaleFactor),
                 (int) (12 * scaleFactor), (int) (20 * scaleFactor)));
+        importButton.setPreferredSize(new Dimension((int) (150 * scaleFactor), (int) (45 * scaleFactor)));
         importButton.addActionListener(e -> {
             Window parentWindow = javax.swing.SwingUtilities.getWindowAncestor(this);
             WorldImportDialog dialog = new WorldImportDialog((Frame) parentWindow, localeManager);
@@ -392,6 +394,7 @@ public class WorldsManagerPanel extends JPanel {
         gbc.gridwidth = 2;
         gbc.weightx = 1.0;
         worldNameField = new JTextField();
+        worldNameField.setPreferredSize(new Dimension(0, (int) (45 * scaleFactor)));
         panel.add(worldNameField, gbc);
         y++;
 
@@ -405,6 +408,7 @@ public class WorldsManagerPanel extends JPanel {
         gbc.weightx = 1.0;
         folderNameField = new JTextField();
         folderNameField.setEditable(false);
+        folderNameField.setPreferredSize(new Dimension(0, (int) (45 * scaleFactor)));
         panel.add(folderNameField, gbc);
         y++;
 
@@ -416,10 +420,12 @@ public class WorldsManagerPanel extends JPanel {
         gbc.weightx = 1.0;
         seedField = new JTextField();
         seedField.setEditable(false);
+        seedField.setPreferredSize(new Dimension(0, (int) (45 * scaleFactor)));
         panel.add(seedField, gbc);
         gbc.gridx = 2;
         gbc.weightx = 0.0;
         JButton copySeedButton = new JButton(localeManager.get("button.copy"));
+        copySeedButton.setPreferredSize(new Dimension((int) (80 * scaleFactor), (int) (45 * scaleFactor)));
         copySeedButton.addActionListener(e -> {
             StringSelection stringSelection = new StringSelection(seedField.getText());
             Toolkit.getDefaultToolkit().getSystemClipboard().setContents(stringSelection, null);
@@ -438,6 +444,7 @@ public class WorldsManagerPanel extends JPanel {
                 localeManager.get("combo.gamemode.survival"),
                 localeManager.get("combo.gamemode.creative")
         });
+        gamemodeComboBox.setPreferredSize(new Dimension(0, (int) (45 * scaleFactor)));
         panel.add(gamemodeComboBox, gbc);
         y++;
 
@@ -448,6 +455,7 @@ public class WorldsManagerPanel extends JPanel {
         gbc.gridx = 1;
         gbc.gridwidth = 2;
         timeField = new JTextField();
+        timeField.setPreferredSize(new Dimension(0, (int) (45 * scaleFactor)));
         panel.add(timeField, gbc);
         y++;
 
@@ -458,6 +466,8 @@ public class WorldsManagerPanel extends JPanel {
         timeButtonsPanel.setOpaque(false);
         JButton morningButton = new JButton(localeManager.get("button.setMorning"));
         JButton nightButton = new JButton(localeManager.get("button.setNight"));
+        morningButton.setPreferredSize(new Dimension((int) (120 * scaleFactor), (int) (45 * scaleFactor)));
+        nightButton.setPreferredSize(new Dimension((int) (120 * scaleFactor), (int) (45 * scaleFactor)));
         morningButton.addActionListener(e -> timeField.setText("0"));
         nightButton.addActionListener(e -> timeField.setText("12000"));
         timeButtonsPanel.add(morningButton);
@@ -487,6 +497,7 @@ public class WorldsManagerPanel extends JPanel {
         gbc.gridx = 1;
         gbc.gridwidth = 2;
         dayCycleLockField = new JTextField();
+        dayCycleLockField.setPreferredSize(new Dimension(0, (int) (45 * scaleFactor)));
         panel.add(dayCycleLockField, gbc);
         y++;
 
@@ -533,6 +544,7 @@ public class WorldsManagerPanel extends JPanel {
         gbc.insets = new Insets(20, 4, 4, 4);
         JButton saveButton = new JButton(localeManager.get("button.saveChanges"));
         saveButton.setFont(getFont(Font.BOLD, 14f));
+        saveButton.setPreferredSize(new Dimension((int) (200 * scaleFactor), (int) (45 * scaleFactor)));
         saveButton.addActionListener(e -> saveWorldInfo());
         panel.add(saveButton, gbc);
 

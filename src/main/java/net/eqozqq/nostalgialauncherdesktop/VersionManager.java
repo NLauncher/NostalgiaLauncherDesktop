@@ -56,6 +56,7 @@ public class VersionManager {
                 if (source.startsWith("http://") || source.startsWith("https://")) {
                     try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
                         HttpGet request = new HttpGet(source);
+                        request.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
                         try (CloseableHttpResponse response = httpClient.execute(request)) {
                             HttpEntity entity = response.getEntity();
                             if (entity != null) {
@@ -238,6 +239,7 @@ public class VersionManager {
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpGet request = new HttpGet(downloadUrl);
+            request.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
             currentRequest = request;
             try (CloseableHttpResponse response = httpClient.execute(request)) {
                 HttpEntity entity = response.getEntity();

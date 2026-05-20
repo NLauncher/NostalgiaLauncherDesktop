@@ -2,14 +2,20 @@ package net.eqozqq.nostalgialauncherdesktop.Proxy;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
+import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.List;
+import java.util.Properties;
 
 public class ProxyPanel extends JPanel {
 
@@ -117,6 +123,7 @@ public class ProxyPanel extends JPanel {
             }
         });
 
+        loadLastProxySettings();
         updateUIState();
     }
 
@@ -148,7 +155,7 @@ public class ProxyPanel extends JPanel {
         addressField = new JTextField();
         addressField.setFont(getFont(Font.PLAIN, (float) (14 * scaleFactor)));
         addressField.putClientProperty("JTextField.placeholderText", localeManager.get("proxy.placeholder.address"));
-        addressField.setPreferredSize(new Dimension(0, (int) (35 * scaleFactor)));
+        addressField.setPreferredSize(new Dimension(0, (int) (45 * scaleFactor)));
         gbc.gridx = 0;
         gbc.gridy = 0;
         footerCard.add(addressField, gbc);
@@ -156,7 +163,7 @@ public class ProxyPanel extends JPanel {
         portField = new JTextField("19132");
         portField.setFont(getFont(Font.PLAIN, (float) (14 * scaleFactor)));
         portField.putClientProperty("JTextField.placeholderText", localeManager.get("proxy.placeholder.port"));
-        portField.setPreferredSize(new Dimension(0, (int) (35 * scaleFactor)));
+        portField.setPreferredSize(new Dimension(0, (int) (45 * scaleFactor)));
         gbc.gridy = 1;
         footerCard.add(portField, gbc);
 
@@ -185,7 +192,7 @@ public class ProxyPanel extends JPanel {
         toggleButton.setFont(getFont(Font.BOLD, (float) (14 * scaleFactor)));
         toggleButton.setForeground(isDark ? Color.WHITE : Color.BLACK);
         toggleButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        toggleButton.setPreferredSize(new Dimension((int) (180 * scaleFactor), (int) (35 * scaleFactor)));
+        toggleButton.setPreferredSize(new Dimension((int) (180 * scaleFactor), (int) (45 * scaleFactor)));
         toggleButton.addActionListener(e -> toggleProxy());
         gbc.gridx = 1;
         gbc.gridy = 0;
@@ -213,7 +220,7 @@ public class ProxyPanel extends JPanel {
         saveButton.setFont(getFont(Font.PLAIN, (float) (12 * scaleFactor)));
         saveButton.setForeground(isDark ? Color.WHITE : Color.BLACK);
         saveButton.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        saveButton.setPreferredSize(new Dimension((int) (180 * scaleFactor), (int) (35 * scaleFactor)));
+        saveButton.setPreferredSize(new Dimension((int) (180 * scaleFactor), (int) (45 * scaleFactor)));
         saveButton.addActionListener(e -> saveCurrentServer());
         gbc.gridy = 1;
         footerCard.add(saveButton, gbc);
@@ -263,7 +270,7 @@ public class ProxyPanel extends JPanel {
 
         for (int i = 0; i < listModel.size(); i++) {
             Server s = listModel.get(i);
-            if (s.getAddress().equals(address) && s.getPort() == port) {
+            if (s != null && s.getAddress() != null && s.getAddress().equals(address) && s.getPort() == port) {
                 return;
             }
         }
@@ -299,7 +306,9 @@ public class ProxyPanel extends JPanel {
         List<Server> servers = ServerStorage.loadServers();
         if (servers != null) {
             for (Server s : servers) {
-                listModel.addElement(s);
+                if (s != null && s.getAddress() != null && !s.getAddress().trim().isEmpty()) {
+                    listModel.addElement(s);
+                }
             }
         }
     }
@@ -328,6 +337,7 @@ public class ProxyPanel extends JPanel {
             }
 
             manager.startProxy(address, port);
+            saveLastProxySettings();
         }
         updateUIState();
         serverList.repaint();
@@ -356,6 +366,47 @@ public class ProxyPanel extends JPanel {
                 saveButton.setEnabled(true);
             }
         });
+    }
+
+    private void loadLastProxySettings() {
+        File settingsFile = new File(InstanceManager.getDataRoot(), "launcher.properties");
+        if (settingsFile.exists()) {
+            Properties properties = new Properties();
+            try (FileInputStream fis = new FileInputStream(settingsFile)) {
+                properties.load(fis);
+                String lastAddress = properties.getProperty("proxyAddress");
+                String lastPort = properties.getProperty("proxyPort");
+                if (lastAddress != null) {
+                    addressField.setText(lastAddress);
+                }
+                if (lastPort != null) {
+                    portField.setText(lastPort);
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private void saveLastProxySettings() {
+        String address = addressField.getText().trim();
+        String portStr = portField.getText().trim();
+        File settingsFile = new File(InstanceManager.getDataRoot(), "launcher.properties");
+        Properties properties = new Properties();
+        if (settingsFile.exists()) {
+            try (FileInputStream fis = new FileInputStream(settingsFile)) {
+                properties.load(fis);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        properties.setProperty("proxyAddress", address);
+        properties.setProperty("proxyPort", portStr);
+        try (FileOutputStream fos = new FileOutputStream(settingsFile)) {
+            properties.store(fos, null);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private void deleteServer(Server server) {

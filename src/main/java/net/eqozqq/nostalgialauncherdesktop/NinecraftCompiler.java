@@ -41,14 +41,55 @@ public class NinecraftCompiler {
             dialog.setStatus(localeManager.get("compiler.status.checkingDeps"));
             List<String> missing = isWindows ? checkWindowsDependencies() : checkLinuxDependencies(isArm);
 
-            if (!missing.isEmpty()) {
+            while (!missing.isEmpty()) {
+                if (cancelled)
+                    return false;
+
                 dialog.appendLog(
                         localeManager.get("compiler.error.missingSpecificDeps") + " " + String.join(", ", missing));
                 dialog.appendLog(localeManager.get("compiler.log.installPrompt"));
                 dialog.setStatus(localeManager.get("compiler.status.missingDepsTitle"));
 
-                dialog.showInstallButton(() -> installDependencies(isWindows, isArm, dialog, localeManager));
-                return false;
+                final Object lock = new Object();
+                final boolean[] installClicked = {false};
+
+                dialog.showInstallButton(() -> {
+                    synchronized (lock) {
+                        installClicked[0] = true;
+                        lock.notifyAll();
+                    }
+                });
+
+                synchronized (lock) {
+                    while (!installClicked[0] && !cancelled && !dialog.isCancelled()) {
+                        try {
+                            lock.wait(500);
+                        } catch (InterruptedException e) {
+                            break;
+                        }
+                    }
+                }
+
+                if (cancelled || dialog.isCancelled()) {
+                    return false;
+                }
+
+                if (installClicked[0]) {
+                    dialog.appendLog("Starting dependency installation...");
+                    installDependenciesSynchronously(isWindows, isArm, dialog, localeManager);
+                    if (cancelled || dialog.isCancelled()) {
+                        return false;
+                    }
+
+                    dialog.appendLog("Re-checking dependencies...");
+                    missing = isWindows ? checkWindowsDependencies() : checkLinuxDependencies(isArm);
+                    if (missing.isEmpty()) {
+                        dialog.appendLog("All dependencies are now met. Continuing to compile!");
+                        break;
+                    } else {
+                        dialog.appendLog("Some dependencies are still missing: " + String.join(", ", missing));
+                    }
+                }
             }
 
             if (cancelled)
@@ -109,7 +150,11 @@ public class NinecraftCompiler {
                     if (cancelled)
                         return false;
                     dialog.appendLog(localeManager.get("compiler.error.compilationFailed"));
-                    dialog.showInstallButton(() -> installDependencies(isWindows, isArm, dialog, localeManager));
+                    dialog.showInstallButton(() -> {
+                        new Thread(() -> {
+                            installDependenciesSynchronously(isWindows, isArm, dialog, localeManager);
+                        }).start();
+                    });
                     return false;
                 }
             }
@@ -178,31 +223,129 @@ public class NinecraftCompiler {
         return missing;
     }
 
+    private String detectDistro() {
+        File file = new File("/etc/os-release");
+        if (!file.exists()) {
+            return "unknown";
+        }
+        try (BufferedReader reader = new BufferedReader(new java.io.FileReader(file))) {
+            String line;
+            String id = null;
+            String idLike = null;
+            while ((line = reader.readLine()) != null) {
+                line = line.trim();
+                if (line.startsWith("ID=")) {
+                    id = line.substring(3).replace("\"", "").replace("'", "").toLowerCase();
+                } else if (line.startsWith("ID_LIKE=")) {
+                    idLike = line.substring(8).replace("\"", "").replace("'", "").toLowerCase();
+                }
+            }
+            if (id != null) {
+                if (id.contains("ubuntu") || id.contains("debian") || id.contains("mint") || id.contains("pop")) {
+                    return "debian";
+                }
+                if (id.contains("arch") || id.contains("manjaro")) {
+                    return "arch";
+                }
+                if (id.contains("fedora") || id.contains("rhel") || id.contains("centos")) {
+                    return "fedora";
+                }
+                if (id.contains("alpine")) {
+                    return "alpine";
+                }
+            }
+            if (idLike != null) {
+                if (idLike.contains("ubuntu") || idLike.contains("debian")) {
+                    return "debian";
+                }
+                if (idLike.contains("arch")) {
+                    return "arch";
+                }
+                if (idLike.contains("fedora") || idLike.contains("rhel")) {
+                    return "fedora";
+                }
+                if (idLike.contains("alpine")) {
+                    return "alpine";
+                }
+            }
+        } catch (Exception e) {
+        }
+        return "unknown";
+    }
+
     private List<String> checkLinuxDependencies(boolean isArm) {
+        String distro = detectDistro();
+        String arch = System.getProperty("os.arch").toLowerCase();
+        boolean isX86_64 = arch.contains("amd64") || arch.contains("x86_64");
+        boolean isX86 = (arch.contains("i386") || arch.contains("i686") || arch.contains("x86")) && !isX86_64;
+        boolean isArm64 = arch.contains("aarch64") || arch.contains("arm64");
+        boolean isArm32 = arch.contains("arm") && !isArm64;
+
         List<String> missing = new ArrayList<>();
-
-        if (!hasCommand("git"))
-            missing.add("git");
-        if (!hasCommand("make"))
-            missing.add("make");
-        if (!hasCommand("cmake"))
-            missing.add("cmake");
-
-        if (hasCommand("dpkg")) {
-            if (isArm) {
-                if (!hasPackage("gcc-arm-linux-gnueabihf"))
-                    missing.add("gcc-arm-linux-gnueabihf");
+        if ("debian".equals(distro)) {
+            if (isX86_64) {
+                String[] packages = {"git", "make", "cmake", "gcc-multilib", "g++-multilib",
+                    "libopenal-dev:i386", "libx11-dev:i386", "libxrandr-dev:i386", "libxinerama-dev:i386",
+                    "libxcursor-dev:i386", "libxi-dev:i386", "libgl-dev:i386", "zenity", "unzip", "python3-jinja2"};
+                for (String p : packages) {
+                    if (!hasPackage(p)) missing.add(p);
+                }
+            } else if (isArm64) {
+                String[] packages = {"git", "make", "cmake", "gcc-arm-linux-gnueabihf", "g++-arm-linux-gnueabihf",
+                    "libopenal-dev:armhf", "libx11-dev:armhf", "libxrandr-dev:armhf", "libxinerama-dev:armhf",
+                    "libxcursor-dev:armhf", "libxi-dev:armhf", "libgl-dev:armhf", "zenity", "unzip", "python3-jinja2"};
+                for (String p : packages) {
+                    if (!hasPackage(p)) missing.add(p);
+                }
             } else {
-                if (!hasPackage("gcc-multilib"))
-                    missing.add("gcc-multilib");
-                if (!hasPackage("g++-multilib"))
-                    missing.add("g++-multilib");
+                String[] packages = {"git", "make", "cmake", "gcc", "g++", "libopenal-dev", "libx11-dev",
+                    "libxrandr-dev", "libxinerama-dev", "libxcursor-dev", "libxi-dev", "libgl-dev", "zenity", "unzip", "python3-jinja2"};
+                for (String p : packages) {
+                    if (!hasPackage(p)) missing.add(p);
+                }
+            }
+        } else if ("arch".equals(distro)) {
+            if (isX86_64) {
+                String[] packages = {"git", "make", "cmake", "gcc", "gcc-multilib", "lib32-openal", "lib32-libx11",
+                    "lib32-libxrandr", "lib32-libxinerama", "lib32-libxcursor", "lib32-libxi", "lib32-libglvnd", "zenity", "unzip", "python-jinja"};
+                for (String p : packages) {
+                    if (!hasPacmanPackage(p)) missing.add(p);
+                }
+            } else {
+                String[] packages = {"git", "make", "cmake", "gcc", "openal", "libx11", "libxrandr", "libxinerama",
+                    "libxcursor", "libxi", "libglvnd", "zenity", "unzip", "python-jinja"};
+                for (String p : packages) {
+                    if (!hasPacmanPackage(p)) missing.add(p);
+                }
+            }
+        } else if ("fedora".equals(distro)) {
+            if (isX86_64) {
+                String[] packages = {"git", "make", "cmake", "gcc", "g++", "glibc-devel.i686", "libstdc++-devel.i686",
+                    "openal-soft-devel.i686", "libX11-devel.i686", "libXrandr-devel.i686", "libXinerama-devel.i686",
+                    "libXcursor-devel.i686", "libXi-devel.i686", "libglvnd-devel.i686", "zenity", "unzip", "python3-jinja2"};
+                for (String p : packages) {
+                    if (!hasFedoraPackage(p)) missing.add(p);
+                }
+            } else {
+                String[] packages = {"git", "make", "cmake", "gcc", "g++", "openal-soft-devel", "libX11-devel",
+                    "libXrandr-devel", "libXinerama-devel", "libXcursor-devel", "libXi-devel", "libglvnd-devel", "zenity", "unzip", "python3-jinja2"};
+                for (String p : packages) {
+                    if (!hasFedoraPackage(p)) missing.add(p);
+                }
+            }
+        } else if ("alpine".equals(distro)) {
+            String[] packages = {"git", "make", "cmake", "gcc", "g++", "openal-soft-dev", "libx11-dev", "libxrandr-dev",
+                "libxinerama-dev", "libxcursor-dev", "libxi-dev", "mesa-dev", "zenity", "unzip", "py3-jinja2"};
+            for (String p : packages) {
+                if (!hasAlpinePackage(p)) missing.add(p);
             }
         } else {
-            if (!hasCommand("gcc"))
-                missing.add("gcc");
+            if (!hasCommand("git")) missing.add("git");
+            if (!hasCommand("make")) missing.add("make");
+            if (!hasCommand("cmake")) missing.add("cmake");
+            if (!hasCommand("gcc")) missing.add("gcc");
+            if (!hasCommand("g++")) missing.add("g++");
         }
-
         return missing;
     }
 
@@ -236,7 +379,34 @@ public class NinecraftCompiler {
         }
     }
 
-    private void installDependencies(boolean isWindows, boolean isArm, NinecraftCompilationDialog dialog,
+    private boolean hasPacmanPackage(String packageName) {
+        try {
+            Process p = new ProcessBuilder("pacman", "-Qi", packageName).start();
+            return p.waitFor() == 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean hasFedoraPackage(String packageName) {
+        try {
+            Process p = new ProcessBuilder("rpm", "-q", packageName).start();
+            return p.waitFor() == 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean hasAlpinePackage(String packageName) {
+        try {
+            Process p = new ProcessBuilder("apk", "info", "-e", packageName).start();
+            return p.waitFor() == 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean installDependenciesSynchronously(boolean isWindows, boolean isArm, NinecraftCompilationDialog dialog,
             LocaleManager localeManager) {
         if (isWindows) {
             dialog.appendLog("Checking Windows dependencies...");
@@ -257,14 +427,46 @@ public class NinecraftCompiler {
                 dialog.appendLog("Please install MinGW32/LLVM-MinGW or Visual Studio Build Tools.");
             }
             dialog.appendLog("After installing, restart the launcher.");
-            return;
+            return false;
         }
 
-        String installCmd;
-        if (isArm) {
-            installCmd = "sudo dpkg --add-architecture armhf && sudo apt update && sudo apt install -y " + DEPS_ARM64;
+        String distro = detectDistro();
+        String arch = System.getProperty("os.arch").toLowerCase();
+        boolean isX86_64 = arch.contains("amd64") || arch.contains("x86_64");
+        boolean isX86 = (arch.contains("i386") || arch.contains("i686") || arch.contains("x86")) && !isX86_64;
+        boolean isArm64 = arch.contains("aarch64") || arch.contains("arm64");
+        boolean isArm32 = arch.contains("arm") && !isArm64;
+
+        String installCmd = "";
+        if ("debian".equals(distro)) {
+            if (isX86_64) {
+                installCmd = "sudo dpkg --add-architecture i386 && sudo apt update && sudo apt install -y git make cmake gcc g++ gcc-multilib g++-multilib libopenal-dev:i386 libx11-dev:i386 libxrandr-dev:i386 libxinerama-dev:i386 libxcursor-dev:i386 libxi-dev:i386 libgl-dev:i386 zenity unzip python3-jinja2";
+            } else if (isArm64) {
+                installCmd = "sudo dpkg --add-architecture armhf && sudo apt update && sudo apt install -y git make cmake gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf libopenal-dev:armhf libx11-dev:armhf libxrandr-dev:armhf libxinerama-dev:armhf libxcursor-dev:armhf libxi-dev:armhf libgl-dev:armhf zenity unzip python3-jinja2";
+            } else {
+                installCmd = "sudo apt update && sudo apt install -y git make cmake gcc g++ libopenal-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl-dev zenity unzip python3-jinja2";
+            }
+        } else if ("arch".equals(distro)) {
+            if (isX86_64) {
+                installCmd = "sudo pacman -Syu --noconfirm && sudo pacman -S --noconfirm git make cmake gcc gcc-multilib lib32-openal lib32-libx11 lib32-libxrandr lib32-libxinerama lib32-libxcursor lib32-libxi lib32-libglvnd zenity unzip python-jinja";
+            } else {
+                installCmd = "sudo pacman -Syu --noconfirm && sudo pacman -S --noconfirm git make cmake gcc openal libx11 libxrandr libxinerama libxcursor libxi libglvnd zenity unzip python-jinja";
+            }
+        } else if ("fedora".equals(distro)) {
+            if (isX86_64) {
+                installCmd = "sudo dnf update -y && sudo dnf install -y git make cmake gcc g++ glibc-devel.i686 libstdc++-devel.i686 openal-soft-devel.i686 libX11-devel.i686 libXrandr-devel.i686 libXinerama-devel.i686 libXcursor-devel.i686 libXi-devel.i686 libglvnd-devel.i686 zenity unzip python3-jinja2";
+            } else {
+                installCmd = "sudo dnf update -y && sudo dnf install -y git make cmake gcc g++ openal-soft-devel libX11-devel libXrandr-devel libXinerama-devel libXcursor-devel libXi-devel libglvnd-devel zenity unzip python3-jinja2";
+            }
+        } else if ("alpine".equals(distro)) {
+            installCmd = "sudo apk update && sudo apk add git make cmake gcc g++ openal-soft-dev libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev mesa-dev zenity unzip py3-jinja2";
         } else {
-            installCmd = "sudo dpkg --add-architecture i386 && sudo apt update && sudo apt install -y " + DEPS_AMD64;
+            if (hasCommand("nix")) {
+                installCmd = "nix --extra-experimental-features \"nix-command flakes\" shell github:MCPI-Revival/Ninecraft --impure";
+            } else {
+                dialog.appendLog("Unsupported distribution. Please install dependencies manually.");
+                return false;
+            }
         }
 
         dialog.appendLog(localeManager.get("compiler.log.launchingTerminal"));
@@ -274,14 +476,15 @@ public class NinecraftCompiler {
             String[] terminals = { "x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "lxterminal",
                     "mate-terminal" };
             boolean launched = false;
+            Process p = null;
 
             for (String terminal : terminals) {
                 if (hasCommand(terminal)) {
                     if (terminal.equals("gnome-terminal") || terminal.equals("mate-terminal")) {
-                        new ProcessBuilder(terminal, "--", "bash", "-c",
+                        p = new ProcessBuilder(terminal, "--", "bash", "-c",
                                 installCmd + "; echo 'Done. Press Enter to close.'; read").start();
                     } else {
-                        new ProcessBuilder(terminal, "-e",
+                        p = new ProcessBuilder(terminal, "-e",
                                 "bash -c \"" + installCmd + "; echo 'Done. Press Enter to close.'; read\"").start();
                     }
                     launched = true;
@@ -292,11 +495,19 @@ public class NinecraftCompiler {
             if (!launched) {
                 dialog.appendLog(localeManager.get("compiler.error.noTerminal"));
                 dialog.appendLog(localeManager.get("compiler.log.manualRun"));
+                return false;
+            }
+
+            if (p != null) {
+                dialog.setStatus("Waiting for dependency installation to complete...");
+                p.waitFor();
+                return true;
             }
 
         } catch (Exception e) {
             dialog.appendLog(localeManager.get("compiler.error.launchInstaller") + " " + e.getMessage());
         }
+        return false;
     }
 
     private boolean runCommand(File workingDir, NinecraftCompilationDialog dialog, LocaleManager localeManager,

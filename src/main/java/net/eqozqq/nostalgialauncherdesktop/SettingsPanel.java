@@ -27,14 +27,15 @@ import java.util.Map;
 
 public class SettingsPanel extends JPanel {
     private JTextField backgroundPathField;
-    private JTextField versionsSourceField;
+    private JComboBox<String> customVersionsSourcesComboBox;
+    private List<String> customVersionsSourcesList;
     private JCheckBox useDefaultSourceCheckbox;
 
     private JRadioButton compiledExeRadio;
     private JRadioButton serverExeRadio;
     private JRadioButton customExeRadio;
-    private JTextField customLauncherField;
-    private JButton browseLauncherButton;
+    private JComboBox<String> customLauncherComboBox;
+    private List<String> customLauncherPathsList;
 
     private JComboBox<String> postLaunchActionComboBox;
     private JCheckBox enableDebuggingCheckbox;
@@ -42,9 +43,6 @@ public class SettingsPanel extends JPanel {
     private JLabel scaleLabel;
     private JButton saveButton;
     private JButton browseBackgroundButton;
-    private JButton browseVersionsButton;
-    private JRadioButton urlRadioButton;
-    private JRadioButton fileRadioButton;
     private JComboBox<String> themeComboBox;
     private JComboBox<String> languageComboBox;
 
@@ -83,6 +81,7 @@ public class SettingsPanel extends JPanel {
 
     private LocaleManager localeManager;
     private SaveListener saveListener;
+    private boolean isRefreshingComboBox = false;
     private CardLayout cardLayout;
     private JPanel contentCards;
     private JPanel tabsPanel;
@@ -105,7 +104,10 @@ public class SettingsPanel extends JPanel {
     }
 
     public SettingsPanel(String currentBackgroundPath, String currentVersionsSource, boolean useDefaultVs,
-            String currentExecutableSource, String currentCustomLauncherPath, String currentPostLaunchAction,
+            List<String> customVersionsSourcesList,
+            String currentExecutableSource, String currentCustomLauncherPath,
+            List<String> customLauncherPathsList,
+            String currentPostLaunchAction,
             boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion,
             String backgroundMode, Color customBackgroundColor, String currentCustomTranslationPath,
             String currentGithubUrl, String currentGithubName,
@@ -116,8 +118,11 @@ public class SettingsPanel extends JPanel {
         this.customBackgroundPath = currentBackgroundPath;
         this.customVersionsSource = currentVersionsSource;
         this.useDefaultVersionsSource = useDefaultVs;
+        this.customVersionsSourcesList = customVersionsSourcesList != null ? customVersionsSourcesList
+                : new ArrayList<>();
         this.executableSource = currentExecutableSource;
         this.customLauncherPath = currentCustomLauncherPath;
+        this.customLauncherPathsList = customLauncherPathsList != null ? customLauncherPathsList : new ArrayList<>();
         this.useDefaultLauncher = !"CUSTOM".equals(currentExecutableSource);
         this.postLaunchAction = currentPostLaunchAction;
         this.enableDebugging = currentEnableDebugging;
@@ -189,7 +194,7 @@ public class SettingsPanel extends JPanel {
 
         saveButton = new JButton(localeManager.get("button.save"));
         saveButton.setFont(getCustomFont(Font.BOLD, 14f));
-        saveButton.setPreferredSize(new Dimension(150, 40));
+        saveButton.setPreferredSize(new Dimension((int) (300 * scaleFactor), (int) (45 * scaleFactor)));
         saveButton.addActionListener(e -> handleSave());
 
         buttonPanel.add(saveButton);
@@ -306,7 +311,12 @@ public class SettingsPanel extends JPanel {
 
     private void handleSave() {
         this.useDefaultVersionsSource = useDefaultSourceCheckbox.isSelected();
-        this.customVersionsSource = this.useDefaultVersionsSource ? null : versionsSourceField.getText();
+        Object selectedVS = customVersionsSourcesComboBox.getSelectedItem();
+        if (selectedVS != null && !localeManager.get("combo.noSources", "No sources added yet").equals(selectedVS)) {
+            this.customVersionsSource = (String) selectedVS;
+        } else {
+            this.customVersionsSource = null;
+        }
 
         if (compiledExeRadio.isSelected()) {
             this.executableSource = "COMPILED";
@@ -319,7 +329,13 @@ public class SettingsPanel extends JPanel {
             this.useDefaultLauncher = false;
         }
 
-        this.customLauncherPath = customLauncherField.getText();
+        Object selectedCL = customLauncherComboBox.getSelectedItem();
+        if (selectedCL != null
+                && !localeManager.get("combo.noLaunchers", "No executables added yet").equals(selectedCL)) {
+            this.customLauncherPath = (String) selectedCL;
+        } else {
+            this.customLauncherPath = null;
+        }
         this.enableDebugging = enableDebuggingCheckbox.isSelected();
 
         if (defaultBgRadio.isSelected()) {
@@ -354,29 +370,41 @@ public class SettingsPanel extends JPanel {
         }
 
         if (!useDefaultVersionsSource) {
-            if (urlRadioButton.isSelected()) {
+            if (this.customVersionsSource == null) {
+                ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                        localeManager.get("error.noSourcesSelected",
+                                "Please add and select a custom version source first."));
+                return;
+            }
+            if (this.customVersionsSource.startsWith("http://") || this.customVersionsSource.startsWith("https://")) {
                 try {
-                    new URL(versionsSourceField.getText());
+                    new URL(this.customVersionsSource);
                 } catch (MalformedURLException ex) {
                     ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
                             localeManager.get("error.invalidUrl") + "\n\n" + ex.getMessage());
                     return;
                 }
-            } else if (fileRadioButton.isSelected()) {
-                File file = new File(versionsSourceField.getText());
+            } else {
+                File file = new File(this.customVersionsSource);
                 if (!file.exists() || !file.isFile()) {
                     ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
-                            localeManager.get("error.invalidFilePath") + "\n\n" + versionsSourceField.getText());
+                            localeManager.get("error.invalidFilePath") + "\n\n" + this.customVersionsSource);
                     return;
                 }
             }
         }
 
         if ("CUSTOM".equals(this.executableSource)) {
-            File file = new File(customLauncherField.getText());
+            if (this.customLauncherPath == null) {
+                ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                        localeManager.get("error.noExecutableSelected",
+                                "Please add and select a custom executable first."));
+                return;
+            }
+            File file = new File(this.customLauncherPath);
             if (!file.exists() || !file.isFile()) {
                 ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
-                        localeManager.get("error.invalidFilePath") + "\n\n" + customLauncherField.getText());
+                        localeManager.get("error.invalidFilePath") + "\n\n" + this.customLauncherPath);
                 return;
             }
         }
@@ -422,78 +450,40 @@ public class SettingsPanel extends JPanel {
         gbc.weightx = 0.0;
         card.add(versionsLabel, gbc);
 
-        JPanel sourceSelectionPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
-        sourceSelectionPanel.setOpaque(false);
-        urlRadioButton = new JRadioButton(localeManager.get("radio.url"));
-        fileRadioButton = new JRadioButton(localeManager.get("radio.file"));
-        ButtonGroup group = new ButtonGroup();
-        group.add(urlRadioButton);
-        group.add(fileRadioButton);
-        sourceSelectionPanel.add(urlRadioButton);
-        sourceSelectionPanel.add(fileRadioButton);
-
-        if (useDefaultVersionsSource || (customVersionsSource != null
-                && (customVersionsSource.startsWith("http://") || customVersionsSource.startsWith("https://")))) {
-            urlRadioButton.setSelected(true);
-        } else {
-            fileRadioButton.setSelected(true);
-        }
-
-        urlRadioButton.setEnabled(!useDefaultVersionsSource);
-        fileRadioButton.setEnabled(!useDefaultVersionsSource);
-
+        customVersionsSourcesComboBox = new JComboBox<>();
+        refreshVersionsComboBox(this.customVersionsSource);
+        customVersionsSourcesComboBox.addActionListener(e -> {
+            if (isRefreshingComboBox)
+                return;
+            Object selected = customVersionsSourcesComboBox.getSelectedItem();
+            if (localeManager.get("combo.addSourceOption", "+ Add Source...").equals(selected)) {
+                String prev = this.customVersionsSource;
+                if (prev != null && customVersionsSourcesList.contains(prev)) {
+                    customVersionsSourcesComboBox.setSelectedItem(prev);
+                } else if (!customVersionsSourcesList.isEmpty()) {
+                    customVersionsSourcesComboBox.setSelectedIndex(0);
+                } else {
+                    customVersionsSourcesComboBox.setSelectedIndex(0);
+                }
+                SwingUtilities.invokeLater(this::showAddSourceDialog);
+            } else if (selected != null
+                    && !localeManager.get("combo.noSources", "No sources added yet").equals(selected)) {
+                this.customVersionsSource = (String) selected;
+            }
+        });
         gbc.gridx = 1;
         gbc.gridy = gridY;
         gbc.gridwidth = 2;
-        card.add(sourceSelectionPanel, gbc);
-
-        gridY++;
-        versionsSourceField = new JTextField(20);
-        versionsSourceField.setText(useDefaultVersionsSource ? "" : customVersionsSource);
-        versionsSourceField.setEnabled(!useDefaultVersionsSource);
-        gbc.gridx = 1;
-        gbc.gridy = gridY;
-        gbc.gridwidth = 1;
-        gbc.weightx = 1.0;
-        card.add(versionsSourceField, gbc);
-
-        browseVersionsButton = new JButton(localeManager.get("button.browse"));
-        browseVersionsButton.setEnabled(!useDefaultVersionsSource && fileRadioButton.isSelected());
-        browseVersionsButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            int option = fileChooser.showOpenDialog(this);
-            if (option == JFileChooser.APPROVE_OPTION) {
-                File file = fileChooser.getSelectedFile();
-                versionsSourceField.setText(file.getAbsolutePath());
-            }
-        });
-        gbc.gridx = 2;
-        gbc.gridy = gridY;
-        gbc.weightx = 0.0;
-        card.add(browseVersionsButton, gbc);
-
-        urlRadioButton.addActionListener(e -> {
-            versionsSourceField.setEnabled(!useDefaultSourceCheckbox.isSelected());
-            browseVersionsButton.setEnabled(false);
-        });
-
-        fileRadioButton.addActionListener(e -> {
-            versionsSourceField.setEnabled(!useDefaultSourceCheckbox.isSelected());
-            browseVersionsButton.setEnabled(true);
-        });
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(customVersionsSourcesComboBox, gbc);
 
         gridY++;
         useDefaultSourceCheckbox = new JCheckBox(localeManager.get("checkbox.useDefaultUrl"));
         useDefaultSourceCheckbox.setSelected(useDefaultVersionsSource);
-        useDefaultSourceCheckbox.addActionListener(e -> {
-            versionsSourceField.setEnabled(!useDefaultSourceCheckbox.isSelected());
-            urlRadioButton.setEnabled(!useDefaultSourceCheckbox.isSelected());
-            fileRadioButton.setEnabled(!useDefaultSourceCheckbox.isSelected());
-            browseVersionsButton.setEnabled(!useDefaultSourceCheckbox.isSelected() && fileRadioButton.isSelected());
-        });
         gbc.gridx = 1;
         gbc.gridy = gridY;
         gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
         card.add(useDefaultSourceCheckbox, gbc);
 
         gridY++;
@@ -532,10 +522,10 @@ public class SettingsPanel extends JPanel {
 
         if ("COMPILED".equals(executableSource)) {
             compiledExeRadio.setSelected(true);
-        } else if ("SERVER".equals(executableSource)) {
-            serverExeRadio.setSelected(true);
-        } else {
+        } else if ("CUSTOM".equals(executableSource)) {
             customExeRadio.setSelected(true);
+        } else {
+            serverExeRadio.setSelected(true);
         }
 
         gbc.gridx = 0;
@@ -552,55 +542,33 @@ public class SettingsPanel extends JPanel {
         card.add(customExeRadio, gbc);
 
         gridY++;
-        customLauncherField = new JTextField(20);
-        customLauncherField.setText(customLauncherPath);
-        customLauncherField.setEnabled(customExeRadio.isSelected());
-        gbc.gridx = 0;
-        gbc.gridy = gridY;
-        gbc.gridwidth = 2;
-        gbc.weightx = 1.0;
-        card.add(customLauncherField, gbc);
-
-        browseLauncherButton = new JButton(localeManager.get("button.browse"));
-        browseLauncherButton.setEnabled(customExeRadio.isSelected());
-        browseLauncherButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-            fileChooser.setAcceptAllFileFilterUsed(false);
-            fileChooser.addChoosableFileFilter(new javax.swing.filechooser.FileFilter() {
-                @Override
-                public boolean accept(File f) {
-                    if (f.isDirectory())
-                        return true;
-                    String name = f.getName().toLowerCase();
-                    return name.endsWith(".exe") || !name.contains(".");
+        customLauncherComboBox = new JComboBox<>();
+        refreshLauncherComboBox(this.customLauncherPath);
+        customLauncherComboBox.addActionListener(e -> {
+            if (isRefreshingComboBox)
+                return;
+            Object selected = customLauncherComboBox.getSelectedItem();
+            if (localeManager.get("combo.addLauncherOption", "+ Add Executable...").equals(selected)) {
+                String prev = this.customLauncherPath;
+                if (prev != null && customLauncherPathsList.contains(prev)) {
+                    customLauncherComboBox.setSelectedItem(prev);
+                } else if (!customLauncherPathsList.isEmpty()) {
+                    customLauncherComboBox.setSelectedIndex(0);
+                } else {
+                    customLauncherComboBox.setSelectedIndex(0);
                 }
-
-                @Override
-                public String getDescription() {
-                    return "Executable files (*.exe, extensionless)";
-                }
-            });
-            int option = fileChooser.showOpenDialog(this);
-            if (option == JFileChooser.APPROVE_OPTION) {
-                File file = fileChooser.getSelectedFile();
-                customLauncherField.setText(file.getAbsolutePath());
+                SwingUtilities.invokeLater(this::showAddLauncherDialog);
+            } else if (selected != null
+                    && !localeManager.get("combo.noLaunchers", "No executables added yet").equals(selected)) {
+                this.customLauncherPath = (String) selected;
             }
         });
-        gbc.gridx = 2;
+        gbc.gridx = 0;
         gbc.gridy = gridY;
-        gbc.weightx = 0.0;
-        gbc.gridwidth = 1;
-        card.add(browseLauncherButton, gbc);
-
-        ActionListener exeRadioListener = e -> {
-            boolean isCustom = customExeRadio.isSelected();
-            customLauncherField.setEnabled(isCustom);
-            browseLauncherButton.setEnabled(isCustom);
-        };
-        compiledExeRadio.addActionListener(exeRadioListener);
-        serverExeRadio.addActionListener(exeRadioListener);
-        customExeRadio.addActionListener(exeRadioListener);
+        gbc.gridwidth = 3;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(customLauncherComboBox, gbc);
 
         gridY++;
         gbc.gridx = 0;
@@ -880,6 +848,56 @@ public class SettingsPanel extends JPanel {
         updateBackgroundOptions();
 
         gridY++;
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 3;
+        gbc.insets = new Insets(15, 0, 15, 0);
+        card.add(new JSeparator(), gbc);
+        gbc.insets = new Insets(8, 8, 8, 8);
+
+        gridY++;
+        JLabel cacheLabel = new JLabel(localeManager.get("label.cacheAndStorage"));
+        cacheLabel.setFont(getCustomFont(Font.BOLD, 14f));
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 1;
+        card.add(cacheLabel, gbc);
+
+        JButton clearCacheButton = new JButton(localeManager.get("button.clearCache"));
+        clearCacheButton.setFont(getCustomFont(Font.PLAIN, 14f));
+        clearCacheButton.setPreferredSize(new Dimension((int) (200 * scaleFactor), (int) (45 * scaleFactor)));
+        clearCacheButton.addActionListener(e -> showClearCacheDialog());
+        gbc.gridx = 1;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.WEST;
+        card.add(clearCacheButton, gbc);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+
+        gridY++;
+        JLabel folderLabel = new JLabel(localeManager.get("label.launcherFolder", "Launcher Folder"));
+        folderLabel.setFont(getCustomFont(Font.BOLD, 14f));
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 1;
+        card.add(folderLabel, gbc);
+
+        JButton openFolderButton = new JButton(localeManager.get("button.openFolder", "Open Folder"));
+        openFolderButton.setFont(getCustomFont(Font.PLAIN, 14f));
+        openFolderButton.setPreferredSize(new Dimension((int) (200 * scaleFactor), (int) (45 * scaleFactor)));
+        openFolderButton.addActionListener(e -> openLauncherFolder());
+        gbc.gridx = 1;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 2;
+        gbc.fill = GridBagConstraints.NONE;
+        gbc.anchor = GridBagConstraints.WEST;
+        card.add(openFolderButton, gbc);
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+
+        gridY++;
         JPanel filler = new JPanel();
         filler.setOpaque(false);
         gbc.gridx = 0;
@@ -1138,11 +1156,7 @@ public class SettingsPanel extends JPanel {
         label.setCursor(new Cursor(Cursor.HAND_CURSOR));
         label.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
-                try {
-                    Desktop.getDesktop().browse(new URI(url));
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                }
+                NostalgiaLauncherDesktop.openURL(url);
             }
         });
         return label;
@@ -1156,7 +1170,7 @@ public class SettingsPanel extends JPanel {
         label.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                openLinkSilently(url);
+                NostalgiaLauncherDesktop.openURL(url);
             }
         });
 
@@ -1164,27 +1178,7 @@ public class SettingsPanel extends JPanel {
     }
 
     private void openLinkSilently(String url) {
-        try {
-            if (Desktop.isDesktopSupported()) {
-                Desktop desktop = Desktop.getDesktop();
-                if (desktop.isSupported(Desktop.Action.BROWSE)) {
-                    desktop.browse(new URI(url));
-                    return;
-                }
-            }
-        } catch (Exception ignored) {
-        }
-
-        try {
-            new ProcessBuilder("xdg-open", url).start();
-            return;
-        } catch (Exception ignored) {
-        }
-
-        try {
-            new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url).start();
-        } catch (Exception ignored) {
-        }
+        NostalgiaLauncherDesktop.openURL(url);
     }
 
     public String getCustomBackgroundPath() {
@@ -1249,5 +1243,261 @@ public class SettingsPanel extends JPanel {
 
     public String getGithubTranslationName() {
         return githubTranslationName;
+    }
+
+    private void showClearCacheDialog() {
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
+                localeManager.get("dialog.clearCache.title"), true);
+        dialog.setLayout(new BorderLayout());
+        dialog.setResizable(false);
+
+        JPanel content = new JPanel();
+        content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
+        content.setBorder(new EmptyBorder(15, 15, 15, 15));
+
+        JLabel infoLabel = new JLabel(localeManager.get("dialog.clearCache.info"));
+        infoLabel.setFont(getCustomFont(Font.BOLD, 14f));
+        infoLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        content.add(infoLabel);
+        content.add(Box.createVerticalStrut(10));
+
+        JCheckBox clearApks = new JCheckBox(localeManager.get("checkbox.clearApks"));
+        clearApks.setFont(getCustomFont(Font.PLAIN, 13f));
+        clearApks.setSelected(true);
+        clearApks.setAlignmentX(Component.LEFT_ALIGNMENT);
+        content.add(clearApks);
+        content.add(Box.createVerticalStrut(5));
+
+        JCheckBox clearVersionsList = new JCheckBox(localeManager.get("checkbox.clearVersionsList"));
+        clearVersionsList.setFont(getCustomFont(Font.PLAIN, 13f));
+        clearVersionsList.setSelected(true);
+        clearVersionsList.setAlignmentX(Component.LEFT_ALIGNMENT);
+        content.add(clearVersionsList);
+        content.add(Box.createVerticalStrut(5));
+
+        JCheckBox clearCustomVersions = new JCheckBox(localeManager.get("checkbox.clearCustomVersions"));
+        clearCustomVersions.setFont(getCustomFont(Font.PLAIN, 13f));
+        clearCustomVersions.setSelected(false);
+        clearCustomVersions.setAlignmentX(Component.LEFT_ALIGNMENT);
+        content.add(clearCustomVersions);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
+        buttonPanel.setBorder(new EmptyBorder(10, 15, 15, 15));
+
+        JButton cancelButton = new JButton(localeManager.get("button.cancel"));
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        JButton confirmButton = new JButton(localeManager.get("button.clearCache"));
+        confirmButton.setFont(getCustomFont(Font.BOLD, 13f));
+        confirmButton.addActionListener(e -> {
+            boolean apks = clearApks.isSelected();
+            boolean list = clearVersionsList.isSelected();
+            boolean custom = clearCustomVersions.isSelected();
+
+            if (apks) {
+                File apksDir = new File(net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager.getInstance()
+                        .resolvePath("cache/versions"));
+                if (apksDir.exists() && apksDir.isDirectory()) {
+                    File[] files = apksDir.listFiles();
+                    if (files != null) {
+                        for (File f : files) {
+                            if (f.isFile()) {
+                                f.delete();
+                            }
+                        }
+                    }
+                }
+            }
+            if (list) {
+                File listFile = new File(net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager.getInstance()
+                        .resolvePath("cache/versions_list.json"));
+                if (listFile.exists()) {
+                    listFile.delete();
+                }
+            }
+            if (custom) {
+                File customFile = new File(net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager.getInstance()
+                        .resolvePath("custom_versions.json"));
+                if (customFile.exists()) {
+                    customFile.delete();
+                }
+            }
+
+            JOptionPane.showMessageDialog(dialog, localeManager.get("dialog.clearCache.success"));
+            dialog.dispose();
+        });
+
+        buttonPanel.add(cancelButton);
+        buttonPanel.add(confirmButton);
+
+        dialog.add(content, BorderLayout.CENTER);
+        dialog.add(buttonPanel, BorderLayout.SOUTH);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+    }
+
+    private void refreshVersionsComboBox(String selectedValue) {
+        isRefreshingComboBox = true;
+        customVersionsSourcesComboBox.removeAllItems();
+        if (customVersionsSourcesList.isEmpty()) {
+            customVersionsSourcesComboBox.addItem(localeManager.get("combo.noSources", "No sources added yet"));
+        } else {
+            for (String src : customVersionsSourcesList) {
+                customVersionsSourcesComboBox.addItem(src);
+            }
+        }
+        customVersionsSourcesComboBox.addItem(localeManager.get("combo.addSourceOption", "+ Add Source..."));
+
+        if (selectedValue != null && customVersionsSourcesList.contains(selectedValue)) {
+            customVersionsSourcesComboBox.setSelectedItem(selectedValue);
+        } else if (!customVersionsSourcesList.isEmpty()) {
+            customVersionsSourcesComboBox.setSelectedIndex(0);
+        } else {
+            customVersionsSourcesComboBox.setSelectedIndex(0);
+        }
+        isRefreshingComboBox = false;
+    }
+
+    private void showAddSourceDialog() {
+        JPanel addPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints apGbc = new GridBagConstraints();
+        apGbc.insets = new Insets(5, 5, 5, 5);
+        apGbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JRadioButton urlOpt = new JRadioButton(localeManager.get("radio.url", "URL"), true);
+        JRadioButton fileOpt = new JRadioButton(localeManager.get("radio.file", "File"));
+        ButtonGroup optGroup = new ButtonGroup();
+        optGroup.add(urlOpt);
+        optGroup.add(fileOpt);
+
+        JPanel radioPnl = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        radioPnl.add(urlOpt);
+        radioPnl.add(fileOpt);
+
+        apGbc.gridx = 0;
+        apGbc.gridy = 0;
+        apGbc.gridwidth = 2;
+        addPanel.add(radioPnl, apGbc);
+
+        JTextField pathFld = new JTextField(25);
+        pathFld.setPreferredSize(new Dimension(0, (int) (45 * scaleFactor)));
+        apGbc.gridx = 0;
+        apGbc.gridy = 1;
+        apGbc.gridwidth = 1;
+        apGbc.weightx = 1.0;
+        addPanel.add(pathFld, apGbc);
+
+        JButton browseBtn = new JButton(localeManager.get("button.browse", "Browse..."));
+        browseBtn.setPreferredSize(new Dimension((int) (100 * scaleFactor), (int) (45 * scaleFactor)));
+        browseBtn.setEnabled(false);
+        apGbc.gridx = 1;
+        apGbc.gridy = 1;
+        apGbc.gridwidth = 1;
+        apGbc.weightx = 0.0;
+        addPanel.add(browseBtn, apGbc);
+
+        urlOpt.addActionListener(ev -> browseBtn.setEnabled(false));
+        fileOpt.addActionListener(ev -> browseBtn.setEnabled(true));
+
+        browseBtn.addActionListener(ev -> {
+            JFileChooser fileChooser = new JFileChooser();
+            if (fileChooser.showOpenDialog(addPanel) == JFileChooser.APPROVE_OPTION) {
+                pathFld.setText(fileChooser.getSelectedFile().getAbsolutePath());
+            }
+        });
+
+        int result = JOptionPane.showConfirmDialog(this, addPanel,
+                localeManager.get("dialog.addSource.title", "Add Source"),
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String val = pathFld.getText().trim();
+            if (!val.isEmpty()) {
+                if (!customVersionsSourcesList.contains(val)) {
+                    customVersionsSourcesList.add(val);
+                }
+                refreshVersionsComboBox(val);
+            }
+        }
+    }
+
+    private void refreshLauncherComboBox(String selectedValue) {
+        isRefreshingComboBox = true;
+        customLauncherComboBox.removeAllItems();
+        if (customLauncherPathsList.isEmpty()) {
+            customLauncherComboBox.addItem(localeManager.get("combo.noLaunchers", "No executables added yet"));
+        } else {
+            for (String path : customLauncherPathsList) {
+                customLauncherComboBox.addItem(path);
+            }
+        }
+        customLauncherComboBox.addItem(localeManager.get("combo.addLauncherOption", "+ Add Executable..."));
+
+        if (selectedValue != null && customLauncherPathsList.contains(selectedValue)) {
+            customLauncherComboBox.setSelectedItem(selectedValue);
+        } else if (!customLauncherPathsList.isEmpty()) {
+            customLauncherComboBox.setSelectedIndex(0);
+        } else {
+            customLauncherComboBox.setSelectedIndex(0);
+        }
+        isRefreshingComboBox = false;
+    }
+
+    private void showAddLauncherDialog() {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
+        fileChooser.setAcceptAllFileFilterUsed(false);
+        fileChooser.addChoosableFileFilter(new javax.swing.filechooser.FileFilter() {
+            @Override
+            public boolean accept(File f) {
+                if (f.isDirectory())
+                    return true;
+                String name = f.getName().toLowerCase();
+                return name.endsWith(".exe") || !name.contains(".");
+            }
+
+            @Override
+            public String getDescription() {
+                return "Executable files (*.exe, extensionless)";
+            }
+        });
+        int option = fileChooser.showOpenDialog(this);
+        if (option == JFileChooser.APPROVE_OPTION) {
+            File file = fileChooser.getSelectedFile();
+            String path = file.getAbsolutePath();
+            if (!customLauncherPathsList.contains(path)) {
+                customLauncherPathsList.add(path);
+            }
+            refreshLauncherComboBox(path);
+        }
+    }
+
+    private void openLauncherFolder() {
+        try {
+            File folder = new File(net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager.getInstance().resolvePath(""));
+            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
+                Desktop.getDesktop().open(folder);
+            } else {
+                String os = System.getProperty("os.name").toLowerCase();
+                if (os.contains("win")) {
+                    new ProcessBuilder("explorer.exe", folder.getAbsolutePath()).start();
+                } else if (os.contains("mac")) {
+                    new ProcessBuilder("open", folder.getAbsolutePath()).start();
+                } else {
+                    new ProcessBuilder("xdg-open", folder.getAbsolutePath()).start();
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public List<String> getCustomVersionsSourcesList() {
+        return customVersionsSourcesList;
+    }
+
+    public List<String> getCustomLauncherPathsList() {
+        return customLauncherPathsList;
     }
 }

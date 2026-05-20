@@ -219,7 +219,7 @@ public class InstancesPanel extends JPanel {
         btn.setFont(getFont(bold ? Font.BOLD : Font.PLAIN, fontSize * (float) scaleFactor));
         btn.setForeground(isDark ? Color.WHITE : Color.BLACK);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension((int) (150 * scaleFactor), (int) (35 * scaleFactor)));
+        btn.setPreferredSize(new Dimension((int) (150 * scaleFactor), (int) (45 * scaleFactor)));
         return btn;
     }
 

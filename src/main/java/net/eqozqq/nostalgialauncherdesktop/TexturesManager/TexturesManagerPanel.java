@@ -76,26 +76,6 @@ public class TexturesManagerPanel extends JPanel {
         JPanel footerPanel = createFooterPanel();
         add(footerPanel, BorderLayout.SOUTH);
 
-        versionList.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseClicked(java.awt.event.MouseEvent e) {
-                int index = versionList.locationToIndex(e.getPoint());
-                if (index < 0)
-                    return;
-                Rectangle cellBounds = versionList.getCellBounds(index, index);
-                if (cellBounds == null || !cellBounds.contains(e.getPoint()))
-                    return;
-                if (e.getClickCount() == 1 && SwingUtilities.isLeftMouseButton(e)) {
-                    File textureFile = listModel.getElementAt(index);
-                    if (textureFile != null && textureFile.exists()) {
-                        TextureInstallDialog dialog = new TextureInstallDialog(
-                                (Frame) SwingUtilities.getWindowAncestor(TexturesManagerPanel.this),
-                                localeManager, scaleFactor, textureFile);
-                        dialog.setVisible(true);
-                    }
-                }
-            }
-        });
 
         versionList.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
@@ -222,11 +202,23 @@ public class TexturesManagerPanel extends JPanel {
         textureActionPanel.setOpaque(false);
         textureActionPanel.setVisible(false);
 
+        JButton installBtn = createStyledButton(localeManager.get("button.installTexture", "Install Texture"), true, 13f);
+        installBtn.addActionListener(e -> {
+            File textureFile = versionList.getSelectedValue();
+            if (textureFile != null && textureFile.exists()) {
+                TextureInstallDialog dialog = new TextureInstallDialog(
+                        (Frame) SwingUtilities.getWindowAncestor(TexturesManagerPanel.this),
+                        localeManager, scaleFactor, textureFile);
+                dialog.setVisible(true);
+            }
+        });
+
         JButton renameBtn = createStyledButton(localeManager.get("menu.rename", "Rename"), false, 13f);
         JButton deleteBtn = createStyledButton(localeManager.get("menu.delete", "Delete"), false, 13f);
         deleteBtn.setForeground(new Color(220, 80, 80));
         renameBtn.addActionListener(e -> renameSelectedTexture());
         deleteBtn.addActionListener(e -> deleteSelectedTexture());
+        textureActionPanel.add(installBtn);
         textureActionPanel.add(renameBtn);
         textureActionPanel.add(deleteBtn);
         footerCard.add(textureActionPanel);
@@ -262,7 +254,7 @@ public class TexturesManagerPanel extends JPanel {
         btn.setFont(getFont(bold ? Font.BOLD : Font.PLAIN, fontSize * (float) scaleFactor));
         btn.setForeground(isDark ? Color.WHITE : Color.BLACK);
         btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btn.setPreferredSize(new Dimension((int) (180 * scaleFactor), (int) (35 * scaleFactor)));
+        btn.setPreferredSize(new Dimension((int) (180 * scaleFactor), (int) (45 * scaleFactor)));
         return btn;
     }
 

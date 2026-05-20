@@ -15,6 +15,27 @@ public class ProxyManager {
     private DatagramSocket socket;
     private Thread proxyThread;
 
+    public interface ProxyStateListener {
+        void onStateChanged(boolean running, String address, int port);
+    }
+
+    private ProxyStateListener stateListener;
+
+    public synchronized void setStateListener(ProxyStateListener listener) {
+        this.stateListener = listener;
+        if (listener != null) {
+            listener.onStateChanged(running, currentAddress, currentPort);
+        }
+    }
+
+    private void notifyListener() {
+        if (stateListener != null) {
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                stateListener.onStateChanged(running, currentAddress, currentPort);
+            });
+        }
+    }
+
     private ProxyManager() {
     }
 
@@ -36,6 +57,7 @@ public class ProxyManager {
 
         this.proxyThread = new Thread(() -> runProxyLoop(address, port));
         this.proxyThread.start();
+        notifyListener();
     }
 
     private void runProxyLoop(String targetAddress, int targetPort) {
@@ -89,6 +111,7 @@ public class ProxyManager {
                 socket.close();
             }
             running = false;
+            notifyListener();
         }
     }
 
@@ -105,6 +128,7 @@ public class ProxyManager {
             }
             proxyThread = null;
         }
+        notifyListener();
     }
 
     public synchronized boolean isRunning() {

@@ -71,29 +71,7 @@ public class HelpDialog extends JDialog {
     }
 
     private void openUrl(String url) {
-        try {
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
-                Desktop.getDesktop().browse(new URI(url));
-                return;
-            }
-        } catch (Exception ignored) {
-        }
-
-        String os = System.getProperty("os.name").toLowerCase();
-        try {
-            if (os.contains("linux") || os.contains("unix")) {
-                Runtime.getRuntime().exec(new String[] { "xdg-open", url });
-            } else if (os.contains("mac")) {
-                Runtime.getRuntime().exec(new String[] { "open", url });
-            } else if (os.contains("win")) {
-                Runtime.getRuntime().exec(new String[] { "cmd", "/c", "start", url.replace("&", "^&") });
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this,
-                    "Could not open browser. Please visit:\n" + url,
-                    "Open URL", JOptionPane.INFORMATION_MESSAGE);
-        }
+        NostalgiaLauncherDesktop.openURL(url);
     }
 
     private static Window getParentWindow(Component component) {

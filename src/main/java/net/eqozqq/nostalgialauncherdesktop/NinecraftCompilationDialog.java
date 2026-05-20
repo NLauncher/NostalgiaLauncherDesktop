@@ -150,6 +150,8 @@ public class NinecraftCompilationDialog extends JDialog {
         installDepsButton.setVisible(false);
         installDepsButton.addActionListener(e -> {
             if (installAction != null) {
+                installDepsButton.setVisible(false);
+                progressBar.setIndeterminate(true);
                 installAction.run();
             }
         });
