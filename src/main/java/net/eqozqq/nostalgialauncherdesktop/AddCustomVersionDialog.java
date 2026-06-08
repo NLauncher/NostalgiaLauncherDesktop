@@ -106,12 +106,10 @@ public class AddCustomVersionDialog extends JDialog {
         fileRadioButton.addActionListener(e -> cl.show(cards, "File"));
 
         browseButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-                    localeManager.get("fileChooser.apkFiles"), "apk"));
-            int option = fileChooser.showOpenDialog(this);
-            if (option == JFileChooser.APPROVE_OPTION) {
-                File file = fileChooser.getSelectedFile();
+            File file = NativeFileChooser.chooseFile(this,
+                    localeManager.get("dialog.addCustomVersion.title"),
+                    new String[]{".apk"}, "*.apk");
+            if (file != null) {
                 filePathField.setText(file.getAbsolutePath());
             }
         });

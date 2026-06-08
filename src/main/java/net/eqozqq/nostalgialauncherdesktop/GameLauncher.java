@@ -13,18 +13,28 @@ public class GameLauncher {
         boolean isWindows = osName.contains("win");
 
         File executable;
+        File workingDir = gameDir;
         if (customExecutablePath != null && !customExecutablePath.isEmpty()) {
             executable = new File(customExecutablePath);
+            File parent = executable.getParentFile();
+            if (parent != null && parent.exists()) {
+                workingDir = parent;
+            }
         } else {
             String executableName = isWindows ? "ninecraft.exe" : "ninecraft";
             executable = new File(gameDir, executableName);
         }
         
-        if (!executable.exists()) {
-            throw new Exception("error.executableNotFound:" + executable.getAbsolutePath());
+        boolean isMac = osName.contains("mac");
+        boolean isMacApp = isMac && executable.isDirectory() && executable.getName().endsWith(".app");
+
+        if (!isMacApp) {
+            if (executable.isDirectory() || !executable.exists()) {
+                throw new Exception("error.executableNotFound:" + executable.getAbsolutePath());
+            }
         }
         
-        if (!isWindows) {
+        if (!isWindows && !isMacApp) {
             executable.setExecutable(true);
         }
 
@@ -36,33 +46,44 @@ public class GameLauncher {
             } else {
                 processBuilder = new ProcessBuilder(executable.getAbsolutePath());
             }
+        } else if (isMacApp) {
+            processBuilder = new ProcessBuilder("open", executable.getAbsolutePath());
         } else {
-            if (enableDebugging) {
-                String[] terminals = { "x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "lxterminal", "mate-terminal" };
-                String selectedTerminal = null;
-                for (String terminal : terminals) {
-                    if (hasCommand(terminal)) {
-                        selectedTerminal = terminal;
-                        break;
-                    }
-                }
-                if (selectedTerminal != null) {
-                    if (selectedTerminal.equals("gnome-terminal") || selectedTerminal.equals("mate-terminal")) {
-                        processBuilder = new ProcessBuilder(selectedTerminal, "--", "bash", "-c", 
-                            "\"" + executable.getAbsolutePath() + "\"; echo $? > exit.tmp; echo 'Process exited.'; read");
-                    } else {
-                        processBuilder = new ProcessBuilder(selectedTerminal, "-e", 
-                            "bash -c '\"" + executable.getAbsolutePath() + "\"; echo $? > exit.tmp; echo \"Process exited.\"; read'");
-                    }
+            if (isMac) {
+                if (enableDebugging) {
+                    processBuilder = new ProcessBuilder("osascript", "-e", 
+                        "tell application \"Terminal\" to do script \"cd \\\"" + workingDir.getAbsolutePath() + "\\\" && \\\"" + executable.getAbsolutePath() + "\\\"\"");
                 } else {
                     processBuilder = new ProcessBuilder(executable.getAbsolutePath());
                 }
             } else {
-                processBuilder = new ProcessBuilder(executable.getAbsolutePath());
+                if (enableDebugging) {
+                    String[] terminals = { "x-terminal-emulator", "gnome-terminal", "konsole", "xfce4-terminal", "lxterminal", "mate-terminal" };
+                    String selectedTerminal = null;
+                    for (String terminal : terminals) {
+                        if (hasCommand(terminal)) {
+                            selectedTerminal = terminal;
+                            break;
+                        }
+                    }
+                    if (selectedTerminal != null) {
+                        if (selectedTerminal.equals("gnome-terminal") || selectedTerminal.equals("mate-terminal")) {
+                            processBuilder = new ProcessBuilder(selectedTerminal, "--", "bash", "-c", 
+                                "\"" + executable.getAbsolutePath() + "\"; echo $? > exit.tmp; echo 'Process exited.'; read");
+                        } else {
+                            processBuilder = new ProcessBuilder(selectedTerminal, "-e", 
+                                "bash -c '\"" + executable.getAbsolutePath() + "\"; echo $? > exit.tmp; echo \"Process exited.\"; read'");
+                        }
+                    } else {
+                        processBuilder = new ProcessBuilder(executable.getAbsolutePath());
+                    }
+                } else {
+                    processBuilder = new ProcessBuilder(executable.getAbsolutePath());
+                }
             }
         }
 
-        processBuilder.directory(gameDir);
+        processBuilder.directory(workingDir);
         processBuilder.redirectErrorStream(true);
 
         try {

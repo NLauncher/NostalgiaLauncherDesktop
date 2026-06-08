@@ -36,6 +36,10 @@ public class SettingsPanel extends JPanel {
     private JRadioButton customExeRadio;
     private JComboBox<String> customLauncherComboBox;
     private List<String> customLauncherPathsList;
+    private JRadioButton anotherExeRadio;
+    private JComboBox<CustomLauncherProfile> anotherLauncherComboBox;
+    private List<CustomLauncherProfile> customLauncherProfilesList;
+    private String selectedLauncherProfileName;
 
     private JComboBox<String> postLaunchActionComboBox;
     private JCheckBox enableDebuggingCheckbox;
@@ -111,6 +115,8 @@ public class SettingsPanel extends JPanel {
             boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion,
             String backgroundMode, Color customBackgroundColor, String currentCustomTranslationPath,
             String currentGithubUrl, String currentGithubName,
+            List<CustomLauncherProfile> customLauncherProfilesList,
+            String selectedLauncherProfileName,
             LocaleManager localeManager, SaveListener saveListener) {
         this.localeManager = localeManager;
         this.saveListener = saveListener;
@@ -123,7 +129,10 @@ public class SettingsPanel extends JPanel {
         this.executableSource = currentExecutableSource;
         this.customLauncherPath = currentCustomLauncherPath;
         this.customLauncherPathsList = customLauncherPathsList != null ? customLauncherPathsList : new ArrayList<>();
-        this.useDefaultLauncher = !"CUSTOM".equals(currentExecutableSource);
+        this.customLauncherProfilesList = customLauncherProfilesList != null ? customLauncherProfilesList
+                : new ArrayList<>();
+        this.selectedLauncherProfileName = selectedLauncherProfileName;
+        this.useDefaultLauncher = !"CUSTOM".equals(currentExecutableSource) && !"ANOTHER".equals(currentExecutableSource);
         this.postLaunchAction = currentPostLaunchAction;
         this.enableDebugging = currentEnableDebugging;
         this.scaleFactor = currentScaleFactor;
@@ -324,8 +333,11 @@ public class SettingsPanel extends JPanel {
         } else if (serverExeRadio.isSelected()) {
             this.executableSource = "SERVER";
             this.useDefaultLauncher = true;
-        } else {
+        } else if (customExeRadio.isSelected()) {
             this.executableSource = "CUSTOM";
+            this.useDefaultLauncher = false;
+        } else {
+            this.executableSource = "ANOTHER";
             this.useDefaultLauncher = false;
         }
 
@@ -335,6 +347,13 @@ public class SettingsPanel extends JPanel {
             this.customLauncherPath = (String) selectedCL;
         } else {
             this.customLauncherPath = null;
+        }
+
+        CustomLauncherProfile selProfile = (CustomLauncherProfile) anotherLauncherComboBox.getSelectedItem();
+        if (selProfile != null) {
+            this.selectedLauncherProfileName = selProfile.getName();
+        } else {
+            this.selectedLauncherProfileName = null;
         }
         this.enableDebugging = enableDebuggingCheckbox.isSelected();
 
@@ -407,6 +426,13 @@ public class SettingsPanel extends JPanel {
                         localeManager.get("error.invalidFilePath") + "\n\n" + this.customLauncherPath);
                 return;
             }
+        } else if ("ANOTHER".equals(this.executableSource)) {
+            if (this.selectedLauncherProfileName == null) {
+                ErrorDialog.showSync(this, localeManager.get("dialog.error.title"),
+                        localeManager.get("error.noExecutableSelected",
+                                "Please select a custom profile first."));
+                return;
+            }
         }
 
         if ("custom".equals(this.language)) {
@@ -424,14 +450,7 @@ public class SettingsPanel extends JPanel {
     }
 
     private Font getCustomFont(int style, float size) {
-        try (InputStream fontStream = getClass().getResourceAsStream("/MPLUS1p-Regular.ttf")) {
-            if (fontStream != null) {
-                return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new Font("SansSerif", style, (int) size);
+        return FontManager.getRegularFont(style, size);
     }
 
     private JPanel createGamePanel() {
@@ -516,14 +535,18 @@ public class SettingsPanel extends JPanel {
         compiledExeRadio = new JRadioButton(localeManager.get("radio.executable.compiled"));
         serverExeRadio = new JRadioButton(localeManager.get("radio.executable.server"));
         customExeRadio = new JRadioButton(localeManager.get("radio.executable.custom"));
+        anotherExeRadio = new JRadioButton(localeManager.get("radio.executable.another"));
         exeGroup.add(compiledExeRadio);
         exeGroup.add(serverExeRadio);
         exeGroup.add(customExeRadio);
+        exeGroup.add(anotherExeRadio);
 
         if ("COMPILED".equals(executableSource)) {
             compiledExeRadio.setSelected(true);
         } else if ("CUSTOM".equals(executableSource)) {
             customExeRadio.setSelected(true);
+        } else if ("ANOTHER".equals(executableSource)) {
+            anotherExeRadio.setSelected(true);
         } else {
             serverExeRadio.setSelected(true);
         }
@@ -569,6 +592,110 @@ public class SettingsPanel extends JPanel {
         gbc.weightx = 1.0;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         card.add(customLauncherComboBox, gbc);
+
+        gridY++;
+        gbc.gridy = gridY;
+        card.add(anotherExeRadio, gbc);
+
+        gridY++;
+        JPanel profilePanel = new JPanel(new GridBagLayout());
+        profilePanel.setOpaque(false);
+        GridBagConstraints pGbc = new GridBagConstraints();
+        pGbc.insets = new Insets(0, 0, 0, 5);
+        pGbc.fill = GridBagConstraints.HORIZONTAL;
+        pGbc.gridy = 0;
+
+        pGbc.gridx = 0;
+        pGbc.weightx = 1.0;
+        anotherLauncherComboBox = new JComboBox<>();
+        profilePanel.add(anotherLauncherComboBox, pGbc);
+
+        pGbc.gridx = 1;
+        pGbc.weightx = 0.0;
+        JButton addProfileBtn = new JButton(localeManager.get("button.addProfile", "Add..."));
+        profilePanel.add(addProfileBtn, pGbc);
+
+        pGbc.gridx = 2;
+        JButton editProfileBtn = new JButton(localeManager.get("button.editProfile", "Edit..."));
+        profilePanel.add(editProfileBtn, pGbc);
+
+        pGbc.gridx = 3;
+        pGbc.insets = new Insets(0, 0, 0, 0);
+        JButton deleteProfileBtn = new JButton(localeManager.get("button.deleteProfile", "Delete"));
+        profilePanel.add(deleteProfileBtn, pGbc);
+
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 3;
+        gbc.weightx = 1.0;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        card.add(profilePanel, gbc);
+
+        refreshProfileComboBox(this.selectedLauncherProfileName);
+
+        addProfileBtn.addActionListener(e -> {
+            CustomLauncherProfileDialog dlg = new CustomLauncherProfileDialog(
+                (Window) SwingUtilities.getWindowAncestor(this),
+                localeManager,
+                null
+            );
+            dlg.setVisible(true);
+            if (dlg.isConfirmed()) {
+                CustomLauncherProfile newProfile = dlg.getProfile();
+                boolean exists = false;
+                for (CustomLauncherProfile p : customLauncherProfilesList) {
+                    if (p.getName().equalsIgnoreCase(newProfile.getName())) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (exists) {
+                    JOptionPane.showMessageDialog(this, localeManager.get("error.launcherProfileExists"), localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+                } else {
+                    customLauncherProfilesList.add(newProfile);
+                    refreshProfileComboBox(newProfile.getName());
+                    this.selectedLauncherProfileName = newProfile.getName();
+                }
+            }
+        });
+
+        editProfileBtn.addActionListener(e -> {
+            CustomLauncherProfile selected = (CustomLauncherProfile) anotherLauncherComboBox.getSelectedItem();
+            if (selected == null) {
+                return;
+            }
+            CustomLauncherProfileDialog dlg = new CustomLauncherProfileDialog(
+                (Window) SwingUtilities.getWindowAncestor(this),
+                localeManager,
+                selected
+            );
+            dlg.setVisible(true);
+            if (dlg.isConfirmed()) {
+                CustomLauncherProfile updatedProfile = dlg.getProfile();
+                selected.setName(updatedProfile.getName());
+                selected.setExecutablePath(updatedProfile.getExecutablePath());
+                selected.setRequiredPaths(updatedProfile.getRequiredPaths());
+                selected.setCustomWorldsPath(updatedProfile.getCustomWorldsPath());
+                selected.setCustomTexturesPath(updatedProfile.getCustomTexturesPath());
+                selected.setCustomOptionsPath(updatedProfile.getCustomOptionsPath());
+                refreshProfileComboBox(updatedProfile.getName());
+                this.selectedLauncherProfileName = updatedProfile.getName();
+            }
+        });
+
+        deleteProfileBtn.addActionListener(e -> {
+            CustomLauncherProfile selected = (CustomLauncherProfile) anotherLauncherComboBox.getSelectedItem();
+            if (selected == null) {
+                return;
+            }
+            int opt = JOptionPane.showConfirmDialog(this, localeManager.get("dialog.deleteWorld.message").replace("world '%s'", "profile '" + selected.getName() + "'"), localeManager.get("dialog.deleteWorld.title"), JOptionPane.YES_NO_OPTION);
+            if (opt == JOptionPane.YES_OPTION) {
+                customLauncherProfilesList.remove(selected);
+                String nextSel = customLauncherProfilesList.isEmpty() ? null : customLauncherProfilesList.get(0).getName();
+                refreshProfileComboBox(nextSel);
+                this.selectedLauncherProfileName = nextSel;
+            }
+        });
 
         gridY++;
         gbc.gridx = 0;
@@ -686,11 +813,10 @@ public class SettingsPanel extends JPanel {
 
         browseTranslationButton = new JButton(localeManager.get("button.browse"));
         browseTranslationButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter("JSON Files", "json"));
-            int option = fileChooser.showOpenDialog(this);
-            if (option == JFileChooser.APPROVE_OPTION) {
-                File file = fileChooser.getSelectedFile();
+            File file = NativeFileChooser.chooseFile(this,
+                    localeManager.get("label.customTranslation", "Custom Translation"),
+                    new String[]{".json"}, "*.json");
+            if (file != null) {
                 customTranslationPathField.setText(file.getAbsolutePath());
             }
         });
@@ -791,10 +917,10 @@ public class SettingsPanel extends JPanel {
 
         browseBackgroundButton = new JButton(localeManager.get("button.browse"));
         browseBackgroundButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            int option = fileChooser.showOpenDialog(this);
-            if (option == JFileChooser.APPROVE_OPTION) {
-                File file = fileChooser.getSelectedFile();
+            File file = NativeFileChooser.chooseFile(this,
+                    localeManager.get("label.backgroundImage", "Background Image"),
+                    new String[]{".png", ".jpg", ".jpeg", ".gif"}, "*.png;*.jpg;*.jpeg;*.gif");
+            if (file != null) {
                 backgroundPathField.setText(file.getAbsolutePath());
             }
         });
@@ -1401,9 +1527,11 @@ public class SettingsPanel extends JPanel {
         fileOpt.addActionListener(ev -> browseBtn.setEnabled(true));
 
         browseBtn.addActionListener(ev -> {
-            JFileChooser fileChooser = new JFileChooser();
-            if (fileChooser.showOpenDialog(addPanel) == JFileChooser.APPROVE_OPTION) {
-                pathFld.setText(fileChooser.getSelectedFile().getAbsolutePath());
+            File file = NativeFileChooser.chooseFile(addPanel,
+                    localeManager.get("dialog.addSource.title", "Add Source"),
+                    new String[]{".apk"}, "*.apk");
+            if (file != null) {
+                pathFld.setText(file.getAbsolutePath());
             }
         });
 
@@ -1445,26 +1573,10 @@ public class SettingsPanel extends JPanel {
     }
 
     private void showAddLauncherDialog() {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setFileSelectionMode(JFileChooser.FILES_ONLY);
-        fileChooser.setAcceptAllFileFilterUsed(false);
-        fileChooser.addChoosableFileFilter(new javax.swing.filechooser.FileFilter() {
-            @Override
-            public boolean accept(File f) {
-                if (f.isDirectory())
-                    return true;
-                String name = f.getName().toLowerCase();
-                return name.endsWith(".exe") || !name.contains(".");
-            }
-
-            @Override
-            public String getDescription() {
-                return "Executable files (*.exe, extensionless)";
-            }
-        });
-        int option = fileChooser.showOpenDialog(this);
-        if (option == JFileChooser.APPROVE_OPTION) {
-            File file = fileChooser.getSelectedFile();
+        File file = NativeFileChooser.chooseFile(this,
+                localeManager.get("dialog.addLauncher.title", "Add Launcher"),
+                new String[]{".exe"}, "*.exe;*");
+        if (file != null) {
             String path = file.getAbsolutePath();
             if (!customLauncherPathsList.contains(path)) {
                 customLauncherPathsList.add(path);
@@ -1499,5 +1611,30 @@ public class SettingsPanel extends JPanel {
 
     public List<String> getCustomLauncherPathsList() {
         return customLauncherPathsList;
+    }
+
+    public List<CustomLauncherProfile> getCustomLauncherProfilesList() {
+        return customLauncherProfilesList;
+    }
+
+    public String getSelectedLauncherProfileName() {
+        return selectedLauncherProfileName;
+    }
+
+    private void refreshProfileComboBox(String selectedName) {
+        anotherLauncherComboBox.removeAllItems();
+        if (customLauncherProfilesList != null) {
+            for (CustomLauncherProfile p : customLauncherProfilesList) {
+                anotherLauncherComboBox.addItem(p);
+            }
+        }
+        if (selectedName != null && anotherLauncherComboBox.getItemCount() > 0) {
+            for (int i = 0; i < anotherLauncherComboBox.getItemCount(); i++) {
+                if (anotherLauncherComboBox.getItemAt(i).getName().equals(selectedName)) {
+                    anotherLauncherComboBox.setSelectedIndex(i);
+                    break;
+                }
+            }
+        }
     }
 }

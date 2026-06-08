@@ -211,14 +211,7 @@ public class NavigationPanel extends JPanel {
     }
 
     private Font getRegularFont(int style, float size) {
-        try (InputStream fontStream = NavigationPanel.class.getResourceAsStream("/MPLUS1p-Regular.ttf")) {
-            if (fontStream != null) {
-                return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new Font("SansSerif", style, (int) size);
+        return FontManager.getRegularFont(style, size);
     }
 
     private NavButton createNavButton(String iconPathOutline, String iconPathFill, String text, String navId) {

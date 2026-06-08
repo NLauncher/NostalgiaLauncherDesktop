@@ -75,6 +75,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private String customLauncherPath;
     private boolean useDefaultLauncher;
     private List<String> customLauncherPathsList = new ArrayList<>();
+    private List<CustomLauncherProfile> customLauncherProfilesList = new ArrayList<>();
+    private String selectedLauncherProfileName;
 
     private String postLaunchAction;
     private boolean enableDebugging;
@@ -89,7 +91,73 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private SwingWorker<Void, Integer> launchWorker;
 
-    private static String CURRENT_VERSION = "1.9.5";
+    private static String CURRENT_VERSION = "1.10.0";
+
+    private static NostalgiaLauncherDesktop instance;
+
+    public static NostalgiaLauncherDesktop getInstance() {
+        return instance;
+    }
+
+    public CustomLauncherProfile getActiveCustomLauncherProfile() {
+        if (!"ANOTHER".equals(executableSource)) {
+            return null;
+        }
+
+        if (versionComboBox != null) {
+            Version selected = (Version) versionComboBox.getSelectedItem();
+            if (selected != null) {
+                String name = selected.getName();
+                for (CustomLauncherProfile p : customLauncherProfilesList) {
+                    if (p.getName().equals(name)) {
+                        return p;
+                    }
+                }
+            }
+        }
+
+        if (selectedLauncherProfileName != null) {
+            for (CustomLauncherProfile p : customLauncherProfilesList) {
+                if (p.getName().equals(selectedLauncherProfileName)) {
+                    return p;
+                }
+            }
+        }
+
+        if (customLauncherProfilesList != null && !customLauncherProfilesList.isEmpty()) {
+            return customLauncherProfilesList.get(0);
+        }
+
+        return null;
+    }
+
+    public File getWorldsDirectory() {
+        CustomLauncherProfile profile = getActiveCustomLauncherProfile();
+        if (profile != null && profile.getCustomWorldsPath() != null
+                && !profile.getCustomWorldsPath().trim().isEmpty()) {
+            return new File(profile.getCustomWorldsPath().trim());
+        }
+        return new File(InstanceManager.getInstance().resolvePath("game/storage/games/com.mojang/minecraftWorlds/"));
+    }
+
+    public File getTexturesDirectory() {
+        CustomLauncherProfile profile = getActiveCustomLauncherProfile();
+        if (profile != null && profile.getCustomTexturesPath() != null
+                && !profile.getCustomTexturesPath().trim().isEmpty()) {
+            return new File(profile.getCustomTexturesPath().trim());
+        }
+        return new File(InstanceManager.getDataRoot(), "textures");
+    }
+
+    public File getOptionsFile() {
+        CustomLauncherProfile profile = getActiveCustomLauncherProfile();
+        if (profile != null && profile.getCustomOptionsPath() != null
+                && !profile.getCustomOptionsPath().trim().isEmpty()) {
+            return new File(profile.getCustomOptionsPath().trim());
+        }
+        return new File(
+                InstanceManager.getInstance().resolvePath("game/storage/games/com.mojang/minecraftpe/options.txt"));
+    }
 
     private static final int COMPONENT_WIDTH = 300;
     private static final String DEFAULT_VERSIONS_URL = "https://raw.githubusercontent.com/NLauncher/components/main/versions.json";
@@ -98,7 +166,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     public static void openURL(String url) {
         try {
-            if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
+            if (java.awt.Desktop.isDesktopSupported()
+                    && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
                 java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
                 return;
             }
@@ -107,17 +176,18 @@ public class NostalgiaLauncherDesktop extends JFrame {
         String os = System.getProperty("os.name").toLowerCase();
         try {
             if (os.contains("win")) {
-                Runtime.getRuntime().exec(new String[]{"rundll32", "url.dll,FileProtocolHandler", url});
+                Runtime.getRuntime().exec(new String[] { "rundll32", "url.dll,FileProtocolHandler", url });
             } else if (os.contains("mac")) {
-                Runtime.getRuntime().exec(new String[]{"open", url});
+                Runtime.getRuntime().exec(new String[] { "open", url });
             } else {
-                String[] browsers = {"xdg-open", "sensible-browser", "x-www-browser", "gnome-open", "kdesu", "firefox", "chrome", "chromium"};
+                String[] browsers = { "xdg-open", "sensible-browser", "x-www-browser", "gnome-open", "kdesu", "firefox",
+                        "chrome", "chromium" };
                 boolean opened = false;
                 for (String browser : browsers) {
                     try {
-                        Process p = Runtime.getRuntime().exec(new String[]{"which", browser});
+                        Process p = Runtime.getRuntime().exec(new String[] { "which", browser });
                         if (p.waitFor() == 0) {
-                            Runtime.getRuntime().exec(new String[]{browser, url});
+                            Runtime.getRuntime().exec(new String[] { browser, url });
                             opened = true;
                             break;
                         }
@@ -125,7 +195,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     }
                 }
                 if (!opened) {
-                    Runtime.getRuntime().exec(new String[]{"xdg-open", url});
+                    Runtime.getRuntime().exec(new String[] { "xdg-open", url });
                 }
             }
         } catch (Exception e) {
@@ -134,13 +204,14 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     public NostalgiaLauncherDesktop() {
+        instance = this;
         versionManager = new VersionManager();
         gameLauncher = new GameLauncher();
         settings = new Properties();
         localeManager = LocaleManager.getInstance();
         loadSettings();
         localeManager.init(settings);
-        CURRENT_VERSION = localeManager.get("launcher.version", "1.9.5");
+        CURRENT_VERSION = localeManager.get("launcher.version", "1.10.0");
         InstanceManager.getInstance().init(settings);
         applyTheme();
         loadBackground();
@@ -285,23 +356,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     private Font getMinecraftFont(int style, float size) {
-        try (InputStream fontStream = NostalgiaLauncherDesktop.class.getResourceAsStream("/MPLUS1p-Regular.ttf")) {
-            if (fontStream != null)
-                return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new Font("SansSerif", style, (int) size);
+        return FontManager.getRegularFont(style, size);
     }
 
     private Font getRegularFont(int style, float size) {
-        try (InputStream fontStream = NostalgiaLauncherDesktop.class.getResourceAsStream("/MPLUS1p-Regular.ttf")) {
-            if (fontStream != null)
-                return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new Font("SansSerif", style, (int) size);
+        return FontManager.getRegularFont(style, size);
     }
 
     private BufferedImage applyBlur(BufferedImage source) {
@@ -404,16 +463,29 @@ public class NostalgiaLauncherDesktop extends JFrame {
             githubTranslationName = settings.getProperty("githubTranslationName");
             String vsListJson = settings.getProperty("customVersionsSourcesList");
             if (vsListJson != null && !vsListJson.isEmpty()) {
-                customVersionsSourcesList = new com.google.gson.Gson().fromJson(vsListJson, new com.google.gson.reflect.TypeToken<List<String>>(){}.getType());
+                customVersionsSourcesList = new com.google.gson.Gson().fromJson(vsListJson,
+                        new com.google.gson.reflect.TypeToken<List<String>>() {
+                        }.getType());
             } else {
                 customVersionsSourcesList = new ArrayList<>();
             }
             String clListJson = settings.getProperty("customLauncherPathsList");
             if (clListJson != null && !clListJson.isEmpty()) {
-                customLauncherPathsList = new com.google.gson.Gson().fromJson(clListJson, new com.google.gson.reflect.TypeToken<List<String>>(){}.getType());
+                customLauncherPathsList = new com.google.gson.Gson().fromJson(clListJson,
+                        new com.google.gson.reflect.TypeToken<List<String>>() {
+                        }.getType());
             } else {
                 customLauncherPathsList = new ArrayList<>();
             }
+            String cpListJson = settings.getProperty("customLauncherProfilesList");
+            if (cpListJson != null && !cpListJson.isEmpty()) {
+                customLauncherProfilesList = new com.google.gson.Gson().fromJson(cpListJson,
+                        new com.google.gson.reflect.TypeToken<List<CustomLauncherProfile>>() {
+                        }.getType());
+            } else {
+                customLauncherProfilesList = new ArrayList<>();
+            }
+            selectedLauncherProfileName = settings.getProperty("selectedLauncherProfileName");
         } catch (IOException | NumberFormatException e) {
             backgroundMode = "Default";
             useDefaultVersionsSource = true;
@@ -464,10 +536,21 @@ public class NostalgiaLauncherDesktop extends JFrame {
             }
 
             if (customVersionsSourcesList != null) {
-                settings.setProperty("customVersionsSourcesList", new com.google.gson.Gson().toJson(customVersionsSourcesList));
+                settings.setProperty("customVersionsSourcesList",
+                        new com.google.gson.Gson().toJson(customVersionsSourcesList));
             }
             if (customLauncherPathsList != null) {
-                settings.setProperty("customLauncherPathsList", new com.google.gson.Gson().toJson(customLauncherPathsList));
+                settings.setProperty("customLauncherPathsList",
+                        new com.google.gson.Gson().toJson(customLauncherPathsList));
+            }
+            if (customLauncherProfilesList != null) {
+                settings.setProperty("customLauncherProfilesList",
+                        new com.google.gson.Gson().toJson(customLauncherProfilesList));
+            }
+            if (selectedLauncherProfileName != null) {
+                settings.setProperty("selectedLauncherProfileName", selectedLauncherProfileName);
+            } else {
+                settings.remove("selectedLauncherProfileName");
             }
 
             settings.store(fos, null);
@@ -534,6 +617,25 @@ public class NostalgiaLauncherDesktop extends JFrame {
         instancesPanel = new InstancesPanel(localeManager, themeName, scaleFactor);
         proxyPanel = new ProxyPanel(localeManager, themeName, scaleFactor);
 
+        versionComboBox.addActionListener(e -> {
+            Version selected = (Version) versionComboBox.getSelectedItem();
+            if (selected != null) {
+                if ("ANOTHER".equals(executableSource)) {
+                    selectedLauncherProfileName = selected.getName();
+                } else {
+                    lastPlayedVersionName = selected.getName();
+                }
+                saveSettings();
+                loadNickname();
+                if (worldsPanel != null) {
+                    worldsPanel.loadWorlds();
+                }
+                if (texturesPanel != null) {
+                    texturesPanel.resetView();
+                }
+            }
+        });
+
         instancesPanel.setOnInstanceChanged(() -> {
             saveSettings();
             initializeUI();
@@ -551,6 +653,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 postLaunchAction, enableDebugging, scaleFactor, themeName, CURRENT_VERSION,
                 backgroundMode, customBackgroundColor, customTranslationPath, githubTranslationUrl,
                 githubTranslationName,
+                customLauncherProfilesList,
+                selectedLauncherProfileName,
                 localeManager, this::onSettingsSaved);
 
         contentPanel.add(homePanel, NavigationPanel.NAV_HOME);
@@ -589,7 +693,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     proxyStatusWidget.setBounds(x, y, size.width, size.height);
                 } else {
                     int x = Math.max(0, Math.min(proxyStatusWidget.getX(), getWidth() - proxyStatusWidget.getWidth()));
-                    int y = Math.max(0, Math.min(proxyStatusWidget.getY(), getHeight() - proxyStatusWidget.getHeight()));
+                    int y = Math.max(0,
+                            Math.min(proxyStatusWidget.getY(), getHeight() - proxyStatusWidget.getHeight()));
                     proxyStatusWidget.setLocation(x, y);
                 }
             }
@@ -647,6 +752,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
         executableSource = updatedSettings.getExecutableSource();
         customLauncherPath = updatedSettings.getCustomLauncherPath();
         customLauncherPathsList = updatedSettings.getCustomLauncherPathsList();
+        customLauncherProfilesList = updatedSettings.getCustomLauncherProfilesList();
+        selectedLauncherProfileName = updatedSettings.getSelectedLauncherProfileName();
         postLaunchAction = updatedSettings.getPostLaunchAction();
         enableDebugging = updatedSettings.isEnableDebugging();
         scaleFactor = updatedSettings.getScaleFactor();
@@ -772,8 +879,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private void loadNickname() {
         try {
-            File optionsFile = new File(
-                    InstanceManager.getInstance().resolvePath("game/storage/games/com.mojang/minecraftpe/options.txt"));
+            File optionsFile = getOptionsFile();
             if (optionsFile.exists()) {
                 List<String> lines = Files.readAllLines(optionsFile.toPath());
                 for (String line : lines) {
@@ -792,11 +898,10 @@ public class NostalgiaLauncherDesktop extends JFrame {
             String nickname = nicknameField.getText().trim();
             if (nickname.isEmpty())
                 nickname = "Steve";
-            File optionsDir = new File(
-                    InstanceManager.getInstance().resolvePath("game/storage/games/com.mojang/minecraftpe"));
-            if (!optionsDir.exists())
-                optionsDir.mkdirs();
-            File optionsFile = new File(optionsDir, "options.txt");
+            File optionsFile = getOptionsFile();
+            File parentDir = optionsFile.getParentFile();
+            if (parentDir != null && !parentDir.exists())
+                parentDir.mkdirs();
             List<String> lines = new ArrayList<>();
             if (optionsFile.exists()) {
                 List<String> existing = Files.readAllLines(optionsFile.toPath());
@@ -818,6 +923,15 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 statusLabel.setText(localeManager.get("status.loadingVersions"));
                 refreshButton.setEnabled(false);
                 addVersionButton.setEnabled(false);
+                if ("ANOTHER".equals(executableSource)) {
+                    List<Version> profileVersions = new ArrayList<>();
+                    if (customLauncherProfilesList != null) {
+                        for (CustomLauncherProfile profile : customLauncherProfilesList) {
+                            profileVersions.add(new Version(profile.getName(), ""));
+                        }
+                    }
+                    return profileVersions;
+                }
                 String source = useDefaultVersionsSource ? DEFAULT_VERSIONS_URL : customVersionsSource;
                 return versionManager.loadVersions(source);
             }
@@ -946,41 +1060,75 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     });
                 } else if ("CUSTOM".equals(executableSource)) {
                     File customExe = new File(customLauncherPath);
-                    if (!customExe.exists())
+                    if (customExe.isDirectory() || !customExe.exists())
                         throw new IOException(localeManager.get("error.invalidFilePath") + ": " + customLauncherPath);
+                } else if ("ANOTHER".equals(executableSource)) {
+                    CustomLauncherProfile selectedProfile = null;
+                    if (customLauncherProfilesList != null) {
+                        for (CustomLauncherProfile p : customLauncherProfilesList) {
+                            if (p.getName().equals(version.getName())) {
+                                selectedProfile = p;
+                                break;
+                            }
+                        }
+                    }
+                    if (selectedProfile == null) {
+                        throw new IOException(localeManager.get("error.noExecutableSelected"));
+                    }
+                    File customExe = new File(selectedProfile.getExecutablePath());
+                    if (customExe.isDirectory() || !customExe.exists()) {
+                        throw new IOException(localeManager.get("error.invalidFilePath") + ": "
+                                + selectedProfile.getExecutablePath());
+                    }
+                    List<String> missingConditions = new ArrayList<>();
+                    if (selectedProfile.getRequiredPaths() != null) {
+                        for (String path : selectedProfile.getRequiredPaths()) {
+                            File reqFile = new File(gameDir, path);
+                            if (!reqFile.exists()) {
+                                missingConditions.add(path);
+                            }
+                        }
+                    }
+                    if (!missingConditions.isEmpty()) {
+                        throw new IOException(localeManager.get("error.launchConditionsNotMet").replace("%s",
+                                String.join(", ", missingConditions)));
+                    }
+                    customLauncherPath = selectedProfile.getExecutablePath();
                 }
 
                 if (isCancelled())
                     return null;
                 SwingUtilities.invokeLater(() -> statusLabel.setText(localeManager.get("status.checkingInstallation")));
                 publish(15);
-                if (!versionManager.isVersionInstalled(version)) {
-                    SwingUtilities.invokeLater(() -> {
-                        statusLabel.setText(localeManager.get("status.downloading", version.getName()));
-                        progressBar.setString(localeManager.get("progress.downloading"));
-                    });
-                    publish(20);
-                    File apkFile = versionManager.downloadVersion(version, progress -> {
-                        int progressValue = 20 + (int) (progress * 45);
-                        publish(progressValue);
-                    }, () -> isCancelled());
+                if (!"ANOTHER".equals(executableSource)) {
+                    if (!versionManager.isVersionInstalled(version)) {
+                        SwingUtilities.invokeLater(() -> {
+                            statusLabel.setText(localeManager.get("status.downloading", version.getName()));
+                            progressBar.setString(localeManager.get("progress.downloading"));
+                        });
+                        publish(20);
+                        File apkFile = versionManager.downloadVersion(version, progress -> {
+                            int progressValue = 20 + (int) (progress * 45);
+                            publish(progressValue);
+                        }, () -> isCancelled());
+                        if (isCancelled())
+                            return null;
+                        SwingUtilities.invokeLater(() -> {
+                            statusLabel.setText(localeManager.get("status.extracting"));
+                            progressBar.setString(localeManager.get("progress.extracting"));
+                        });
+                        publish(65);
+                        versionManager.extractVersion(apkFile, gameDir, () -> isCancelled());
+                    }
                     if (isCancelled())
                         return null;
                     SwingUtilities.invokeLater(() -> {
-                        statusLabel.setText(localeManager.get("status.extracting"));
-                        progressBar.setString(localeManager.get("progress.extracting"));
+                        statusLabel.setText(localeManager.get("status.preparingDir"));
+                        progressBar.setString(localeManager.get("progress.preparing"));
                     });
-                    publish(65);
-                    versionManager.extractVersion(apkFile, gameDir, () -> isCancelled());
+                    publish(80);
+                    versionManager.prepareGameDir(version, gameDir);
                 }
-                if (isCancelled())
-                    return null;
-                SwingUtilities.invokeLater(() -> {
-                    statusLabel.setText(localeManager.get("status.preparingDir"));
-                    progressBar.setString(localeManager.get("progress.preparing"));
-                });
-                publish(80);
-                versionManager.prepareGameDir(version, gameDir);
                 SwingUtilities.invokeLater(() -> {
                     statusLabel.setText(localeManager.get("status.setupNickname"));
                     progressBar.setString(localeManager.get("progress.settingUp"));
@@ -994,7 +1142,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 publish(95);
 
                 String launcherPath = null;
-                if ("CUSTOM".equals(executableSource) || "COMPILED".equals(executableSource))
+                if ("CUSTOM".equals(executableSource) || "COMPILED".equals(executableSource)
+                        || "ANOTHER".equals(executableSource))
                     launcherPath = customLauncherPath;
                 File exitFile = new File(gameDir, "exit.tmp");
                 if (exitFile.exists()) {
@@ -1146,7 +1295,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpGet httpGet = new HttpGet(url);
-            httpGet.setHeader("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            httpGet.setHeader("User-Agent",
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
             try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
                 HttpEntity entity = response.getEntity();
                 if (entity != null) {
@@ -1196,6 +1346,10 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     File parent = outFile.getParentFile();
                     if (parent != null && !parent.exists())
                         parent.mkdirs();
+
+                    if (outFile.exists() && outFile.isDirectory()) {
+                        deleteRecursive(outFile);
+                    }
 
                     try (FileOutputStream fos = new FileOutputStream(outFile)) {
                         byte[] buffer = new byte[4096];
@@ -1253,7 +1407,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 + "<p>NOSTALGIALAUNCHER IS NOT RESPONSIBLE FOR ANY GAME-RELATED ISSUES. "
                 + "WE ARE NOT AFFILIATED WITH THE GAME ITSELF. "
                 + "NOSTALGIALAUNCHER ONLY AUTOMATES THE PROCESS OF LAUNCHING THE GAME "
-                + "USING THIRD-PARTY SOFTWARE CALLED NINECRAFT, "
+                + "USING THIRD-PARTY SOFTWARE CALLED NINECRAFT (BY DEFAULT), "
                 + "WHICH IS RESPONSIBLE FOR RUNNING THE GAME VERSIONS.</p>"
                 + "<p style='margin-top: 8px;'>WE DO NOT AFFECT THE FUNCTIONALITY OF THE GAME VERSIONS "
                 + "AND DO NOT INFLUENCE WHETHER THE GAME RUNS PROPERLY ON YOUR DEVICE.</p>"
@@ -1364,11 +1518,20 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     private static class StartupLoadingWindow extends JWindow {
-        private int angle = 0;
         private final Timer timer;
+        private static Image logoImage = null;
+        static {
+            try (java.io.InputStream is = StartupLoadingWindow.class.getResourceAsStream("/app_icon.jpg")) {
+                if (is != null) {
+                    logoImage = javax.imageio.ImageIO.read(is);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
 
         public StartupLoadingWindow() {
-            setSize(180, 180);
+            setSize(360, 110);
             setLocationRelativeTo(null);
 
             JPanel content = new JPanel() {
@@ -1378,31 +1541,53 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-                    g2.setColor(new Color(45, 45, 45));
+                    g2.setColor(new Color(30, 30, 30));
                     g2.fillRect(0, 0, getWidth(), getHeight());
 
-                    g2.setColor(new Color(255, 255, 255, 20));
+                    g2.setColor(new Color(60, 60, 60));
                     g2.drawRect(0, 0, getWidth() - 1, getHeight() - 1);
 
-                    int size = 50;
-                    int x = (getWidth() - size) / 2;
-                    int y = (getHeight() - size) / 2;
+                    String text = "NostalgiaLauncher";
+                    g2.setFont(new Font("SansSerif", Font.BOLD, 22));
+                    FontMetrics fm = g2.getFontMetrics();
+                    int textW = fm.stringWidth(text);
 
-                    g2.setColor(new Color(255, 255, 255, 60));
-                    g2.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-                    g2.drawOval(x, y, size, size);
+                    int totalW = (logoImage != null) ? (36 + 14 + textW) : textW;
+                    int barW = totalW;
+                    int barH = 6;
+                    int barX = (getWidth() - barW) / 2;
+                    int barY = 75;
 
-                    g2.setColor(Color.WHITE);
-                    g2.drawArc(x, y, size, size, angle, 270);
+                    if (logoImage != null) {
+                        g2.drawImage(logoImage, barX, 22, 36, 36, null);
+                        g2.setColor(Color.WHITE);
+                        g2.drawString(text, barX + 50, 48);
+                    } else {
+                        g2.setColor(Color.WHITE);
+                        g2.drawString(text, barX, 48);
+                    }
+
+                    g2.setColor(new Color(50, 50, 50));
+                    g2.fillRect(barX, barY, barW, barH);
+
+                    g2.setColor(new Color(70, 70, 70));
+                    g2.drawRect(barX, barY, barW, barH);
+
+                    g2.setColor(new Color(160, 160, 160));
+                    int animW = 80;
+                    int animX = barX + (int) ((System.currentTimeMillis() / 4) % (barW + animW)) - animW;
+
+                    g2.setClip(barX, barY, barW, barH);
+                    g2.fillRect(animX, barY, animW, barH);
+                    g2.setClip(null);
 
                     g2.dispose();
                 }
             };
-            content.setBackground(new Color(45, 45, 45));
+            content.setBackground(new Color(30, 30, 30));
             setContentPane(content);
 
             timer = new Timer(30, e -> {
-                angle = (angle - 8) % 360;
                 content.repaint();
             });
             timer.start();
@@ -1449,12 +1634,14 @@ public class NostalgiaLauncherDesktop extends JFrame {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(new Color(0, 0, 0, 128));
             g2.fillRect(0, 0, getWidth(), getHeight());
-            int size = 50;
-            int x = (getWidth() - size) / 2;
-            int y = (getHeight() - size) / 2;
+            double size = 50.0;
+            double x = (getWidth() - size) / 2.0;
+            double y = (getHeight() - size) / 2.0;
             g2.setColor(Color.WHITE);
             g2.setStroke(new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g2.drawArc(x, y, size, size, angle, 270);
+            java.awt.geom.Arc2D.Double arc = new java.awt.geom.Arc2D.Double(
+                    x, y, size, size, angle, 270, java.awt.geom.Arc2D.OPEN);
+            g2.draw(arc);
         }
 
         @Override

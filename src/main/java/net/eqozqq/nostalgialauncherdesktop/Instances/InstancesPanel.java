@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.util.List;
 
 import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
+import net.eqozqq.nostalgialauncherdesktop.FontManager;
 
 public class InstancesPanel extends JPanel {
     private final LocaleManager localeManager;
@@ -374,13 +375,7 @@ public class InstancesPanel extends JPanel {
     }
 
     private Font getFont(int style, float size) {
-        try (InputStream fontStream = getClass().getResourceAsStream("/MPLUS1p-Regular.ttf")) {
-            if (fontStream != null) {
-                return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-            }
-        } catch (Exception e) {
-        }
-        return new Font("SansSerif", style, (int) size);
+        return FontManager.getRegularFont(style, size);
     }
 
     private class InstanceGridRenderer extends JPanel implements ListCellRenderer<String> {

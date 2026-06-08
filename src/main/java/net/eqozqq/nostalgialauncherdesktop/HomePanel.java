@@ -72,25 +72,11 @@ public class HomePanel extends JPanel {
     }
 
     private Font getMinecraftFont(int style, float size) {
-        try (InputStream fontStream = HomePanel.class.getResourceAsStream("/MPLUS1p-Regular.ttf")) {
-            if (fontStream != null) {
-                return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new Font("SansSerif", style, (int) size);
+        return FontManager.getRegularFont(style, size);
     }
 
     private Font getRegularFont(int style, float size) {
-        try (InputStream fontStream = HomePanel.class.getResourceAsStream("/MPLUS1p-Regular.ttf")) {
-            if (fontStream != null) {
-                return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new Font("SansSerif", style, (int) size);
+        return FontManager.getRegularFont(style, size);
     }
 
     private JPanel createContentPanel() {
@@ -109,27 +95,87 @@ public class HomePanel extends JPanel {
     }
 
     private JPanel createLogoPanel() {
-        JPanel logoPanel = new JPanel();
-        logoPanel.setLayout(new BoxLayout(logoPanel, BoxLayout.Y_AXIS));
+        JPanel logoPanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+                String title = localeManager.get("launcher.logo", "Nostalgia Launcher");
+                String subtitle = localeManager.get("launcher.subtitle", "Minecraft Pocket Edition");
+
+                Font titleFont = getMinecraftFont(Font.PLAIN, (float) (42 * scaleFactor));
+                g2.setFont(titleFont);
+                FontMetrics titleFm = g2.getFontMetrics();
+                int titleW = titleFm.stringWidth(title);
+
+                float low = 1.0f;
+                float high = 100.0f;
+                float bestSize = (float) (18 * scaleFactor);
+                Font baseSubFont = getRegularFont(Font.PLAIN, 12);
+                for (int i = 0; i < 10; i++) {
+                    float mid = (low + high) / 2;
+                    Font testFont = baseSubFont.deriveFont(mid);
+                    g2.setFont(testFont);
+                    int w = g2.getFontMetrics().stringWidth(subtitle);
+                    if (w < titleW) {
+                        bestSize = mid;
+                        low = mid;
+                    } else {
+                        high = mid;
+                    }
+                }
+
+                if (bestSize > 32 * scaleFactor) {
+                    bestSize = (float) (32 * scaleFactor);
+                }
+
+                Font finalSubFont = baseSubFont.deriveFont(bestSize);
+
+                g2.setFont(titleFont);
+                g2.setColor(isDark ? Color.WHITE : Color.BLACK);
+                int titleX = (getWidth() - titleW) / 2;
+                g2.drawString(title, titleX, titleFm.getAscent());
+
+                g2.setFont(finalSubFont);
+                g2.setColor(isDark ? new Color(220, 220, 220) : new Color(50, 50, 50));
+                FontMetrics subFm = g2.getFontMetrics();
+                int subW = subFm.stringWidth(subtitle);
+                int subX = (getWidth() - subW) / 2;
+                g2.drawString(subtitle, subX, titleFm.getHeight() + (int) (5 * scaleFactor) + subFm.getAscent());
+
+                g2.dispose();
+            }
+
+            @Override
+            public Dimension getPreferredSize() {
+                Font titleFont = getMinecraftFont(Font.PLAIN, (float) (42 * scaleFactor));
+                Font subtitleFont = getRegularFont(Font.PLAIN, (float) (18 * scaleFactor));
+                String title = localeManager.get("launcher.logo", "NostalgiaLauncher");
+
+                FontMetrics titleFm = Toolkit.getDefaultToolkit().getFontMetrics(titleFont);
+                FontMetrics subFm = Toolkit.getDefaultToolkit().getFontMetrics(subtitleFont);
+
+                int titleW = titleFm.stringWidth(title) + 20;
+                int titleH = titleFm.getHeight();
+                int subH = subFm.getHeight();
+
+                return new Dimension(titleW, titleH + (int) (5 * scaleFactor) + subH + 10);
+            }
+
+            @Override
+            public Dimension getMaximumSize() {
+                return getPreferredSize();
+            }
+
+            @Override
+            public Dimension getMinimumSize() {
+                return getPreferredSize();
+            }
+        };
         logoPanel.setOpaque(false);
-
-        JLabel logoLabel = new JLabel(localeManager.get("launcher.logo", "Nostalgia Launcher"));
-        logoLabel.setFont(getMinecraftFont(Font.PLAIN, (float) (42 * scaleFactor)));
-        logoLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        logoLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
-
-        logoLabel.setOpaque(false);
-        logoPanel.add(logoLabel);
-
-        JLabel subtitleLabel = new JLabel(localeManager.get("launcher.subtitle", "Minecraft Pocket Edition"));
-        subtitleLabel.setFont(getRegularFont(Font.PLAIN, (float) (18 * scaleFactor)));
-        subtitleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        subtitleLabel.setForeground(isDark ? new Color(220, 220, 220) : new Color(50, 50, 50));
-        subtitleLabel.setOpaque(false);
-
-        logoPanel.add(Box.createVerticalStrut((int) (5 * scaleFactor)));
-        logoPanel.add(subtitleLabel);
-
         return logoPanel;
     }
 
@@ -299,7 +345,8 @@ public class HomePanel extends JPanel {
         infoPanel.setBorder(BorderFactory.createEmptyBorder((int) (10 * scaleFactor), (int) (20 * scaleFactor),
                 (int) (10 * scaleFactor), (int) (20 * scaleFactor)));
 
-        JLabel versionLabel = new JLabel(String.format("NostalgiaLauncher Desktop v%s by eqozqq", localeManager.get("launcher.version", "1.9.5")));
+        JLabel versionLabel = new JLabel(String.format("NostalgiaLauncher Desktop v%s by eqozqq",
+                localeManager.get("launcher.version", "1.10.0")));
         versionLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
         versionLabel.setFont(getRegularFont(Font.PLAIN, (float) (12 * scaleFactor)));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

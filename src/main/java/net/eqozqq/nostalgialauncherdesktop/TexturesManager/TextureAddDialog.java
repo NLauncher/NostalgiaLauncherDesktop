@@ -1,6 +1,7 @@
 package net.eqozqq.nostalgialauncherdesktop.TexturesManager;
 
 import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
+import net.eqozqq.nostalgialauncherdesktop.NativeFileChooser;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 
 import javax.swing.*;
@@ -59,11 +60,11 @@ public class TextureAddDialog extends JDialog {
 
         JButton browseButton = new JButton(localeManager.get("button.browse", "Browse"));
         browseButton.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser();
-            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-                    "Archives (zip, rar, tar, 7z)", "zip", "rar", "tar", "7z", "mcpack"));
-            if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-                selectedFile = chooser.getSelectedFile();
+            selectedFile = NativeFileChooser.chooseFile(this,
+                    localeManager.get("dialog.addTexture.title", "Add Texture"),
+                    new String[]{".zip", ".rar", ".tar", ".7z", ".mcpack"},
+                    "*.zip;*.rar;*.tar;*.7z;*.mcpack");
+            if (selectedFile != null) {
                 pathField.setText(selectedFile.getName());
                 if (nameField.getText().trim().isEmpty()) {
                     String name = selectedFile.getName();
@@ -104,7 +105,7 @@ public class TextureAddDialog extends JDialog {
             return;
         }
 
-        File texturesDir = new File(InstanceManager.getDataRoot(), "textures");
+        File texturesDir = net.eqozqq.nostalgialauncherdesktop.NostalgiaLauncherDesktop.getInstance().getTexturesDirectory();
         if (!texturesDir.exists())
             texturesDir.mkdirs();
 

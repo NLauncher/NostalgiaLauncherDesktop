@@ -15,6 +15,7 @@ import java.util.Date;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
+import net.eqozqq.nostalgialauncherdesktop.FontManager;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 import org.apache.commons.io.FileUtils;
 import org.spout.nbt.CompoundTag;
@@ -657,7 +658,7 @@ public class WorldsManagerPanel extends JPanel {
 
     public void loadWorlds() {
         listModel.clear();
-        File worldsDir = new File(InstanceManager.getInstance().resolvePath(WORLDS_PATH));
+        File worldsDir = net.eqozqq.nostalgialauncherdesktop.NostalgiaLauncherDesktop.getInstance().getWorldsDirectory();
         if (worldsDir.exists() && worldsDir.isDirectory()) {
             File[] worldFolders = worldsDir.listFiles(File::isDirectory);
             if (worldFolders != null) {
@@ -842,14 +843,7 @@ public class WorldsManagerPanel extends JPanel {
     }
 
     private Font getFont(int style, float size) {
-        try (InputStream fontStream = getClass().getResourceAsStream("/MPLUS1p-Regular.ttf")) {
-            if (fontStream != null) {
-                return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new Font("SansSerif", style, (int) size);
+        return FontManager.getRegularFont(style, size);
     }
 
     private class WorldGridRenderer extends JPanel implements ListCellRenderer<WorldEntry> {

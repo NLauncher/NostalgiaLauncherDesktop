@@ -138,7 +138,7 @@ public class VersionManager {
         return Collections.emptyList();
     }
 
-    private List<Version> loadCustomVersions() {
+    public List<Version> loadCustomVersions() {
         File customVersionsFile = new File(InstanceManager.getInstance().resolvePath(CUSTOM_VERSIONS_FILE));
         if (customVersionsFile.exists()) {
             try (FileReader reader = new FileReader(customVersionsFile)) {

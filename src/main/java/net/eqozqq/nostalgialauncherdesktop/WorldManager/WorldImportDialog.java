@@ -2,6 +2,7 @@ package net.eqozqq.nostalgialauncherdesktop.WorldManager;
 
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
+import net.eqozqq.nostalgialauncherdesktop.NativeFileChooser;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -41,11 +42,11 @@ public class WorldImportDialog extends JDialog {
 
         JButton browseButton = new JButton(localeManager.get("button.browse", "Browse"));
         browseButton.addActionListener(e -> {
-            JFileChooser chooser = new JFileChooser();
-            chooser.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
-                    "Archives (zip, tar, 7z)", "zip", "tar", "gz", "tgz", "7z"));
-            if (chooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
-                selectedArchive = chooser.getSelectedFile();
+            selectedArchive = NativeFileChooser.chooseFile(this,
+                    localeManager.get("dialog.importWorld.title", "Import World"),
+                    new String[]{".zip", ".tar", ".gz", ".tgz", ".7z", ".rar"},
+                    "*.zip;*.tar;*.gz;*.tgz;*.7z;*.rar");
+            if (selectedArchive != null) {
                 fileField.setText(selectedArchive.getName());
             }
         });
@@ -89,7 +90,7 @@ public class WorldImportDialog extends JDialog {
         String savedInstance = instanceManager.getActiveInstance();
         instanceManager.setActiveInstance(selectedInstanceName);
 
-        File targetWorldsDir = new File(instanceManager.resolvePath("game/storage/games/com.mojang/minecraftWorlds/"));
+        File targetWorldsDir = net.eqozqq.nostalgialauncherdesktop.NostalgiaLauncherDesktop.getInstance().getWorldsDirectory();
         if (!targetWorldsDir.exists())
             targetWorldsDir.mkdirs();
 

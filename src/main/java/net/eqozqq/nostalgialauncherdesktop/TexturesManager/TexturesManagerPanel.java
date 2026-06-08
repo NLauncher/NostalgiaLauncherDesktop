@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
+import net.eqozqq.nostalgialauncherdesktop.FontManager;
 import net.eqozqq.nostalgialauncherdesktop.Version;
 import net.eqozqq.nostalgialauncherdesktop.VersionManager;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
@@ -388,6 +389,10 @@ public class TexturesManagerPanel extends JPanel {
 
     private void loadUserTextures() {
         listModel.clear();
+        texturesDir = net.eqozqq.nostalgialauncherdesktop.NostalgiaLauncherDesktop.getInstance().getTexturesDirectory();
+        if (!texturesDir.exists()) {
+            texturesDir.mkdirs();
+        }
         if (texturesDir.exists() && texturesDir.isDirectory()) {
             File[] files = texturesDir
                     .listFiles((dir, name) -> name.endsWith(".zip") || name.endsWith(".rar") || name.endsWith(".tar") ||
@@ -402,14 +407,7 @@ public class TexturesManagerPanel extends JPanel {
     }
 
     private Font getFont(int style, float size) {
-        try (InputStream fontStream = getClass().getResourceAsStream("/MPLUS1p-Regular.ttf")) {
-            if (fontStream != null) {
-                return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new Font("SansSerif", style, (int) size);
+        return FontManager.getRegularFont(style, size);
     }
 
     private class VersionGridRenderer extends JPanel implements ListCellRenderer<File> {

@@ -2,6 +2,7 @@ package net.eqozqq.nostalgialauncherdesktop.Proxy;
 
 import com.formdev.flatlaf.extras.FlatSVGIcon;
 import net.eqozqq.nostalgialauncherdesktop.LocaleManager;
+import net.eqozqq.nostalgialauncherdesktop.FontManager;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 
 import javax.swing.*;
@@ -426,14 +427,7 @@ public class ProxyPanel extends JPanel {
     }
 
     private Font getFont(int style, float size) {
-        try (InputStream fontStream = getClass().getResourceAsStream("/MPLUS1p-Regular.ttf")) {
-            if (fontStream != null) {
-                return Font.createFont(Font.TRUETYPE_FONT, fontStream).deriveFont(style, size);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new Font("SansSerif", style, (int) size);
+        return FontManager.getRegularFont(style, size);
     }
 
     private class ServerGridRenderer extends JPanel implements ListCellRenderer<Server> {
