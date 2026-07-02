@@ -37,6 +37,7 @@ public class NavigationPanel extends JPanel {
     public static final String NAV_TEXTURES = "textures";
     public static final String NAV_INSTANCES = "instances";
     public static final String NAV_PROXY = "proxy";
+    public static final String NAV_MARKETPLACE = "marketplace";
     public static final String NAV_SETTINGS = "settings";
 
     public NavigationPanel(LocaleManager localeManager, double scaleFactor, String themeName) {
@@ -80,6 +81,10 @@ public class NavigationPanel extends JPanel {
                 "icons/proxy_outline.svg", "icons/proxy_fill.svg",
                 localeManager.get("nav.proxy"), NAV_PROXY);
 
+        NavButton marketplaceBtn = createNavButton(
+                "icons/storefront_outline.svg", "icons/storefront_fill.svg",
+                localeManager.get("nav.marketplace", "Marketplace"), NAV_MARKETPLACE);
+
         NavButton settingsBtn = createNavButton(
                 "icons/settings_outline.svg", "icons/settings_fill.svg",
                 localeManager.get("nav.settings"), NAV_SETTINGS);
@@ -88,6 +93,7 @@ public class NavigationPanel extends JPanel {
         addNavButton(topSection, worldsBtn);
         addNavButton(topSection, texturesBtn);
         addNavButton(topSection, instancesBtn);
+        addNavButton(topSection, marketplaceBtn);
         addNavButton(topSection, proxyBtn);
 
         topSection.add(Box.createVerticalStrut((int) (20 * scaleFactor)));
@@ -106,6 +112,7 @@ public class NavigationPanel extends JPanel {
         navButtons.add(worldsBtn);
         navButtons.add(texturesBtn);
         navButtons.add(instancesBtn);
+        navButtons.add(marketplaceBtn);
         navButtons.add(proxyBtn);
         navButtons.add(settingsBtn);
 

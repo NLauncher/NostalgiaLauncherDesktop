@@ -38,6 +38,7 @@ import net.eqozqq.nostalgialauncherdesktop.Instances.InstancesPanel;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 import net.eqozqq.nostalgialauncherdesktop.Proxy.ProxyPanel;
 import net.eqozqq.nostalgialauncherdesktop.Proxy.ProxyManager;
+import net.eqozqq.nostalgialauncherdesktop.marketplace.MarketplacePanel;
 
 public class NostalgiaLauncherDesktop extends JFrame {
     private JTextField nicknameField;
@@ -53,6 +54,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private WorldsManagerPanel worldsPanel;
     private TexturesManagerPanel texturesPanel;
     private InstancesPanel instancesPanel;
+    private MarketplacePanel marketplacePanel;
     private ProxyPanel proxyPanel;
     private SettingsPanel settingsPanel;
     private JPanel contentPanel;
@@ -80,6 +82,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private String postLaunchAction;
     private boolean enableDebugging;
+    private boolean enableDiscordIntegration;
     private String lastPlayedVersionName;
     private double scaleFactor;
     private String themeName;
@@ -91,7 +94,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private SwingWorker<Void, Integer> launchWorker;
 
-    private static String CURRENT_VERSION = "1.10.0";
+    private static String CURRENT_VERSION = "1.10.1";
 
     private static NostalgiaLauncherDesktop instance;
 
@@ -165,38 +168,50 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private static final String DEFAULT_LAUNCHER_URL_LINUX = "https://github.com/NLauncher/components/raw/main/ninecraft-linux.zip";
 
     public static void openURL(String url) {
+        String os = System.getProperty("os.name").toLowerCase();
+        try {
+            if (os.contains("nix") || os.contains("nux")) {
+                new ProcessBuilder("xdg-open", url).start();
+                return;
+            } else if (os.contains("mac")) {
+                new ProcessBuilder("open", url).start();
+                return;
+            } else if (os.contains("win")) {
+                Runtime.getRuntime().exec(new String[] { "rundll32", "url.dll,FileProtocolHandler", url });
+                return;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         try {
             if (java.awt.Desktop.isDesktopSupported()
                     && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.BROWSE)) {
                 java.awt.Desktop.getDesktop().browse(new java.net.URI(url));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void openFolder(File folder) {
+        String os = System.getProperty("os.name").toLowerCase();
+        try {
+            if (os.contains("nix") || os.contains("nux")) {
+                new ProcessBuilder("xdg-open", folder.getAbsolutePath()).start();
+                return;
+            } else if (os.contains("mac")) {
+                new ProcessBuilder("open", folder.getAbsolutePath()).start();
+                return;
+            } else if (os.contains("win")) {
+                new ProcessBuilder("explorer.exe", folder.getAbsolutePath()).start();
                 return;
             }
         } catch (Exception e) {
+            e.printStackTrace();
         }
-        String os = System.getProperty("os.name").toLowerCase();
         try {
-            if (os.contains("win")) {
-                Runtime.getRuntime().exec(new String[] { "rundll32", "url.dll,FileProtocolHandler", url });
-            } else if (os.contains("mac")) {
-                Runtime.getRuntime().exec(new String[] { "open", url });
-            } else {
-                String[] browsers = { "xdg-open", "sensible-browser", "x-www-browser", "gnome-open", "kdesu", "firefox",
-                        "chrome", "chromium" };
-                boolean opened = false;
-                for (String browser : browsers) {
-                    try {
-                        Process p = Runtime.getRuntime().exec(new String[] { "which", browser });
-                        if (p.waitFor() == 0) {
-                            Runtime.getRuntime().exec(new String[] { browser, url });
-                            opened = true;
-                            break;
-                        }
-                    } catch (Exception e) {
-                    }
-                }
-                if (!opened) {
-                    Runtime.getRuntime().exec(new String[] { "xdg-open", url });
-                }
+            if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.OPEN)) {
+                java.awt.Desktop.getDesktop().open(folder);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -205,13 +220,14 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     public NostalgiaLauncherDesktop() {
         instance = this;
+        javax.imageio.ImageIO.setUseCache(false);
         versionManager = new VersionManager();
         gameLauncher = new GameLauncher();
         settings = new Properties();
         localeManager = LocaleManager.getInstance();
         loadSettings();
         localeManager.init(settings);
-        CURRENT_VERSION = localeManager.get("launcher.version", "1.10.0");
+        CURRENT_VERSION = localeManager.get("launcher.version", "1.10.1");
         InstanceManager.getInstance().init(settings);
         applyTheme();
         loadBackground();
@@ -223,7 +239,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
         setupLinuxIntegration();
         setGlassPane(loadingOverlay);
         showFirstLaunchDisclaimer();
-        DiscordRPCManager.getInstance().init();
+        if (enableDiscordIntegration) {
+            DiscordRPCManager.getInstance().init();
+        }
         addWindowListener(new java.awt.event.WindowAdapter() {
             @Override
             public void windowClosing(java.awt.event.WindowEvent e) {
@@ -455,6 +473,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             }
             postLaunchAction = settings.getProperty("postLaunchAction", "Do Nothing");
             enableDebugging = Boolean.parseBoolean(settings.getProperty("enableDebugging", "false"));
+            enableDiscordIntegration = Boolean.parseBoolean(settings.getProperty("enableDiscordIntegration", "true"));
             lastPlayedVersionName = settings.getProperty("lastPlayedVersionName");
             scaleFactor = Double.parseDouble(settings.getProperty("scaleFactor", "1.3"));
             themeName = settings.getProperty("themeName", "Dark");
@@ -492,6 +511,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             executableSource = "SERVER";
             postLaunchAction = "Do Nothing";
             enableDebugging = false;
+            enableDiscordIntegration = true;
             scaleFactor = 1.3;
             themeName = "Dark";
         }
@@ -517,6 +537,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 settings.setProperty("customLauncherPath", customLauncherPath);
             settings.setProperty("postLaunchAction", postLaunchAction);
             settings.setProperty("enableDebugging", String.valueOf(enableDebugging));
+            settings.setProperty("enableDiscordIntegration", String.valueOf(enableDiscordIntegration));
             if (lastPlayedVersionName != null)
                 settings.setProperty("lastPlayedVersionName", lastPlayedVersionName);
             settings.setProperty("scaleFactor", String.valueOf(scaleFactor));
@@ -615,6 +636,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         worldsPanel = new WorldsManagerPanel(localeManager, themeName, scaleFactor);
         texturesPanel = new TexturesManagerPanel(localeManager, themeName, scaleFactor);
         instancesPanel = new InstancesPanel(localeManager, themeName, scaleFactor);
+        marketplacePanel = new MarketplacePanel(localeManager, themeName, scaleFactor);
         proxyPanel = new ProxyPanel(localeManager, themeName, scaleFactor);
 
         versionComboBox.addActionListener(e -> {
@@ -650,7 +672,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 customVersionsSourcesList,
                 executableSource, customLauncherPath,
                 customLauncherPathsList,
-                postLaunchAction, enableDebugging, scaleFactor, themeName, CURRENT_VERSION,
+                postLaunchAction, enableDebugging, enableDiscordIntegration, scaleFactor, themeName, CURRENT_VERSION,
                 backgroundMode, customBackgroundColor, customTranslationPath, githubTranslationUrl,
                 githubTranslationName,
                 customLauncherProfilesList,
@@ -661,6 +683,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         contentPanel.add(worldsPanel, NavigationPanel.NAV_WORLDS);
         contentPanel.add(texturesPanel, NavigationPanel.NAV_TEXTURES);
         contentPanel.add(instancesPanel, NavigationPanel.NAV_INSTANCES);
+        contentPanel.add(marketplacePanel, NavigationPanel.NAV_MARKETPLACE);
         contentPanel.add(proxyPanel, NavigationPanel.NAV_PROXY);
         contentPanel.add(settingsPanel, NavigationPanel.NAV_SETTINGS);
 
@@ -733,6 +756,10 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 cardLayout.show(contentPanel, NavigationPanel.NAV_INSTANCES);
                 DiscordRPCManager.getInstance().updatePresence(localeManager.get("rpc.instances"));
                 break;
+            case NavigationPanel.NAV_MARKETPLACE:
+                cardLayout.show(contentPanel, NavigationPanel.NAV_MARKETPLACE);
+                discordRPCManager.updatePresence("Browsing Marketplace");
+                break;
             case NavigationPanel.NAV_PROXY:
                 cardLayout.show(contentPanel, NavigationPanel.NAV_PROXY);
                 discordRPCManager.updatePresence("In Proxy");
@@ -756,6 +783,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         selectedLauncherProfileName = updatedSettings.getSelectedLauncherProfileName();
         postLaunchAction = updatedSettings.getPostLaunchAction();
         enableDebugging = updatedSettings.isEnableDebugging();
+        enableDiscordIntegration = updatedSettings.isEnableDiscordIntegration();
         scaleFactor = updatedSettings.getScaleFactor();
         backgroundMode = updatedSettings.getBackgroundMode();
         customBackgroundColor = updatedSettings.getCustomBackgroundColor();
@@ -787,6 +815,10 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 }
                 final String activeTabName = settingsPanel.getActiveTabName();
                 SwingUtilities.invokeAndWait(() -> {
+                    DiscordRPCManager.getInstance().shutdown();
+                    if (enableDiscordIntegration) {
+                        DiscordRPCManager.getInstance().init();
+                    }
                     saveSettings();
                     loadBackground();
                     initializeUI();

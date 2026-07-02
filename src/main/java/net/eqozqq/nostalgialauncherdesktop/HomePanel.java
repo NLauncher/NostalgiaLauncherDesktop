@@ -346,7 +346,7 @@ public class HomePanel extends JPanel {
                 (int) (10 * scaleFactor), (int) (20 * scaleFactor)));
 
         JLabel versionLabel = new JLabel(String.format("NostalgiaLauncher Desktop v%s by eqozqq",
-                localeManager.get("launcher.version", "1.10.0")));
+                localeManager.get("launcher.version", "1.10.1")));
         versionLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
         versionLabel.setFont(getRegularFont(Font.PLAIN, (float) (12 * scaleFactor)));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -389,7 +389,7 @@ public class HomePanel extends JPanel {
         helpButton.setBorder(BorderFactory.createEmptyBorder(
                 (int) (8 * scaleFactor), (int) (15 * scaleFactor),
                 (int) (8 * scaleFactor), (int) (15 * scaleFactor)));
-        helpButton.addActionListener(e -> HelpDialog.show(this, localeManager));
+        helpButton.addActionListener(e -> showHelpDialog(this));
         return helpButton;
     }
 
@@ -443,5 +443,81 @@ public class HomePanel extends JPanel {
         }
         addVersionListener = listener;
         addVersionButton.addActionListener(listener);
+    }
+
+    private void showHelpDialog(Component parent) {
+        SwingUtilities.invokeLater(() -> {
+            Window parentWindow = null;
+            if (parent != null) {
+                if (parent instanceof Window) {
+                    parentWindow = (Window) parent;
+                } else {
+                    parentWindow = SwingUtilities.getWindowAncestor(parent);
+                }
+            }
+            JDialog dialog = new JDialog(parentWindow, localeManager.get("help.dialog.title", "Having a problem?"),
+                    Dialog.ModalityType.APPLICATION_MODAL);
+
+            dialog.setSize(550, 300);
+            dialog.setLocationRelativeTo(parent);
+            dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+            dialog.setResizable(false);
+
+            JPanel mainPanel = new JPanel(new BorderLayout(15, 15));
+            mainPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+            JLabel iconLabel = new JLabel(UIManager.getIcon("OptionPane.questionIcon"));
+            iconLabel.setVerticalAlignment(SwingConstants.TOP);
+            mainPanel.add(iconLabel, BorderLayout.WEST);
+
+            String docUrl = "https://nlauncher.github.io/docs/common-problems.html";
+            String discordUrl = "https://discord.gg/4fv4RrTav4";
+
+            String htmlText = "<html><body style='width: 350px; font-family: sans-serif;'>" +
+                    "<p style='margin-bottom: 10px;'>" +
+                    localeManager.get("help.dialog.text1",
+                            "If you are experiencing any issues, first check whether the solution is described on the common problems page:")
+                    +
+                    "</p>" +
+                    "<a href='" + docUrl + "'>" + docUrl + "</a>" +
+                    "</p>" +
+                    "<p>" +
+                    localeManager.get("help.dialog.text2",
+                            "If no solution is found, join our Discord server where you can describe your problem and get help from the community.")
+                    +
+                    "</p>" +
+                    "</body></html>";
+
+            JEditorPane textPane = new JEditorPane("text/html", htmlText);
+            textPane.setEditable(false);
+            textPane.setOpaque(false);
+            textPane.putClientProperty(JEditorPane.HONOR_DISPLAY_PROPERTIES, Boolean.TRUE);
+            textPane.setFont(UIManager.getFont("Label.font"));
+
+            textPane.addHyperlinkListener(e -> {
+                if (e.getEventType() == javax.swing.event.HyperlinkEvent.EventType.ACTIVATED) {
+                    NostalgiaLauncherDesktop.openURL(e.getURL().toString());
+                }
+            });
+
+            mainPanel.add(textPane, BorderLayout.CENTER);
+
+            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+
+            JButton discordButton = new JButton(localeManager.get("help.dialog.discord", "Discord"));
+            discordButton.addActionListener(e -> NostalgiaLauncherDesktop.openURL(discordUrl));
+
+            JButton okButton = new JButton("OK");
+            okButton.addActionListener(e -> dialog.dispose());
+
+            buttonPanel.add(discordButton);
+            buttonPanel.add(okButton);
+            mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+            dialog.add(mainPanel);
+            dialog.getRootPane().setDefaultButton(okButton);
+
+            dialog.setVisible(true);
+        });
     }
 }

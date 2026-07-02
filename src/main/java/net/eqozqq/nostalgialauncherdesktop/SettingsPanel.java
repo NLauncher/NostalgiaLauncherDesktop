@@ -43,6 +43,7 @@ public class SettingsPanel extends JPanel {
 
     private JComboBox<String> postLaunchActionComboBox;
     private JCheckBox enableDebuggingCheckbox;
+    private JCheckBox enableDiscordIntegrationCheckbox;
     private JSlider scaleSlider;
     private JLabel scaleLabel;
     private JButton saveButton;
@@ -72,6 +73,7 @@ public class SettingsPanel extends JPanel {
 
     private String postLaunchAction;
     private boolean enableDebugging;
+    private boolean enableDiscordIntegration;
     private double scaleFactor;
     private String themeName;
     private String currentVersion;
@@ -112,7 +114,7 @@ public class SettingsPanel extends JPanel {
             String currentExecutableSource, String currentCustomLauncherPath,
             List<String> customLauncherPathsList,
             String currentPostLaunchAction,
-            boolean currentEnableDebugging, double currentScaleFactor, String currentTheme, String currentVersion,
+            boolean currentEnableDebugging, boolean currentEnableDiscordIntegration, double currentScaleFactor, String currentTheme, String currentVersion,
             String backgroundMode, Color customBackgroundColor, String currentCustomTranslationPath,
             String currentGithubUrl, String currentGithubName,
             List<CustomLauncherProfile> customLauncherProfilesList,
@@ -135,6 +137,7 @@ public class SettingsPanel extends JPanel {
         this.useDefaultLauncher = !"CUSTOM".equals(currentExecutableSource) && !"ANOTHER".equals(currentExecutableSource);
         this.postLaunchAction = currentPostLaunchAction;
         this.enableDebugging = currentEnableDebugging;
+        this.enableDiscordIntegration = currentEnableDiscordIntegration;
         this.scaleFactor = currentScaleFactor;
         this.themeName = currentTheme;
         this.currentVersion = currentVersion;
@@ -356,6 +359,7 @@ public class SettingsPanel extends JPanel {
             this.selectedLauncherProfileName = null;
         }
         this.enableDebugging = enableDebuggingCheckbox.isSelected();
+        this.enableDiscordIntegration = enableDiscordIntegrationCheckbox.isSelected();
 
         if (defaultBgRadio.isSelected()) {
             this.backgroundMode = "Default";
@@ -1024,6 +1028,23 @@ public class SettingsPanel extends JPanel {
         gbc.anchor = GridBagConstraints.NORTHWEST;
 
         gridY++;
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 3;
+        gbc.insets = new Insets(15, 0, 15, 0);
+        card.add(new JSeparator(), gbc);
+        gbc.insets = new Insets(8, 8, 8, 8);
+
+        gridY++;
+        enableDiscordIntegrationCheckbox = new JCheckBox(localeManager.get("checkbox.enableDiscordIntegration", "Enable Discord Integration"));
+        enableDiscordIntegrationCheckbox.setSelected(this.enableDiscordIntegration);
+        enableDiscordIntegrationCheckbox.setFont(getCustomFont(Font.BOLD, 14f));
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 3;
+        card.add(enableDiscordIntegrationCheckbox, gbc);
+
+        gridY++;
         JPanel filler = new JPanel();
         filler.setOpaque(false);
         gbc.gridx = 0;
@@ -1335,6 +1356,10 @@ public class SettingsPanel extends JPanel {
         return enableDebugging;
     }
 
+    public boolean isEnableDiscordIntegration() {
+        return enableDiscordIntegration;
+    }
+
     public double getScaleFactor() {
         return scaleFactor;
     }
@@ -1588,18 +1613,7 @@ public class SettingsPanel extends JPanel {
     private void openLauncherFolder() {
         try {
             File folder = new File(net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager.getInstance().resolvePath(""));
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.OPEN)) {
-                Desktop.getDesktop().open(folder);
-            } else {
-                String os = System.getProperty("os.name").toLowerCase();
-                if (os.contains("win")) {
-                    new ProcessBuilder("explorer.exe", folder.getAbsolutePath()).start();
-                } else if (os.contains("mac")) {
-                    new ProcessBuilder("open", folder.getAbsolutePath()).start();
-                } else {
-                    new ProcessBuilder("xdg-open", folder.getAbsolutePath()).start();
-                }
-            }
+            NostalgiaLauncherDesktop.openFolder(folder);
         } catch (Exception e) {
             e.printStackTrace();
         }

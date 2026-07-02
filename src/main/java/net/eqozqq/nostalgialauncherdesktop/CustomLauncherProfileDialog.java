@@ -63,7 +63,7 @@ public class CustomLauncherProfileDialog extends JDialog {
         browseBtn.addActionListener(e -> {
             File file = NativeFileChooser.chooseFile(this,
                     localeManager.get("label.mainExecutable", "Main Executable"),
-                    new String[] { ".exe" }, "*.exe;*");
+                    null, null);
             if (file != null) {
                 exePathField.setText(file.getAbsolutePath());
             }
