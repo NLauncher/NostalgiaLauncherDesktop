@@ -44,6 +44,7 @@ jobs:
       run: sudo apt-get update && sudo apt-get install -y rpm fakeroot
 
     - name: Build and Package with Maven
+      shell: bash
       run: mvn clean package -DskipTests -Djpackage.type=${{ matrix.type }}
 
     - name: Pack Portable Linux (tar.gz)
