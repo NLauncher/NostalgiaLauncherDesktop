@@ -346,7 +346,7 @@ public class HomePanel extends JPanel {
                 (int) (10 * scaleFactor), (int) (20 * scaleFactor)));
 
         JLabel versionLabel = new JLabel(String.format("NostalgiaLauncher Desktop v%s by eqozqq",
-                localeManager.get("launcher.version", "1.10.1")));
+                localeManager.get("launcher.version", "1.10.1_01")));
         versionLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
         versionLabel.setFont(getRegularFont(Font.PLAIN, (float) (12 * scaleFactor)));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);

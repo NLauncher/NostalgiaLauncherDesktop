@@ -94,7 +94,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private SwingWorker<Void, Integer> launchWorker;
 
-    private static String CURRENT_VERSION = "1.10.1";
+    private static String CURRENT_VERSION = "1.10.1_01";
 
     private static NostalgiaLauncherDesktop instance;
 
@@ -210,7 +210,8 @@ public class NostalgiaLauncherDesktop extends JFrame {
             e.printStackTrace();
         }
         try {
-            if (java.awt.Desktop.isDesktopSupported() && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.OPEN)) {
+            if (java.awt.Desktop.isDesktopSupported()
+                    && java.awt.Desktop.getDesktop().isSupported(java.awt.Desktop.Action.OPEN)) {
                 java.awt.Desktop.getDesktop().open(folder);
             }
         } catch (Exception e) {
@@ -227,7 +228,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         localeManager = LocaleManager.getInstance();
         loadSettings();
         localeManager.init(settings);
-        CURRENT_VERSION = localeManager.get("launcher.version", "1.10.1");
+        CURRENT_VERSION = localeManager.get("launcher.version", "1.10.1_01");
         InstanceManager.getInstance().init(settings);
         applyTheme();
         loadBackground();

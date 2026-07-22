@@ -1600,7 +1600,7 @@ public class SettingsPanel extends JPanel {
     private void showAddLauncherDialog() {
         File file = NativeFileChooser.chooseFile(this,
                 localeManager.get("dialog.addLauncher.title", "Add Launcher"),
-                new String[]{".exe"}, "*.exe;*");
+                null, null);
         if (file != null) {
             String path = file.getAbsolutePath();
             if (!customLauncherPathsList.contains(path)) {
