@@ -7,7 +7,7 @@
 
     <groupId>net.eqozqq</groupId>
     <artifactId>NostalgiaLauncherDesktop</artifactId>
-    <version>1.10.1_01_01</version>
+    <version>1.10.2</version>
     <packaging>jar</packaging>
 
     <name>NostalgiaLauncherDesktop</name>
