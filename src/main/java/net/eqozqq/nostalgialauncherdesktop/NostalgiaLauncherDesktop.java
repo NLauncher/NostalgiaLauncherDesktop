@@ -38,7 +38,6 @@ import net.eqozqq.nostalgialauncherdesktop.Instances.InstancesPanel;
 import net.eqozqq.nostalgialauncherdesktop.Instances.InstanceManager;
 import net.eqozqq.nostalgialauncherdesktop.Proxy.ProxyPanel;
 import net.eqozqq.nostalgialauncherdesktop.Proxy.ProxyManager;
-import net.eqozqq.nostalgialauncherdesktop.marketplace.MarketplacePanel;
 
 public class NostalgiaLauncherDesktop extends JFrame {
     private JTextField nicknameField;
@@ -54,9 +53,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private WorldsManagerPanel worldsPanel;
     private TexturesManagerPanel texturesPanel;
     private InstancesPanel instancesPanel;
-    private MarketplacePanel marketplacePanel;
     private ProxyPanel proxyPanel;
     private SettingsPanel settingsPanel;
+    private ProxyStatusWidget proxyStatusWidget;
     private JPanel contentPanel;
     private CardLayout cardLayout;
     private BufferedImage backgroundImage;
@@ -84,6 +83,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private boolean enableDebugging;
     private boolean enableDiscordIntegration;
     private String lastPlayedVersionName;
+    private boolean isPopulatingVersions = false;
     private double scaleFactor;
     private String themeName;
     private String backgroundMode;
@@ -94,7 +94,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private SwingWorker<Void, Integer> launchWorker;
 
-    private static String CURRENT_VERSION = "1.10.2";
+    private static String CURRENT_VERSION = "1.10.3";
 
     private static NostalgiaLauncherDesktop instance;
 
@@ -228,7 +228,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         localeManager = LocaleManager.getInstance();
         loadSettings();
         localeManager.init(settings);
-        CURRENT_VERSION = localeManager.get("launcher.version", "1.10.2");
+        CURRENT_VERSION = localeManager.get("launcher.version", "1.10.3");
         InstanceManager.getInstance().init(settings);
         applyTheme();
         loadBackground();
@@ -637,10 +637,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
         worldsPanel = new WorldsManagerPanel(localeManager, themeName, scaleFactor);
         texturesPanel = new TexturesManagerPanel(localeManager, themeName, scaleFactor);
         instancesPanel = new InstancesPanel(localeManager, themeName, scaleFactor);
-        marketplacePanel = new MarketplacePanel(localeManager, themeName, scaleFactor);
         proxyPanel = new ProxyPanel(localeManager, themeName, scaleFactor);
 
         versionComboBox.addActionListener(e -> {
+            if (isPopulatingVersions)
+                return;
             Version selected = (Version) versionComboBox.getSelectedItem();
             if (selected != null) {
                 if ("ANOTHER".equals(executableSource)) {
@@ -684,7 +685,6 @@ public class NostalgiaLauncherDesktop extends JFrame {
         contentPanel.add(worldsPanel, NavigationPanel.NAV_WORLDS);
         contentPanel.add(texturesPanel, NavigationPanel.NAV_TEXTURES);
         contentPanel.add(instancesPanel, NavigationPanel.NAV_INSTANCES);
-        contentPanel.add(marketplacePanel, NavigationPanel.NAV_MARKETPLACE);
         contentPanel.add(proxyPanel, NavigationPanel.NAV_PROXY);
         contentPanel.add(settingsPanel, NavigationPanel.NAV_SETTINGS);
 
@@ -693,10 +693,14 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
         add(backgroundPanel);
 
-        ProxyStatusWidget proxyStatusWidget = new ProxyStatusWidget();
+        if (proxyStatusWidget != null) {
+            getLayeredPane().remove(proxyStatusWidget);
+        }
+        proxyStatusWidget = new ProxyStatusWidget();
         getLayeredPane().add(proxyStatusWidget, JLayeredPane.POPUP_LAYER);
 
-        ProxyManager.getInstance().setStateListener((running, address, port) -> {
+        ProxyManager manager = ProxyManager.getInstance();
+        manager.setStateListener((running, address, port) -> {
             if (running) {
                 proxyStatusWidget.updateText(address, port);
                 proxyStatusWidget.setVisible(true);
@@ -706,6 +710,10 @@ public class NostalgiaLauncherDesktop extends JFrame {
             getLayeredPane().revalidate();
             getLayeredPane().repaint();
         });
+        if (manager.isRunning()) {
+            proxyStatusWidget.updateText(manager.getCurrentAddress(), manager.getCurrentPort());
+            proxyStatusWidget.setVisible(true);
+        }
 
         addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
@@ -756,10 +764,6 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 instancesPanel.reload();
                 cardLayout.show(contentPanel, NavigationPanel.NAV_INSTANCES);
                 DiscordRPCManager.getInstance().updatePresence(localeManager.get("rpc.instances"));
-                break;
-            case NavigationPanel.NAV_MARKETPLACE:
-                cardLayout.show(contentPanel, NavigationPanel.NAV_MARKETPLACE);
-                discordRPCManager.updatePresence("Browsing Marketplace");
                 break;
             case NavigationPanel.NAV_PROXY:
                 cardLayout.show(contentPanel, NavigationPanel.NAV_PROXY);
@@ -950,12 +954,14 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     private void loadVersions() {
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText(localeManager.get("status.loadingVersions"));
+            refreshButton.setEnabled(false);
+            addVersionButton.setEnabled(false);
+        });
         SwingWorker<List<Version>, Void> worker = new SwingWorker<List<Version>, Void>() {
             @Override
             protected List<Version> doInBackground() throws Exception {
-                statusLabel.setText(localeManager.get("status.loadingVersions"));
-                refreshButton.setEnabled(false);
-                addVersionButton.setEnabled(false);
                 if ("ANOTHER".equals(executableSource)) {
                     List<Version> profileVersions = new ArrayList<>();
                     if (customLauncherProfilesList != null) {
@@ -973,22 +979,26 @@ public class NostalgiaLauncherDesktop extends JFrame {
             protected void done() {
                 try {
                     List<Version> versions = get();
+                    String targetVersion = "ANOTHER".equals(executableSource) ? selectedLauncherProfileName : lastPlayedVersionName;
+                    isPopulatingVersions = true;
                     versionComboBox.removeAllItems();
                     for (Version version : versions)
                         versionComboBox.addItem(version);
-                    versionManager.updateInstalledVersions();
-                    String instanceName = InstanceManager.getInstance().getActiveInstance();
-                    statusLabel.setText(localeManager.get("status.versionsAvailable", versions.size()) + " — "
-                            + localeManager.get("label.instance") + ": " + instanceName);
-                    if (lastPlayedVersionName != null) {
+                    if (targetVersion != null) {
                         for (int i = 0; i < versionComboBox.getItemCount(); i++) {
-                            if (versionComboBox.getItemAt(i).getName().equals(lastPlayedVersionName)) {
+                            if (versionComboBox.getItemAt(i).getName().equals(targetVersion)) {
                                 versionComboBox.setSelectedIndex(i);
                                 break;
                             }
                         }
                     }
+                    isPopulatingVersions = false;
+                    versionManager.updateInstalledVersions();
+                    String instanceName = InstanceManager.getInstance().getActiveInstance();
+                    statusLabel.setText(localeManager.get("status.versionsAvailable", versions.size()) + " — "
+                            + localeManager.get("label.instance") + ": " + instanceName);
                 } catch (Exception e) {
+                    isPopulatingVersions = false;
                     ErrorDialog.showSync(NostalgiaLauncherDesktop.this, localeManager.get("dialog.error.title"),
                             localeManager.get("error.loadVersions", e.getMessage()) + "\n\n" + e.toString());
                     statusLabel.setText(localeManager.get("status.error.loadVersions"));
@@ -1025,7 +1035,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
     }
 
     private void launchVersion(Version version) {
-        DiscordRPCManager.getInstance().updatePresence("Playing Minecraft PE a" + version.getName());
+        if ("ANOTHER".equals(executableSource)) {
+            DiscordRPCManager.getInstance().updatePresence("Playing " + version.getName());
+        } else {
+            DiscordRPCManager.getInstance().updatePresence("Playing Minecraft PE " + version.getName());
+        }
         launchWorker = new SwingWorker<Void, Integer>() {
             Process gameProcess;
 
@@ -1287,8 +1301,13 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 nicknameField.setEnabled(true);
                 versionComboBox.setEnabled(true);
                 progressBar.setVisible(false);
+                boolean wasCancelled = isCancelled();
                 launchWorker = null;
                 DiscordRPCManager.getInstance().updatePresence("On Main Page");
+                if (wasCancelled) {
+                    statusLabel.setText(localeManager.get("status.ready"));
+                    return;
+                }
                 try {
                     get();
                 } catch (Exception e) {
@@ -1323,8 +1342,10 @@ public class NostalgiaLauncherDesktop extends JFrame {
         if (!cacheDir.exists())
             cacheDir.mkdirs();
         File zipFile = new File(cacheDir, "launcher_components.zip");
-        statusLabel.setText(localeManager.get("status.loadingComponents"));
-        progressBar.setString(localeManager.get("progress.loadingComponents"));
+        SwingUtilities.invokeLater(() -> {
+            statusLabel.setText(localeManager.get("status.loadingComponents"));
+            progressBar.setString(localeManager.get("progress.loadingComponents"));
+        });
 
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpGet httpGet = new HttpGet(url);

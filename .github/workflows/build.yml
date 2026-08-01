@@ -1,4 +1,4 @@
-name: Build Native Executables
+name: Build Launcher
 
 on:
   push:
@@ -7,26 +7,7 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            type: DEB
-            ext: deb
-          - os: ubuntu-latest
-            type: RPM
-            ext: rpm
-          - os: ubuntu-latest
-            type: APP_IMAGE
-            ext: tar.gz
-          - os: windows-latest
-            type: EXE
-            ext: exe
-          - os: macos-latest
-            type: DMG
-            ext: dmg
-
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
 
     steps:
     - name: Checkout code
@@ -39,30 +20,12 @@ jobs:
         distribution: 'temurin'
         cache: 'maven'
 
-    - name: Install RPM tools (Linux only)
-      if: matrix.os == 'ubuntu-latest'
-      run: sudo apt-get update && sudo apt-get install -y rpm fakeroot
-
-    - name: Build and Package with Maven
+    - name: Build with Maven
       shell: bash
-      run: mvn clean package -DskipTests -Djpackage.type=${{ matrix.type }}
+      run: mvn clean package -DskipTests
 
-    - name: Pack Portable Linux (tar.gz)
-      if: matrix.type == 'APP_IMAGE' && matrix.os == 'ubuntu-latest'
-      run: |
-        cd target/dist
-        tar -czf NostalgiaLauncherDesktop-Portable.tar.gz NostalgiaLauncherDesktop
-
-    - name: Upload Artifact (Installers)
-      if: matrix.ext != 'tar.gz'
+    - name: Upload Artifact (JAR)
       uses: actions/upload-artifact@v4
       with:
-        name: NostalgiaLauncher-${{ runner.os }}-${{ matrix.type }}
-        path: target/dist/*.${{ matrix.ext }}
-
-    - name: Upload Artifact (Portable)
-      if: matrix.ext == 'tar.gz'
-      uses: actions/upload-artifact@v4
-      with:
-        name: NostalgiaLauncher-${{ runner.os }}-Portable
-        path: target/dist/*.tar.gz
+        name: NostalgiaLauncherDesktop
+        path: target/nld.jar

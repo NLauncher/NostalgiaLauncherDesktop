@@ -62,57 +62,74 @@ public class ProxyManager {
 
     private void runProxyLoop(String targetAddress, int targetPort) {
         InetSocketAddress clientAddr = null;
-        try {
-            InetAddress srcInetAddr = InetAddress.getByName(targetAddress);
-            InetSocketAddress srcAddr = new InetSocketAddress(srcInetAddr, targetPort);
+        InetAddress srcInetAddr = null;
+        InetSocketAddress srcAddr = null;
 
+        try {
             socket = new DatagramSocket(19132);
             socket.setSoTimeout(100);
-
-            byte[] buffer = new byte[4096];
-
-            while (running) {
-                try {
-                    DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
-                    socket.receive(packet);
-
-                    InetSocketAddress recvAddr = new InetSocketAddress(
-                            packet.getAddress(),
-                            packet.getPort());
-
-                    if (recvAddr.equals(srcAddr)) {
-                        if (clientAddr != null) {
-                            DatagramPacket sendPacket = new DatagramPacket(
-                                    packet.getData(),
-                                    packet.getLength(),
-                                    clientAddr.getAddress(),
-                                    clientAddr.getPort());
-                            socket.send(sendPacket);
-                        }
-                    } else {
-                        if (clientAddr == null || clientAddr.getAddress().equals(recvAddr.getAddress())) {
-                            clientAddr = recvAddr;
-                            DatagramPacket sendPacket = new DatagramPacket(
-                                    packet.getData(),
-                                    packet.getLength(),
-                                    srcAddr.getAddress(),
-                                    srcAddr.getPort());
-                            socket.send(sendPacket);
-                        }
-                    }
-                } catch (java.net.SocketTimeoutException e) {
-                } catch (Exception e) {
-                }
-            }
         } catch (Exception e) {
             e.printStackTrace();
-        } finally {
-            if (socket != null && !socket.isClosed()) {
-                socket.close();
-            }
             running = false;
             notifyListener();
+            return;
         }
+
+        byte[] buffer = new byte[4096];
+
+        while (running) {
+            if (srcInetAddr == null) {
+                try {
+                    srcInetAddr = InetAddress.getByName(targetAddress);
+                    srcAddr = new InetSocketAddress(srcInetAddr, targetPort);
+                } catch (Exception e) {
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ie) {
+                        break;
+                    }
+                    continue;
+                }
+            }
+
+            try {
+                DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
+                socket.receive(packet);
+
+                InetSocketAddress recvAddr = new InetSocketAddress(
+                        packet.getAddress(),
+                        packet.getPort());
+
+                if (recvAddr.equals(srcAddr)) {
+                    if (clientAddr != null) {
+                        DatagramPacket sendPacket = new DatagramPacket(
+                                packet.getData(),
+                                packet.getLength(),
+                                clientAddr.getAddress(),
+                                clientAddr.getPort());
+                        socket.send(sendPacket);
+                    }
+                } else {
+                    if (clientAddr == null || clientAddr.getAddress().equals(recvAddr.getAddress())) {
+                        clientAddr = recvAddr;
+                        DatagramPacket sendPacket = new DatagramPacket(
+                                packet.getData(),
+                                packet.getLength(),
+                                srcAddr.getAddress(),
+                                srcAddr.getPort());
+                        socket.send(sendPacket);
+                    }
+                }
+            } catch (java.net.SocketTimeoutException e) {
+            } catch (Exception e) {
+            }
+        }
+
+        if (socket != null && !socket.isClosed()) {
+            socket.close();
+        }
+        running = false;
+        notifyListener();
     }
 
     public synchronized void stopProxy() {

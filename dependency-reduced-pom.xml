@@ -4,7 +4,7 @@
   <groupId>net.eqozqq</groupId>
   <artifactId>NostalgiaLauncherDesktop</artifactId>
   <name>NostalgiaLauncherDesktop</name>
-  <version>1.10.2</version>
+  <version>1.10.3</version>
   <description>Minecraft Pocket Edition Alpha Launcher</description>
   <build>
     <sourceDirectory>src/main/java</sourceDirectory>
@@ -36,43 +36,27 @@
               <goal>shade</goal>
             </goals>
             <configuration>
-              <outputFile>${project.build.directory}/jpackage-input/${project.build.finalName}.jar</outputFile>
+              <outputFile>${project.build.directory}/${project.build.finalName}.jar</outputFile>
               <transformers>
                 <transformer>
-                  <mainClass>net.eqozqq.nostalgialauncherdesktop.NostalgiaLauncherDesktop</mainClass>
+                  <mainClass>net.eqozqq.nostalgialauncherdesktop.Main</mainClass>
                 </transformer>
               </transformers>
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>META-INF/*.SF</exclude>
+                    <exclude>META-INF/*.DSA</exclude>
+                    <exclude>META-INF/*.RSA</exclude>
+                  </excludes>
+                </filter>
+              </filters>
               <artifactSet>
                 <includes>
                   <include>*:*</include>
                 </includes>
               </artifactSet>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
-        <groupId>org.panteleyev</groupId>
-        <artifactId>jpackage-maven-plugin</artifactId>
-        <version>1.6.0</version>
-        <executions>
-          <execution>
-            <phase>package</phase>
-            <goals>
-              <goal>jpackage</goal>
-            </goals>
-            <configuration>
-              <name>NostalgiaLauncherDesktop</name>
-              <appVersion>${project.version}</appVersion>
-              <vendor>net.eqozqq</vendor>
-              <destination>target/dist</destination>
-              <input>${project.build.directory}/jpackage-input</input>
-              <mainJar>${project.build.finalName}.jar</mainJar>
-              <mainClass>${main.class}</mainClass>
-              <javaOptions>
-                <option>-Dfile.encoding=UTF-8</option>
-              </javaOptions>
-              <type>${jpackage.type}</type>
             </configuration>
           </execution>
         </executions>
@@ -87,8 +71,7 @@
   </repositories>
   <properties>
     <maven.compiler.target>17</maven.compiler.target>
-    <jpackage.type>APP_IMAGE</jpackage.type>
-    <main.class>net.eqozqq.nostalgialauncherdesktop.NostalgiaLauncherDesktop</main.class>
+    <main.class>net.eqozqq.nostalgialauncherdesktop.Main</main.class>
     <maven.compiler.source>17</maven.compiler.source>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
