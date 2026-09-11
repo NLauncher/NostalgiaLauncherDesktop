@@ -75,19 +75,19 @@ public class NinecraftCompiler {
                 }
 
                 if (installClicked[0]) {
-                    dialog.appendLog("Starting dependency installation...");
+                    dialog.appendLog(localeManager.get("compiler.status.startingDeps", "Starting dependency installation..."));
                     installDependenciesSynchronously(isWindows, isArm, dialog, localeManager);
                     if (cancelled || dialog.isCancelled()) {
                         return false;
                     }
 
-                    dialog.appendLog("Re-checking dependencies...");
+                    dialog.appendLog(localeManager.get("compiler.status.recheckingDeps", "Re-checking dependencies..."));
                     missing = isWindows ? checkWindowsDependencies() : checkLinuxDependencies(isArm);
                     if (missing.isEmpty()) {
-                        dialog.appendLog("All dependencies are now met. Continuing to compile!");
+                        dialog.appendLog(localeManager.get("compiler.status.allDepsMet", "All dependencies are now met. Continuing to compile!"));
                         break;
                     } else {
-                        dialog.appendLog("Some dependencies are still missing: " + String.join(", ", missing));
+                        dialog.appendLog(localeManager.get("compiler.error.someDepsMissing", "Some dependencies are still missing: " + String.join(", ", missing)));
                     }
                 }
             }
@@ -98,7 +98,7 @@ public class NinecraftCompiler {
             if (sourceDir.exists()) {
                 dialog.setStatus(localeManager.get("compiler.status.updatingRepo"));
 
-                dialog.appendLog("Setting remote origin to: " + repoUrl);
+                dialog.appendLog(localeManager.get("compiler.log.settingRemote", "Setting remote origin to: " + repoUrl));
                 if (!runCommand(sourceDir, dialog, localeManager, "git", "remote", "set-url", "origin", repoUrl)) {
                     if (cancelled)
                         return false;
@@ -175,7 +175,11 @@ public class NinecraftCompiler {
                     targetBinary.delete();
 
                 if (builtBinary.renameTo(targetBinary)) {
-                    targetBinary.setExecutable(true);
+                    targetBinary.setExecutable(true, false);
+                    try {
+                        new ProcessBuilder("chmod", "+x", targetBinary.getAbsolutePath()).start().waitFor();
+                    } catch (Exception ignored) {
+                    }
                     dialog.appendLog(
                             localeManager.get("compiler.log.binaryMoved") + " " + targetBinary.getAbsolutePath());
                     return true;
@@ -210,14 +214,14 @@ public class NinecraftCompiler {
             missing.add("python");
         } else {
             if (!checkPythonPackage("jinja2"))
-                missing.add("jinja2 (pip package)");
+                missing.add(LocaleManager.getInstance().get("compiler.dep.jinja2", "jinja2 (pip package)"));
         }
 
         boolean hasGcc = hasCommand("gcc");
         boolean hasMsvc = hasCommand("cl");
 
         if (!hasGcc && !hasMsvc) {
-            missing.add("Compiler (MinGW or Visual Studio)");
+            missing.add(LocaleManager.getInstance().get("compiler.dep.compiler", "Compiler (MinGW or Visual Studio)"));
         }
 
         return missing;
@@ -409,24 +413,24 @@ public class NinecraftCompiler {
     private boolean installDependenciesSynchronously(boolean isWindows, boolean isArm, NinecraftCompilationDialog dialog,
             LocaleManager localeManager) {
         if (isWindows) {
-            dialog.appendLog("Checking Windows dependencies...");
+            dialog.appendLog(localeManager.get("compiler.log.checkingWindowsDeps", "Checking Windows dependencies..."));
             if (hasCommand("python") || hasCommand("python3")) {
                 if (!checkPythonPackage("jinja2")) {
                     String py = hasCommand("python") ? "python" : "python3";
-                    dialog.appendLog("Installing jinja2 via pip...");
+                    dialog.appendLog(localeManager.get("compiler.log.installingJinja", "Installing jinja2 via pip..."));
                     runCommand(new File("."), dialog, localeManager, py, "-m", "pip", "install", "jinja2");
                 }
             } else {
-                dialog.appendLog("Python is missing. Please install Python 3.");
+                dialog.appendLog(localeManager.get("compiler.error.pythonMissing", "Python is missing. Please install Python 3."));
             }
 
             if (!hasCommand("git") || !hasCommand("cmake")) {
-                dialog.appendLog("Please install Git and CMake manually and add them to PATH.");
+                dialog.appendLog(localeManager.get("compiler.error.gitCmakeMissing", "Please install Git and CMake manually and add them to PATH."));
             }
             if (!hasCommand("gcc") && !hasCommand("cl")) {
-                dialog.appendLog("Please install MinGW32/LLVM-MinGW or Visual Studio Build Tools.");
+                dialog.appendLog(localeManager.get("compiler.error.compilerMissing", "Please install MinGW32/LLVM-MinGW or Visual Studio Build Tools."));
             }
-            dialog.appendLog("After installing, restart the launcher.");
+            dialog.appendLog(localeManager.get("compiler.log.restartAfterInstall", "After installing, restart the launcher."));
             return false;
         }
 
@@ -464,7 +468,7 @@ public class NinecraftCompiler {
             if (hasCommand("nix")) {
                 installCmd = "nix --extra-experimental-features \"nix-command flakes\" shell github:MCPI-Revival/Ninecraft --impure";
             } else {
-                dialog.appendLog("Unsupported distribution. Please install dependencies manually.");
+                dialog.appendLog(localeManager.get("compiler.error.unsupportedDistro", "Unsupported distribution. Please install dependencies manually."));
                 return false;
             }
         }
@@ -499,7 +503,7 @@ public class NinecraftCompiler {
             }
 
             if (p != null) {
-                dialog.setStatus("Waiting for dependency installation to complete...");
+                dialog.setStatus(localeManager.get("compiler.status.waitingDeps", "Waiting for dependency installation to complete..."));
                 p.waitFor();
                 return true;
             }

@@ -8,19 +8,81 @@ import org.apache.commons.compress.archivers.sevenz.SevenZFile;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.IOUtils;
 
-import java.io.*;
+import org.apache.commons.io.FileUtils;
+
 import java.io.*;
 import java.nio.file.Paths;
+import java.util.List;
 
 public class WorldImporter {
 
-    public static void importWorld(File archiveFile, File targetWorldsDir) throws Exception {
-        String fileName = archiveFile.getName().toLowerCase();
-        if (fileName.endsWith(".7z")) {
-            import7z(archiveFile, targetWorldsDir);
-        } else {
-            importStandardArchive(archiveFile, targetWorldsDir);
+    public static int importMultiple(List<File> sources, File targetWorldsDir) throws Exception {
+        int count = 0;
+        for (File source : sources) {
+            if (source.isDirectory()) {
+                count += importFromFolder(source, targetWorldsDir);
+            } else if (source.isFile()) {
+                importWorld(source, targetWorldsDir);
+                count++;
+            }
         }
+        return count;
+    }
+
+    public static void importWorld(File sourceFile, File targetWorldsDir) throws Exception {
+        if (sourceFile.isDirectory()) {
+            importFromFolder(sourceFile, targetWorldsDir);
+            return;
+        }
+        String fileName = sourceFile.getName().toLowerCase();
+        if (fileName.endsWith(".7z")) {
+            import7z(sourceFile, targetWorldsDir);
+        } else {
+            importStandardArchive(sourceFile, targetWorldsDir);
+        }
+    }
+
+    public static int importFromFolder(File folder, File targetWorldsDir) throws Exception {
+        if (!folder.exists() || !folder.isDirectory()) {
+            return 0;
+        }
+        File levelDat = new File(folder, "level.dat");
+        if (levelDat.exists()) {
+            File dest = getUniqueDir(targetWorldsDir, folder.getName());
+            FileUtils.copyDirectory(folder, dest);
+            return 1;
+        }
+        int count = 0;
+        File[] children = folder.listFiles();
+        if (children != null) {
+            for (File child : children) {
+                if (child.isDirectory()) {
+                    File childLevelDat = new File(child, "level.dat");
+                    if (childLevelDat.exists()) {
+                        File dest = getUniqueDir(targetWorldsDir, child.getName());
+                        FileUtils.copyDirectory(child, dest);
+                        count++;
+                    }
+                }
+            }
+        }
+        if (count == 0) {
+            File dest = getUniqueDir(targetWorldsDir, folder.getName());
+            FileUtils.copyDirectory(folder, dest);
+            return 1;
+        }
+        return count;
+    }
+
+    private static File getUniqueDir(File parent, String name) {
+        File dir = new File(parent, name);
+        if (!dir.exists()) return dir;
+        int index = 1;
+        while (dir.exists()) {
+            dir = new File(parent, name + "_" + index);
+            index++;
+        }
+        return dir;
     }
 
     private static void importStandardArchive(File archiveFile, File targetWorldsDir) throws Exception {
@@ -29,7 +91,7 @@ public class WorldImporter {
                 ? archiveFile.getName().substring(0, archiveFile.getName().lastIndexOf('.'))
                 : Paths.get(worldPath).getFileName().toString();
 
-        File finalTargetDir = new File(targetWorldsDir, targetFolderName);
+        File finalTargetDir = getUniqueDir(targetWorldsDir, targetFolderName);
         if (!finalTargetDir.exists())
             finalTargetDir.mkdirs();
 
@@ -73,7 +135,7 @@ public class WorldImporter {
                 ? archiveFile.getName().substring(0, archiveFile.getName().lastIndexOf('.'))
                 : Paths.get(worldPath).getFileName().toString();
 
-        File finalTargetDir = new File(targetWorldsDir, targetFolderName);
+        File finalTargetDir = getUniqueDir(targetWorldsDir, targetFolderName);
         if (!finalTargetDir.exists())
             finalTargetDir.mkdirs();
 

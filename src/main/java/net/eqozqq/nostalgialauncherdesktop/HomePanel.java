@@ -346,7 +346,7 @@ public class HomePanel extends JPanel {
                 (int) (10 * scaleFactor), (int) (20 * scaleFactor)));
 
         JLabel versionLabel = new JLabel(String.format("NostalgiaLauncher Desktop v%s by eqozqq",
-                localeManager.get("launcher.version", "1.10.3")));
+                localeManager.get("launcher.version", "1.10.4")));
         versionLabel.setForeground(isDark ? Color.WHITE : Color.BLACK);
         versionLabel.setFont(getRegularFont(Font.PLAIN, (float) (12 * scaleFactor)));
         versionLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -507,7 +507,7 @@ public class HomePanel extends JPanel {
             JButton discordButton = new JButton(localeManager.get("help.dialog.discord", "Discord"));
             discordButton.addActionListener(e -> NostalgiaLauncherDesktop.openURL(discordUrl));
 
-            JButton okButton = new JButton("OK");
+            JButton okButton = new JButton(localeManager.get("button.ok", "OK"));
             okButton.addActionListener(e -> dialog.dispose());
 
             buttonPanel.add(discordButton);

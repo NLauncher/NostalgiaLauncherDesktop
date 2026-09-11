@@ -20,13 +20,13 @@ You need JDK 8 or high to build and run the launcher
 
 **Build:**
 ```shell
-$ git clone https://github.com/NLauncher/NostalgiaLauncherDesktop.git
-$ cd NostalgiaLauncherDesktop
-$ mvn package
+git clone https://github.com/NLauncher/NostalgiaLauncherDesktop.git
+cd NostalgiaLauncherDesktop
+mvn package
 ```
 **Run builded version:**
 ```shell
-$ java -jar target/NostalgiaLauncherDesktop.jar
+java -jar target/NostalgiaLauncherDesktop.jar
 ```
 
 ### Screenshot

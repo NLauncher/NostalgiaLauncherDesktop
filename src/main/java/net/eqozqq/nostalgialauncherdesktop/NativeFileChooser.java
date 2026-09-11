@@ -54,6 +54,55 @@ public class NativeFileChooser {
         return null;
     }
 
+    public static File[] chooseFiles(Component parent, String title, final String[] extensions, String filePattern) {
+        Window window = null;
+        if (parent != null) {
+            window = SwingUtilities.getWindowAncestor(parent);
+        }
+
+        FileDialog dialog;
+        if (window instanceof Frame) {
+            dialog = new FileDialog((Frame) window, title, FileDialog.LOAD);
+        } else if (window instanceof java.awt.Dialog) {
+            dialog = new FileDialog((java.awt.Dialog) window, title, FileDialog.LOAD);
+        } else {
+            dialog = new FileDialog((Frame) null, title, FileDialog.LOAD);
+        }
+
+        if (filePattern != null) {
+            dialog.setFile(filePattern);
+        }
+
+        if (extensions != null && extensions.length > 0) {
+            dialog.setFilenameFilter(new FilenameFilter() {
+                @Override
+                public boolean accept(File dir, String name) {
+                    String lower = name.toLowerCase();
+                    for (String ext : extensions) {
+                        if (lower.endsWith(ext.toLowerCase()) || lower.endsWith(ext.toLowerCase() + ".lnk")) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }
+            });
+        }
+
+        dialog.setMultipleMode(true);
+        dialog.setVisible(true);
+
+        File[] files = dialog.getFiles();
+        if (files != null && files.length > 0) {
+            return files;
+        }
+        String dir = dialog.getDirectory();
+        String file = dialog.getFile();
+        if (dir != null && file != null) {
+            return new File[] { new File(dir, file) };
+        }
+        return null;
+    }
+
     public static File chooseDirectory(Component parent, String title) {
         String os = System.getProperty("os.name").toLowerCase();
 

@@ -37,18 +37,39 @@ public class ErrorDialog extends JDialog {
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
 
-        JButton copyButton = new JButton("Copy");
+        String installCmd = null;
+        for (String line : message.split("\n")) {
+            String trimmed = line.trim();
+            if (trimmed.startsWith("sudo ") || trimmed.startsWith("pkexec ")) {
+                installCmd = trimmed;
+                break;
+            }
+        }
+        if (installCmd == null && message.contains("32-bit runtime libraries")) {
+            installCmd = GameLauncher.getMissing32BitLibsInstruction();
+        }
+
+        if (installCmd != null) {
+            final String cmdToRun = installCmd;
+            JButton installButton = new JButton(LocaleManager.getInstance().get("button.installDependencies", "Install Dependencies"));
+            installButton.addActionListener(e -> {
+                GameLauncher.runInTerminal(cmdToRun);
+            });
+            buttonPanel.add(installButton);
+        }
+
+        JButton copyButton = new JButton(LocaleManager.getInstance().get("button.copy", "Copy"));
         copyButton.addActionListener(e -> {
             StringSelection selection = new StringSelection(message);
             Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
             clipboard.setContents(selection, null);
-            copyButton.setText("Copied!");
-            Timer timer = new Timer(1500, evt -> copyButton.setText("Copy"));
+            copyButton.setText(LocaleManager.getInstance().get("button.copied", "Copied!"));
+            Timer timer = new Timer(1500, evt -> copyButton.setText(LocaleManager.getInstance().get("button.copy", "Copy")));
             timer.setRepeats(false);
             timer.start();
         });
 
-        JButton okButton = new JButton("OK");
+        JButton okButton = new JButton(LocaleManager.getInstance().get("button.ok", "OK"));
         okButton.addActionListener(e -> dispose());
 
         buttonPanel.add(copyButton);

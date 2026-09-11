@@ -21,6 +21,7 @@ public class NavigationPanel extends JPanel {
 
     private final List<NavButton> navButtons = new ArrayList<>();
     private final List<NavButton> allButtons = new ArrayList<>();
+    private final java.util.Map<String, NavButton> navButtonMap = new java.util.LinkedHashMap<>();
     private NavButton selectedButton;
     private Consumer<String> onNavigate;
 
@@ -109,6 +110,13 @@ public class NavigationPanel extends JPanel {
         navButtons.add(proxyBtn);
         navButtons.add(settingsBtn);
 
+        navButtonMap.put(NAV_HOME, homeBtn);
+        navButtonMap.put(NAV_WORLDS, worldsBtn);
+        navButtonMap.put(NAV_TEXTURES, texturesBtn);
+        navButtonMap.put(NAV_INSTANCES, instancesBtn);
+        navButtonMap.put(NAV_PROXY, proxyBtn);
+        navButtonMap.put(NAV_SETTINGS, settingsBtn);
+
         JPanel bottomSection = new JPanel();
         bottomSection.setLayout(new BoxLayout(bottomSection, BoxLayout.Y_AXIS));
         bottomSection.setOpaque(false);
@@ -123,6 +131,9 @@ public class NavigationPanel extends JPanel {
 
         addNavButton(bottomSection, discordBtn);
         addNavButton(bottomSection, websiteBtn);
+
+        navButtonMap.put("discord", discordBtn);
+        navButtonMap.put("website", websiteBtn);
 
         bottomSection.add(Box.createVerticalGlue());
 
@@ -234,11 +245,32 @@ public class NavigationPanel extends JPanel {
         button.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                NostalgiaLauncherDesktop.openURL(url);
+                int res = JOptionPane.showConfirmDialog(
+                        NavigationPanel.this,
+                        localeManager.get("dialog.openLink.message", url),
+                        localeManager.get("dialog.openLink.title", "Open Link"),
+                        JOptionPane.YES_NO_OPTION,
+                        JOptionPane.QUESTION_MESSAGE
+                );
+                if (res == JOptionPane.YES_OPTION) {
+                    NostalgiaLauncherDesktop.openURL(url);
+                }
             }
         });
         allButtons.add(button);
         return button;
+    }
+
+    public void updateTabsVisibility(List<String> hiddenTabs) {
+        if (hiddenTabs == null) {
+            hiddenTabs = new ArrayList<>();
+        }
+        for (java.util.Map.Entry<String, NavButton> entry : navButtonMap.entrySet()) {
+            boolean visible = !hiddenTabs.contains(entry.getKey());
+            entry.getValue().setVisible(visible);
+        }
+        revalidate();
+        repaint();
     }
 
     public void setSelectedNav(String navId) {

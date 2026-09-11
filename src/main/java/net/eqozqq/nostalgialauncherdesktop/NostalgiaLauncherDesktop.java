@@ -78,6 +78,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
     private List<String> customLauncherPathsList = new ArrayList<>();
     private List<CustomLauncherProfile> customLauncherProfilesList = new ArrayList<>();
     private String selectedLauncherProfileName;
+    private List<String> hiddenNavTabs = new ArrayList<>();
 
     private String postLaunchAction;
     private boolean enableDebugging;
@@ -94,7 +95,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private SwingWorker<Void, Integer> launchWorker;
 
-    private static String CURRENT_VERSION = "1.10.3";
+    private static String CURRENT_VERSION = "1.10.4";
 
     private static NostalgiaLauncherDesktop instance;
 
@@ -228,7 +229,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         localeManager = LocaleManager.getInstance();
         loadSettings();
         localeManager.init(settings);
-        CURRENT_VERSION = localeManager.get("launcher.version", "1.10.3");
+        CURRENT_VERSION = localeManager.get("launcher.version", "1.10.4");
         InstanceManager.getInstance().init(settings);
         applyTheme();
         loadBackground();
@@ -506,6 +507,15 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 customLauncherProfilesList = new ArrayList<>();
             }
             selectedLauncherProfileName = settings.getProperty("selectedLauncherProfileName");
+
+            String hntJson = settings.getProperty("hiddenNavTabs");
+            if (hntJson != null && !hntJson.isEmpty()) {
+                hiddenNavTabs = new com.google.gson.Gson().fromJson(hntJson,
+                        new com.google.gson.reflect.TypeToken<List<String>>() {
+                        }.getType());
+            } else {
+                hiddenNavTabs = new ArrayList<>();
+            }
         } catch (IOException | NumberFormatException e) {
             backgroundMode = "Default";
             useDefaultVersionsSource = true;
@@ -574,6 +584,10 @@ public class NostalgiaLauncherDesktop extends JFrame {
             } else {
                 settings.remove("selectedLauncherProfileName");
             }
+            if (hiddenNavTabs != null) {
+                settings.setProperty("hiddenNavTabs",
+                        new com.google.gson.Gson().toJson(hiddenNavTabs));
+            }
 
             settings.store(fos, null);
         } catch (IOException e) {
@@ -615,6 +629,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         backgroundPanel.setBackground(UIManager.getColor("Panel.background"));
 
         navigationPanel = new NavigationPanel(localeManager, scaleFactor, themeName);
+        navigationPanel.updateTabsVisibility(hiddenNavTabs);
         navigationPanel.setOnNavigate(this::onNavigate);
 
         cardLayout = new CardLayout();
@@ -679,6 +694,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 githubTranslationName,
                 customLauncherProfilesList,
                 selectedLauncherProfileName,
+                hiddenNavTabs,
                 localeManager, this::onSettingsSaved);
 
         contentPanel.add(homePanel, NavigationPanel.NAV_HOME);
@@ -795,6 +811,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         customTranslationPath = updatedSettings.getCustomTranslationPath();
         githubTranslationUrl = updatedSettings.getGithubTranslationUrl();
         githubTranslationName = updatedSettings.getGithubTranslationName();
+        hiddenNavTabs = updatedSettings.getHiddenNavTabs();
 
         String newLanguage = updatedSettings.getLanguage();
         String newThemeName = updatedSettings.getThemeName();
@@ -1036,9 +1053,9 @@ public class NostalgiaLauncherDesktop extends JFrame {
 
     private void launchVersion(Version version) {
         if ("ANOTHER".equals(executableSource)) {
-            DiscordRPCManager.getInstance().updatePresence("Playing " + version.getName());
+            DiscordRPCManager.getInstance().updatePresence(localeManager.get("rpc.playing", version.getName()));
         } else {
-            DiscordRPCManager.getInstance().updatePresence("Playing Minecraft PE " + version.getName());
+            DiscordRPCManager.getInstance().updatePresence(localeManager.get("rpc.playing", "Minecraft PE " + version.getName()));
         }
         launchWorker = new SwingWorker<Void, Integer>() {
             Process gameProcess;
@@ -1235,7 +1252,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                         }
                         if (exitFile.exists()) {
                             try {
-                                String content = new String(java.nio.file.Files.readAllBytes(exitFile.toPath())).trim();
+                                String content = new String(java.nio.file.Files.readAllBytes(exitFile.toPath()), java.nio.charset.StandardCharsets.UTF_8).trim();
                                 if (!content.isEmpty()) {
                                     exitCode = Integer.parseInt(content);
                                     exited = true;
@@ -1269,17 +1286,14 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     final long duration = runDuration;
                     final int code = exitCode;
                     SwingUtilities.invokeLater(() -> {
-                        StringBuilder errorMsg = new StringBuilder();
-                        errorMsg.append("Ninecraft exited with code: ").append(code).append("\n");
-                        errorMsg.append("Runtime: ").append(duration / 1000.0).append("s\n\n");
+                        String errorMsg;
                         if (!output.isEmpty()) {
-                            errorMsg.append("--- Process Output ---\n");
-                            errorMsg.append(output);
+                            errorMsg = localeManager.get("error.gameExited", code, duration / 1000.0, output);
                         } else {
-                            errorMsg.append("No output was captured from the process.");
+                            errorMsg = localeManager.get("error.gameExitedNoOutput", code, duration / 1000.0);
                         }
                         ErrorDialog.show(NostalgiaLauncherDesktop.this,
-                                localeManager.get("error.launchFailed.title"), errorMsg.toString());
+                                localeManager.get("error.launchFailed.title"), errorMsg);
                     });
                 }
 
@@ -1303,7 +1317,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 progressBar.setVisible(false);
                 boolean wasCancelled = isCancelled();
                 launchWorker = null;
-                DiscordRPCManager.getInstance().updatePresence("On Main Page");
+                DiscordRPCManager.getInstance().updatePresence(localeManager.get("rpc.mainPage", "On Main Page"));
                 if (wasCancelled) {
                     statusLabel.setText(localeManager.get("status.ready"));
                     return;
@@ -1391,7 +1405,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
                 File outFile = new File(gameDir, entryName);
 
                 if (!outFile.getCanonicalPath().startsWith(canonicalGameDir)) {
-                    throw new IOException("Zip entry outside target directory: " + entryName);
+                    throw new IOException(localeManager.get("error.zipOutsideTarget", entryName));
                 }
 
                 if (entry.isDirectory()) {
@@ -1414,7 +1428,11 @@ public class NostalgiaLauncherDesktop extends JFrame {
                     }
 
                     if (entryName.equals("ninecraft") || entryName.endsWith("/ninecraft")) {
-                        outFile.setExecutable(true);
+                        outFile.setExecutable(true, false);
+                        try {
+                            new ProcessBuilder("chmod", "+x", outFile.getAbsolutePath()).start().waitFor();
+                        } catch (Exception ignored) {
+                        }
                     }
                 }
                 zis.closeEntry();
@@ -1438,7 +1456,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             return;
         }
 
-        JDialog dialog = new JDialog(this, "Disclaimer", true);
+        JDialog dialog = new JDialog(this, localeManager.get("dialog.disclaimer.title", "Disclaimer"), true);
         dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         dialog.setResizable(false);
 
@@ -1451,23 +1469,13 @@ public class NostalgiaLauncherDesktop extends JFrame {
         mainPanel.add(iconLabel);
         mainPanel.add(Box.createVerticalStrut(15));
 
-        JLabel titleLabel = new JLabel("Disclaimer");
+        JLabel titleLabel = new JLabel(localeManager.get("dialog.disclaimer.title", "Disclaimer"));
         titleLabel.setFont(getRegularFont(Font.BOLD, 18f));
         titleLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
         mainPanel.add(titleLabel);
         mainPanel.add(Box.createVerticalStrut(15));
 
-        String htmlText = "<html><body style='width: 420px; font-family: sans-serif; font-size: 11px;'>"
-                + "<p>NOSTALGIALAUNCHER IS NOT RESPONSIBLE FOR ANY GAME-RELATED ISSUES. "
-                + "WE ARE NOT AFFILIATED WITH THE GAME ITSELF. "
-                + "NOSTALGIALAUNCHER ONLY AUTOMATES THE PROCESS OF LAUNCHING THE GAME "
-                + "USING THIRD-PARTY SOFTWARE CALLED NINECRAFT (BY DEFAULT), "
-                + "WHICH IS RESPONSIBLE FOR RUNNING THE GAME VERSIONS.</p>"
-                + "<p style='margin-top: 8px;'>WE DO NOT AFFECT THE FUNCTIONALITY OF THE GAME VERSIONS "
-                + "AND DO NOT INFLUENCE WHETHER THE GAME RUNS PROPERLY ON YOUR DEVICE.</p>"
-                + "<p style='margin-top: 12px; color: gray;'>If you encounter any issues, "
-                + "feel free to join our Discord server for help and support.</p>"
-                + "</body></html>";
+        String htmlText = localeManager.get("dialog.disclaimer.text");
 
         JLabel textLabel = new JLabel(htmlText);
         textLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -1478,7 +1486,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
         buttonPanel.setMaximumSize(new Dimension(460, 45));
         buttonPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JButton discordButton = new JButton("Discord");
+        JButton discordButton = new JButton(localeManager.get("dialog.disclaimer.discord", "Discord"));
         discordButton.setPreferredSize(new Dimension(0, 45));
         discordButton.setFont(getRegularFont(Font.BOLD, 14f));
         try {
@@ -1515,7 +1523,7 @@ public class NostalgiaLauncherDesktop extends JFrame {
             }
         });
 
-        JButton okButton = new JButton("OK");
+        JButton okButton = new JButton(localeManager.get("button.ok", "OK"));
         okButton.setPreferredSize(new Dimension(0, 45));
         okButton.setFont(getRegularFont(Font.BOLD, 14f));
         okButton.addActionListener(e -> dialog.dispose());

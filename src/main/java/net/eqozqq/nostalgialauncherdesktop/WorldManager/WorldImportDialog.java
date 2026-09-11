@@ -8,14 +8,21 @@ import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class WorldImportDialog extends JDialog {
 
     private final LocaleManager localeManager;
-    private JTextField fileField;
+    private JRadioButton radioArchive;
+    private JRadioButton radioFolder;
+    private JLabel sourceLabel;
+    private JTextField pathField;
     private JComboBox<String> instanceComboBox;
     private JButton importButton;
-    private File selectedArchive;
+    private List<File> selectedArchives = new ArrayList<>();
+    private File selectedFolder;
     private boolean success = false;
 
     public WorldImportDialog(Frame owner, LocaleManager localeManager) {
@@ -28,33 +35,74 @@ public class WorldImportDialog extends JDialog {
         JPanel content = new JPanel(new GridBagLayout());
         content.setBorder(new EmptyBorder(20, 20, 20, 20));
         GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.insets = new Insets(8, 8, 8, 8);
         gbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JPanel radioPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        radioArchive = new JRadioButton(localeManager.get("radio.import.archives", "Archive(s)"), true);
+        radioFolder = new JRadioButton(localeManager.get("radio.import.folder", "Folder"), false);
+        ButtonGroup group = new ButtonGroup();
+        group.add(radioArchive);
+        group.add(radioFolder);
+        radioPanel.add(radioArchive);
+        radioPanel.add(radioFolder);
 
         gbc.gridx = 0;
         gbc.gridy = 0;
-        content.add(new JLabel(localeManager.get("label.selectArchive", "Select Archive:")), gbc);
+        gbc.gridwidth = 3;
+        content.add(radioPanel, gbc);
 
-        fileField = new JTextField(20);
-        fileField.setEditable(false);
+        gbc.gridwidth = 1;
+        gbc.gridy = 1;
+        gbc.gridx = 0;
+        sourceLabel = new JLabel(localeManager.get("label.selectArchive", "Select Archive(s):"));
+        content.add(sourceLabel, gbc);
+
+        pathField = new JTextField(20);
+        pathField.setEditable(false);
         gbc.gridx = 1;
-        content.add(fileField, gbc);
+        content.add(pathField, gbc);
 
-        JButton browseButton = new JButton(localeManager.get("button.browse", "Browse"));
+        JButton browseButton = new JButton(localeManager.get("button.browse", "Browse..."));
         browseButton.addActionListener(e -> {
-            selectedArchive = NativeFileChooser.chooseFile(this,
-                    localeManager.get("dialog.importWorld.title", "Import World"),
-                    new String[]{".zip", ".tar", ".gz", ".tgz", ".7z", ".rar"},
-                    "*.zip;*.tar;*.gz;*.tgz;*.7z;*.rar");
-            if (selectedArchive != null) {
-                fileField.setText(selectedArchive.getName());
+            if (radioArchive.isSelected()) {
+                File[] files = NativeFileChooser.chooseFiles(this,
+                        localeManager.get("dialog.importWorld.title", "Import World"),
+                        new String[]{".zip", ".tar", ".gz", ".tgz", ".7z", ".rar"},
+                        "*.zip;*.tar;*.gz;*.tgz;*.7z;*.rar");
+                if (files != null && files.length > 0) {
+                    selectedArchives = Arrays.asList(files);
+                    selectedFolder = null;
+                    if (files.length == 1) {
+                        pathField.setText(files[0].getName());
+                    } else {
+                        pathField.setText(localeManager.get("info.selectedFiles", files.length));
+                    }
+                }
+            } else {
+                File folder = NativeFileChooser.chooseDirectory(this,
+                        localeManager.get("dialog.selectWorldFolder.title", "Select World(s) Folder"));
+                if (folder != null) {
+                    selectedFolder = folder;
+                    selectedArchives.clear();
+                    pathField.setText(folder.getAbsolutePath());
+                }
             }
         });
         gbc.gridx = 2;
         content.add(browseButton, gbc);
 
+        radioArchive.addActionListener(e -> {
+            sourceLabel.setText(localeManager.get("label.selectArchive", "Select Archive(s):"));
+            pathField.setText(selectedArchives.isEmpty() ? "" : (selectedArchives.size() == 1 ? selectedArchives.get(0).getName() : localeManager.get("info.selectedFiles", selectedArchives.size())));
+        });
+        radioFolder.addActionListener(e -> {
+            sourceLabel.setText(localeManager.get("label.selectFolder", "Select Folder:"));
+            pathField.setText(selectedFolder != null ? selectedFolder.getAbsolutePath() : "");
+        });
+
         gbc.gridx = 0;
-        gbc.gridy = 1;
+        gbc.gridy = 2;
         content.add(new JLabel(localeManager.get("label.selectInstance", "Select Instance:")), gbc);
 
         instanceComboBox = new JComboBox<>(InstanceManager.getInstance().getInstances().toArray(new String[0]));
@@ -78,8 +126,14 @@ public class WorldImportDialog extends JDialog {
     }
 
     private void handleImport() {
-        if (selectedArchive == null || !selectedArchive.exists()) {
+        boolean isArchiveMode = radioArchive.isSelected();
+        if (isArchiveMode && selectedArchives.isEmpty()) {
             JOptionPane.showMessageDialog(this, localeManager.get("error.noFileSelected", "Please select an archive."),
+                    localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (!isArchiveMode && (selectedFolder == null || !selectedFolder.exists())) {
+            JOptionPane.showMessageDialog(this, localeManager.get("error.noSourceSelected", "Please select archive(s) or a folder."),
                     localeManager.get("dialog.error.title"), JOptionPane.ERROR_MESSAGE);
             return;
         }
@@ -95,9 +149,17 @@ public class WorldImportDialog extends JDialog {
             targetWorldsDir.mkdirs();
 
         try {
-            WorldImporter.importWorld(selectedArchive, targetWorldsDir);
+            int importedCount = 0;
+            if (isArchiveMode) {
+                importedCount = WorldImporter.importMultiple(selectedArchives, targetWorldsDir);
+            } else {
+                importedCount = WorldImporter.importFromFolder(selectedFolder, targetWorldsDir);
+            }
             success = true;
-            JOptionPane.showMessageDialog(this, localeManager.get("info.importSuccess"),
+            String msg = importedCount > 1
+                    ? localeManager.get("info.bulkImportSuccess", importedCount)
+                    : localeManager.get("info.importSuccess");
+            JOptionPane.showMessageDialog(this, msg,
                     localeManager.get("dialog.success.title"), JOptionPane.INFORMATION_MESSAGE);
             dispose();
         } catch (Exception e) {

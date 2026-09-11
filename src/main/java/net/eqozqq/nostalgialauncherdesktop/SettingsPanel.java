@@ -79,11 +79,13 @@ public class SettingsPanel extends JPanel {
     private String currentVersion;
     private String backgroundMode;
     private Color customBackgroundColor;
-    private String language;
     private String customTranslationPath;
-
+    private String language;
     private String githubTranslationUrl;
     private String githubTranslationName;
+
+    private List<String> hiddenNavTabs;
+    private Map<String, JCheckBox> tabCheckboxes;
 
     private LocaleManager localeManager;
     private SaveListener saveListener;
@@ -119,6 +121,7 @@ public class SettingsPanel extends JPanel {
             String currentGithubUrl, String currentGithubName,
             List<CustomLauncherProfile> customLauncherProfilesList,
             String selectedLauncherProfileName,
+            List<String> currentHiddenNavTabs,
             LocaleManager localeManager, SaveListener saveListener) {
         this.localeManager = localeManager;
         this.saveListener = saveListener;
@@ -134,6 +137,7 @@ public class SettingsPanel extends JPanel {
         this.customLauncherProfilesList = customLauncherProfilesList != null ? customLauncherProfilesList
                 : new ArrayList<>();
         this.selectedLauncherProfileName = selectedLauncherProfileName;
+        this.hiddenNavTabs = currentHiddenNavTabs != null ? new ArrayList<>(currentHiddenNavTabs) : new ArrayList<>();
         this.useDefaultLauncher = !"CUSTOM".equals(currentExecutableSource) && !"ANOTHER".equals(currentExecutableSource);
         this.postLaunchAction = currentPostLaunchAction;
         this.enableDebugging = currentEnableDebugging;
@@ -446,6 +450,16 @@ public class SettingsPanel extends JPanel {
                         localeManager.get("error.invalidFilePath") + "\n\n" + customTranslationPathField.getText());
                 return;
             }
+        }
+
+        if (tabCheckboxes != null) {
+            List<String> hidden = new ArrayList<>();
+            for (Map.Entry<String, JCheckBox> entry : tabCheckboxes.entrySet()) {
+                if (!entry.getValue().isSelected()) {
+                    hidden.add(entry.getKey());
+                }
+            }
+            this.hiddenNavTabs = hidden;
         }
 
         if (saveListener != null) {
@@ -1036,6 +1050,51 @@ public class SettingsPanel extends JPanel {
         gbc.insets = new Insets(8, 8, 8, 8);
 
         gridY++;
+        JLabel navTabsLabel = new JLabel(localeManager.get("label.navTabsVisibility", "Visible Navigation Tabs:"));
+        navTabsLabel.setFont(getCustomFont(Font.BOLD, 14f));
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 1;
+        gbc.anchor = GridBagConstraints.NORTHWEST;
+        card.add(navTabsLabel, gbc);
+
+        JPanel navTabsPanel = new JPanel(new GridLayout(0, 2, 10, 5));
+        navTabsPanel.setOpaque(false);
+
+        tabCheckboxes = new LinkedHashMap<>();
+        String[][] allTabs = {
+            {"home", localeManager.get("nav.home")},
+            {"worlds", localeManager.get("nav.worlds")},
+            {"textures", localeManager.get("nav.textures")},
+            {"instances", localeManager.get("nav.instances")},
+            {"proxy", localeManager.get("nav.proxy")},
+            {"settings", localeManager.get("nav.settings")},
+            {"discord", localeManager.get("nav.discord")},
+            {"website", localeManager.get("nav.website")}
+        };
+
+        for (String[] tab : allTabs) {
+            JCheckBox cb = new JCheckBox(tab[1]);
+            cb.setFont(getCustomFont(Font.PLAIN, 14f));
+            cb.setSelected(hiddenNavTabs == null || !hiddenNavTabs.contains(tab[0]));
+            tabCheckboxes.put(tab[0], cb);
+            navTabsPanel.add(cb);
+        }
+
+        gbc.gridx = 1;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 2;
+        card.add(navTabsPanel, gbc);
+
+        gridY++;
+        gbc.gridx = 0;
+        gbc.gridy = gridY;
+        gbc.gridwidth = 3;
+        gbc.insets = new Insets(15, 0, 15, 0);
+        card.add(new JSeparator(), gbc);
+        gbc.insets = new Insets(8, 8, 8, 8);
+
+        gridY++;
         enableDiscordIntegrationCheckbox = new JCheckBox(localeManager.get("checkbox.enableDiscordIntegration", "Enable Discord Integration"));
         enableDiscordIntegrationCheckbox.setSelected(this.enableDiscordIntegration);
         enableDiscordIntegrationCheckbox.setFont(getCustomFont(Font.BOLD, 14f));
@@ -1079,7 +1138,7 @@ public class SettingsPanel extends JPanel {
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         dialog.add(new JScrollPane(list), BorderLayout.CENTER);
 
-        JLabel statusLabel = new JLabel("Loading...");
+        JLabel statusLabel = new JLabel(localeManager.get("status.loading", "Loading..."));
         statusLabel.setHorizontalAlignment(SwingConstants.CENTER);
         dialog.add(statusLabel, BorderLayout.NORTH);
 
@@ -1396,6 +1455,19 @@ public class SettingsPanel extends JPanel {
         return githubTranslationName;
     }
 
+    public List<String> getHiddenNavTabs() {
+        if (tabCheckboxes != null) {
+            List<String> hidden = new ArrayList<>();
+            for (Map.Entry<String, JCheckBox> entry : tabCheckboxes.entrySet()) {
+                if (!entry.getValue().isSelected()) {
+                    hidden.add(entry.getKey());
+                }
+            }
+            return hidden;
+        }
+        return hiddenNavTabs != null ? hiddenNavTabs : new ArrayList<>();
+    }
+
     private void showClearCacheDialog() {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
                 localeManager.get("dialog.clearCache.title"), true);
@@ -1598,15 +1670,49 @@ public class SettingsPanel extends JPanel {
     }
 
     private void showAddLauncherDialog() {
-        File file = NativeFileChooser.chooseFile(this,
-                localeManager.get("dialog.addLauncher.title", "Add Launcher"),
-                null, null);
-        if (file != null) {
-            String path = file.getAbsolutePath();
-            if (!customLauncherPathsList.contains(path)) {
-                customLauncherPathsList.add(path);
+        JPanel addPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints apGbc = new GridBagConstraints();
+        apGbc.insets = new Insets(5, 5, 5, 5);
+        apGbc.fill = GridBagConstraints.HORIZONTAL;
+
+        JTextField pathFld = new JTextField(25);
+        pathFld.setPreferredSize(new Dimension(0, (int) (45 * scaleFactor)));
+        apGbc.gridx = 0;
+        apGbc.gridy = 0;
+        apGbc.gridwidth = 1;
+        apGbc.weightx = 1.0;
+        addPanel.add(pathFld, apGbc);
+
+        JButton browseBtn = new JButton(localeManager.get("button.browse", "Browse..."));
+        browseBtn.setPreferredSize(new Dimension((int) (100 * scaleFactor), (int) (45 * scaleFactor)));
+        apGbc.gridx = 1;
+        apGbc.gridy = 0;
+        apGbc.gridwidth = 1;
+        apGbc.weightx = 0.0;
+        addPanel.add(browseBtn, apGbc);
+
+        browseBtn.addActionListener(ev -> {
+            File file = NativeFileChooser.chooseFile(addPanel,
+                    localeManager.get("dialog.addLauncher.title", "Add Executable"),
+                    null, null);
+            if (file != null) {
+                pathFld.setText(file.getAbsolutePath());
             }
-            refreshLauncherComboBox(path);
+        });
+
+        int result = JOptionPane.showConfirmDialog(this, addPanel,
+                localeManager.get("dialog.addLauncher.title", "Add Executable"),
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            String path = pathFld.getText().trim();
+            if (!path.isEmpty()) {
+                if (!customLauncherPathsList.contains(path)) {
+                    customLauncherPathsList.add(path);
+                }
+                this.customLauncherPath = path;
+                refreshLauncherComboBox(path);
+            }
         }
     }
 
