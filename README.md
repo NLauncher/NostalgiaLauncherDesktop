@@ -8,7 +8,7 @@ Minecraft PE Alpha versions launcher for Windows and Linux
 - Texture manager
 - Proxy for adding servers
 - Instances
-- And more..
+- And more...
 
 ### Used materials
 - NostalgiaLauncher Desktop uses [Ninecraft](https://github.com/MCPI-Revival/Ninecraft) to run Minecraft PE versions (the default executable for launching versions).
@@ -24,7 +24,7 @@ git clone https://github.com/NLauncher/NostalgiaLauncherDesktop.git
 cd NostalgiaLauncherDesktop
 mvn package
 ```
-**Run builded version:**
+**Run built version:**
 ```shell
 java -jar target/NostalgiaLauncherDesktop.jar
 ```
